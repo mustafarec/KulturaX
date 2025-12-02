@@ -40,7 +40,7 @@ export const SettingsScreen = () => {
             backgroundColor: theme.colors.background,
         },
         header: {
-            paddingTop: 60,
+            paddingTop: 40,
             paddingBottom: 20,
             paddingHorizontal: 20,
             backgroundColor: theme.colors.background,

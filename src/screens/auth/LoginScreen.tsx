@@ -58,13 +58,39 @@ export const LoginScreen = () => {
     const [password, setPassword] = useState('');
 
     const handleLogin = async () => {
-        if (email && password) {
-            await login(email, password);
-        } else {
+        if (!email || !password) {
             Toast.show({
                 type: 'error',
-                text1: 'Hata',
-                text2: 'Lütfen tüm alanları doldurunuz.',
+                text1: 'Eksik Bilgi',
+                text2: 'Lütfen e-posta ve şifre alanlarını doldurunuz.',
+            });
+            return;
+        }
+
+        try {
+            await login(email, password);
+        } catch (error: any) {
+            let errorMessage = 'Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.';
+            let errorTitle = 'Hata';
+
+            if (error.message === 'Kullanıcı bulunamadı.') {
+                errorTitle = 'Hesap Bulunamadı';
+                errorMessage = 'Bu e-posta adresi ile kayıtlı bir hesap bulunamadı. Lütfen kayıt olun.';
+            } else if (error.message === 'Geçersiz şifre.') {
+                errorTitle = 'Yanlış Şifre';
+                errorMessage = 'Girdiğiniz şifre yanlış. Lütfen tekrar deneyiniz.';
+            } else if (error.message === 'Network Error') {
+                errorTitle = 'Bağlantı Hatası';
+                errorMessage = 'Sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol ediniz.';
+            } else if (error.message === 'Geçersiz email formatı.') {
+                errorTitle = 'Geçersiz Format';
+                errorMessage = 'Lütfen geçerli bir e-posta adresi giriniz.';
+            }
+
+            Toast.show({
+                type: 'error',
+                text1: errorTitle,
+                text2: errorMessage,
             });
         }
     };

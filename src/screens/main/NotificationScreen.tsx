@@ -127,7 +127,7 @@ export const NotificationScreen = () => {
             backgroundColor: theme.colors.background, // Was #F8F9FA
         },
         header: {
-            paddingTop: Platform.OS === 'ios' ? 60 : 20,
+            paddingTop: 40,
             paddingBottom: 20,
             paddingHorizontal: 20,
             backgroundColor: theme.colors.background, // Was #FFFFFF

@@ -137,7 +137,7 @@ export const DiscoveryScreen = () => {
             backgroundColor: theme.colors.background, // Was #F8F9FA
         },
         header: {
-            paddingTop: 60,
+            paddingTop: 40,
             paddingBottom: 10,
             paddingHorizontal: 20,
             backgroundColor: theme.colors.background, // Was #FFFFFF

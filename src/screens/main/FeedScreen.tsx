@@ -32,7 +32,7 @@ export const FeedScreen = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingHorizontal: 20,
-            paddingTop: 60,
+            paddingTop: 40,
             paddingBottom: 20,
             backgroundColor: theme.colors.surface,
             ...theme.shadows.soft,

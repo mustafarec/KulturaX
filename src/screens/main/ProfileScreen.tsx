@@ -203,7 +203,7 @@ export const ProfileScreen = () => {
         },
         settingsButton: {
             position: 'absolute',
-            top: 50,
+            top: 45,
             right: 20,
             backgroundColor: 'rgba(0,0,0,0.3)',
             padding: 8,
