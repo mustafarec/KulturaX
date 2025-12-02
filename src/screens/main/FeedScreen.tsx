@@ -240,13 +240,12 @@ export const FeedScreen = () => {
                     </TouchableOpacity>
                 </View>
                 <View style={styles.pageTitleContainer}>
-                    <Text style={styles.pageTitle}>Akış</Text>
+                    <Image
+                        source={require('../../assets/images/header_logo.png')}
+                        style={styles.headerLogo}
+                    />
                 </View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={() => (navigation as any).navigate('Inbox')}>
-                        <Icon name="envelope" size={24} color={theme.colors.text} />
-                    </TouchableOpacity>
-                </View>
+                <View style={styles.headerRight} />
             </View>
 
             {isLoading && !refreshing ? (
@@ -361,11 +360,13 @@ const styles = StyleSheet.create({
     },
     pageTitleContainer: {
         alignItems: 'center',
+        justifyContent: 'center',
+        height: 50,
     },
-    pageTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: theme.colors.text,
+    headerLogo: {
+        width: 150,
+        height: 36,
+        resizeMode: 'contain',
     },
     listContainer: {
         paddingBottom: 160, // Clear FAB and TabBar

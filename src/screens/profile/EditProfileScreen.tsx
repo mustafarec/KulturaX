@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
-import { launchImageLibrary } from 'react-native-image-picker';
+import ImagePicker from 'react-native-image-crop-picker';
 import { userService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,26 +22,47 @@ export const EditProfileScreen = () => {
     const [headerAsset, setHeaderAsset] = useState<any>(null);
 
     const handleAvatarSelect = async () => {
-        const result = await launchImageLibrary({
-            mediaType: 'photo',
-            selectionLimit: 1,
-            quality: 0.5,
-        });
+        try {
+            const image = await ImagePicker.openPicker({
+                width: 400,
+                height: 400,
+                cropping: true,
+                mediaType: 'photo',
+                cropperCircleOverlay: true, // Yuvarlak kırpma (görsel olarak)
+                forceJpg: true,
+            });
 
-        if (result.assets && result.assets.length > 0) {
-            setAvatarAsset(result.assets[0]);
+            if (image) {
+                setAvatarAsset({
+                    uri: image.path,
+                    type: image.mime,
+                    fileName: image.filename || `avatar_${Date.now()}.jpg`,
+                });
+            }
+        } catch (error) {
+            console.log('ImagePicker Error: ', error);
         }
     };
 
     const handleHeaderSelect = async () => {
-        const result = await launchImageLibrary({
-            mediaType: 'photo',
-            selectionLimit: 1,
-            quality: 0.5,
-        });
+        try {
+            const image = await ImagePicker.openPicker({
+                width: 800,
+                height: 266, // ~3:1 aspect ratio
+                cropping: true,
+                mediaType: 'photo',
+                forceJpg: true,
+            });
 
-        if (result.assets && result.assets.length > 0) {
-            setHeaderAsset(result.assets[0]);
+            if (image) {
+                setHeaderAsset({
+                    uri: image.path,
+                    type: image.mime,
+                    fileName: image.filename || `header_${Date.now()}.jpg`,
+                });
+            }
+        } catch (error) {
+            console.log('ImagePicker Error: ', error);
         }
     };
 
