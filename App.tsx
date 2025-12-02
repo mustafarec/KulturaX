@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { MessageProvider } from './src/context/MessageContext';
+import { ThemeProvider } from './src/context/ThemeContext';
 import { initOneSignal } from './src/services/OneSignalService';
 import Toast from 'react-native-toast-message';
 
@@ -14,9 +15,11 @@ function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <MessageProvider>
-          <AppNavigator />
-        </MessageProvider>
+        <ThemeProvider>
+          <MessageProvider>
+            <AppNavigator />
+          </MessageProvider>
+        </ThemeProvider>
       </AuthProvider>
       <Toast />
     </SafeAreaProvider>

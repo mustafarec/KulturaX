@@ -6,7 +6,7 @@ import { DiscoveryScreen } from '../screens/main/DiscoveryScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { InboxScreen } from '../screens/social/InboxScreen';
 import { NotificationScreen } from '../screens/main/NotificationScreen';
-import { theme } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext'; // Import useTheme
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import { useAuth } from '../context/AuthContext';
 import { useMessage } from '../context/MessageContext';
@@ -14,6 +14,8 @@ import { useMessage } from '../context/MessageContext';
 const Tab = createBottomTabNavigator();
 
 export const TabNavigator = () => {
+    const { theme } = useTheme(); // Use dynamic theme
+
     return (
         <Tab.Navigator
             safeAreaInsets={{ bottom: 0 }}
@@ -22,8 +24,10 @@ export const TabNavigator = () => {
                 tabBarStyle: {
                     backgroundColor: theme.colors.glass,
                     borderTopWidth: 0,
+                    borderWidth: 1,
+                    borderColor: theme.colors.glassBorder,
                     position: 'absolute',
-                    bottom: 30,
+                    bottom: 25,
                     left: 20,
                     right: 20,
                     borderRadius: 30,
@@ -32,8 +36,9 @@ export const TabNavigator = () => {
                     elevation: 5,
                     paddingBottom: 0,
                     paddingTop: 0,
-                    paddingHorizontal: 10, // Add breathing room
+                    paddingHorizontal: 10,
                     alignItems: 'center',
+                    justifyContent: 'center',
                 },
                 tabBarShowLabel: false,
                 tabBarActiveTintColor: theme.colors.primary,
@@ -52,7 +57,7 @@ export const TabNavigator = () => {
                     alignSelf: 'center',
                     width: 30,
                     height: 30,
-                    marginTop: 10,
+                    marginTop: 5, // Push down to center vertically
                     marginBottom: 0,
                 }
             }}

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { ThemeSelectorModal } from '../../components/ThemeSelectorModal';
 import { postService, interactionService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import ThemeIcon from 'react-native-vector-icons/Ionicons';
 
 export const FeedScreen = () => {
     const [feed, setFeed] = useState<any[]>([]);
@@ -15,8 +17,119 @@ export const FeedScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
     const [newPostMenuVisible, setNewPostMenuVisible] = useState(false);
+    const [themeModalVisible, setThemeModalVisible] = useState(false);
     const { user } = useAuth();
     const navigation = useNavigation();
+    const { theme, themeMode, toggleTheme, setThemeMode } = useTheme();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            paddingTop: 60,
+            paddingBottom: 20,
+            backgroundColor: theme.colors.surface,
+            ...theme.shadows.soft,
+            zIndex: 10,
+        },
+        headerLeft: {
+            width: 40,
+        },
+        headerRight: {
+            width: 40,
+            alignItems: 'flex-end',
+        },
+        headerAvatar: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+        },
+        headerAvatarPlaceholder: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: theme.colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        headerAvatarText: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#FFFFFF',
+        },
+        pageTitleContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 50,
+        },
+        headerLogo: {
+            width: 150,
+            height: 36,
+            resizeMode: 'contain',
+        },
+        listContainer: {
+            paddingBottom: 160,
+            paddingTop: 0,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        emptyContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 100,
+        },
+        emptyText: {
+            fontSize: 16,
+            color: theme.colors.textSecondary,
+        },
+        fab: {
+            position: 'absolute',
+            bottom: 105,
+            right: 20,
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: theme.colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            ...theme.shadows.soft,
+        },
+        newPostMenu: {
+            position: 'absolute',
+            bottom: 175,
+            right: 20,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            padding: 8,
+            width: 200,
+            ...theme.shadows.soft,
+            zIndex: 1000,
+        },
+        newPostMenuItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 12,
+        },
+        newPostMenuText: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.text,
+        },
+        menuDivider: {
+            height: 1,
+            backgroundColor: theme.colors.border,
+            marginHorizontal: 8,
+        },
+    }), [theme]);
 
     const fetchFeed = async () => {
         if (!refreshing) setIsLoading(true);
@@ -245,7 +358,18 @@ export const FeedScreen = () => {
                         style={styles.headerLogo}
                     />
                 </View>
-                <View style={styles.headerRight} />
+                <View style={styles.headerRight}>
+                    <TouchableOpacity
+                        onPress={() => setThemeModalVisible(true)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <ThemeIcon
+                            name={themeMode === 'auto' ? 'color-wand-outline' : (themeMode === 'dark' ? 'moon' : 'sunny')}
+                            size={24}
+                            color={theme.colors.text}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {isLoading && !refreshing ? (
@@ -312,116 +436,11 @@ export const FeedScreen = () => {
                 onRepost={handleDirectRepost}
                 onQuote={handleQuoteRepost}
             />
+
+            <ThemeSelectorModal
+                visible={themeModalVisible}
+                onClose={() => setThemeModalVisible(false)}
+            />
         </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingTop: 50,
-        paddingBottom: 12,
-        backgroundColor: theme.colors.glass, // Glass header
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.glassBorder,
-        zIndex: 10,
-    },
-    headerLeft: {
-        width: 40,
-    },
-    headerRight: {
-        width: 40,
-        alignItems: 'flex-end',
-    },
-    headerAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-    },
-    headerAvatarPlaceholder: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    headerAvatarText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-    },
-    pageTitleContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 50,
-    },
-    headerLogo: {
-        width: 150,
-        height: 36,
-        resizeMode: 'contain',
-    },
-    listContainer: {
-        paddingBottom: 160, // Clear FAB and TabBar
-        paddingTop: 0, // No top padding
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 100,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: theme.colors.textSecondary,
-    },
-    fab: {
-        position: 'absolute',
-        bottom: 105, // Lift above floating tab bar
-        right: 20,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...theme.shadows.soft,
-    },
-    newPostMenu: {
-        position: 'absolute',
-        bottom: 175,
-        right: 20,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        padding: 8,
-        width: 200,
-        ...theme.shadows.soft,
-        zIndex: 1000,
-    },
-    newPostMenuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-    },
-    newPostMenuText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: theme.colors.text,
-    },
-    menuDivider: {
-        height: 1,
-        backgroundColor: theme.colors.border,
-        marginHorizontal: 8,
-    },
-});

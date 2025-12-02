@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Image, Keyboard } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { postService, interactionService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
 import { RepostMenu } from '../../components/RepostMenu';
@@ -13,6 +13,7 @@ export const PostDetailScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
     const { postId, autoFocusComment } = route.params as { postId: number; autoFocusComment?: boolean };
+    const { theme } = useTheme();
     const { user: currentUser } = useAuth();
 
     const [post, setPost] = useState<any>(null);
@@ -199,6 +200,189 @@ export const PostDetailScreen = () => {
         return result;
     }, [comments]);
 
+    const styles = useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingTop: Platform.OS === 'ios' ? 50 : 20,
+            paddingBottom: 15,
+            paddingHorizontal: 20,
+            backgroundColor: theme.colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            zIndex: 10,
+        },
+        backButton: {
+            padding: 5,
+        },
+        headerTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginLeft: 15,
+        },
+        scrollContent: {
+            paddingBottom: 100, // Space for input area
+        },
+        emptyContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        emptyText: {
+            color: theme.colors.textSecondary,
+            fontSize: 16,
+        },
+        commentsSection: {
+            padding: 16,
+            borderTopWidth: 8,
+            borderTopColor: theme.colors.surface, // Was #F8F9FA
+        },
+        commentsTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginBottom: 16,
+        },
+        emptyComments: {
+            padding: 20,
+            alignItems: 'center',
+        },
+        emptyCommentsText: {
+            color: theme.colors.textSecondary,
+            fontStyle: 'italic',
+        },
+        commentItem: {
+            flexDirection: 'row',
+            marginBottom: 20,
+        },
+        replyItem: {
+            marginLeft: 40,
+            marginTop: -10,
+        },
+        avatarPlaceholder: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: theme.colors.secondary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
+            overflow: 'hidden',
+        },
+        avatar: {
+            width: '100%',
+            height: '100%',
+        },
+        avatarText: {
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            fontSize: 16,
+        },
+        commentContent: {
+            flex: 1,
+            backgroundColor: theme.colors.surface, // Was #F8F9FA
+            padding: 12,
+            borderRadius: 16,
+            borderTopLeftRadius: 4,
+        },
+        commentHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 4,
+        },
+        username: {
+            fontWeight: '700',
+            color: theme.colors.text, // Was #2C3E50
+            fontSize: 14,
+        },
+        text: {
+            color: theme.colors.text, // Was #4A4A4A
+            fontSize: 14,
+            lineHeight: 20,
+        },
+        time: {
+            fontSize: 11,
+            color: theme.colors.textSecondary, // Was #95A5A6
+        },
+        actionRow: {
+            flexDirection: 'row',
+            marginTop: 8,
+            gap: 16,
+        },
+        actionButton: {
+            paddingVertical: 4,
+        },
+        actionText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary, // Was #95A5A6
+            fontWeight: '600',
+        },
+        likedText: {
+            color: theme.colors.primary,
+        },
+        inputWrapper: {
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border, // Was rgba(0,0,0,0.05)
+            backgroundColor: theme.colors.background, // Was #FFFFFF
+        },
+        replyBar: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            padding: 8,
+            paddingHorizontal: 16,
+            backgroundColor: theme.colors.surface, // Was #F0F2F5
+        },
+        replyText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary, // Was #7F8C8D
+        },
+        cancelReply: {
+            fontSize: 12,
+            color: theme.colors.primary,
+            fontWeight: 'bold',
+        },
+        inputContainer: {
+            flexDirection: 'row',
+            padding: 12,
+            alignItems: 'flex-end',
+            backgroundColor: theme.colors.background, // Was #FFFFFF
+        },
+        input: {
+            flex: 1,
+            backgroundColor: theme.colors.surface, // Was #F0F2F5
+            borderRadius: 24,
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            color: theme.colors.text, // Was #2C3E50
+            marginRight: 12,
+            fontSize: 15,
+            maxHeight: 100,
+        },
+        sendButton: {
+            backgroundColor: theme.colors.primary,
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        disabledButton: {
+            backgroundColor: theme.colors.secondary, // Was #BDC3C7
+        },
+    }), [theme]);
+
     const renderCommentItem = (item: any) => {
         const isReply = !!item.parent_id;
         return (
@@ -355,185 +539,4 @@ export const PostDetailScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 50 : 20,
-        paddingBottom: 15,
-        paddingHorizontal: 20,
-        backgroundColor: theme.colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-        zIndex: 10,
-    },
-    backButton: {
-        padding: 5,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginLeft: 15,
-    },
-    scrollContent: {
-        paddingBottom: 100, // Space for input area
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    emptyText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    commentsSection: {
-        padding: 16,
-        borderTopWidth: 8,
-        borderTopColor: '#F8F9FA',
-    },
-    commentsTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: 16,
-    },
-    emptyComments: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    emptyCommentsText: {
-        color: theme.colors.textSecondary,
-        fontStyle: 'italic',
-    },
-    commentItem: {
-        flexDirection: 'row',
-        marginBottom: 20,
-    },
-    replyItem: {
-        marginLeft: 40,
-        marginTop: -10,
-    },
-    avatarPlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: theme.colors.secondary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-        overflow: 'hidden',
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-    },
-    avatarText: {
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontSize: 16,
-    },
-    commentContent: {
-        flex: 1,
-        backgroundColor: '#F8F9FA',
-        padding: 12,
-        borderRadius: 16,
-        borderTopLeftRadius: 4,
-    },
-    commentHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    username: {
-        fontWeight: '700',
-        color: '#2C3E50',
-        fontSize: 14,
-    },
-    text: {
-        color: '#4A4A4A',
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    time: {
-        fontSize: 11,
-        color: '#95A5A6',
-    },
-    actionRow: {
-        flexDirection: 'row',
-        marginTop: 8,
-        gap: 16,
-    },
-    actionButton: {
-        paddingVertical: 4,
-    },
-    actionText: {
-        fontSize: 12,
-        color: '#95A5A6',
-        fontWeight: '600',
-    },
-    likedText: {
-        color: theme.colors.primary,
-    },
-    inputWrapper: {
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.05)',
-        backgroundColor: '#FFFFFF',
-    },
-    replyBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 8,
-        paddingHorizontal: 16,
-        backgroundColor: '#F0F2F5',
-    },
-    replyText: {
-        fontSize: 12,
-        color: '#7F8C8D',
-    },
-    cancelReply: {
-        fontSize: 12,
-        color: theme.colors.primary,
-        fontWeight: 'bold',
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        padding: 12,
-        alignItems: 'flex-end',
-        backgroundColor: '#FFFFFF',
-    },
-    input: {
-        flex: 1,
-        backgroundColor: '#F0F2F5',
-        borderRadius: 24,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        color: '#2C3E50',
-        marginRight: 12,
-        fontSize: 15,
-        maxHeight: 100,
-    },
-    sendButton: {
-        backgroundColor: theme.colors.primary,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    disabledButton: {
-        backgroundColor: '#BDC3C7',
-    },
-});
+

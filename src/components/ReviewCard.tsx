@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 
 interface ReviewCardProps {
@@ -9,6 +9,7 @@ interface ReviewCardProps {
 }
 
 export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onUserPress }) => {
+    const { theme } = useTheme();
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -33,15 +34,15 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onUserPress }) =
     );
 };
 
-const styles = StyleSheet.create({
+const styles = React.useMemo(() => StyleSheet.create({
     container: {
-        backgroundColor: theme.colors.glass,
+        backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.liquid,
         marginBottom: theme.spacing.m,
         padding: theme.spacing.l,
         ...theme.shadows.soft,
         borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
+        borderColor: theme.colors.border,
     },
     header: {
         flexDirection: 'row',
@@ -86,4 +87,4 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         opacity: 0.9,
     },
-});
+}), [theme]);

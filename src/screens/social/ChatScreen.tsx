@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
 import { messageService, userService } from '../../services/backendApi';
@@ -19,9 +19,132 @@ export const ChatScreen = () => {
         avatar_url: avatarUrl
     });
     const { user } = useAuth();
+    const { theme } = useTheme();
     const navigation = useNavigation();
     const { markAsRead } = useMessage();
     const flatListRef = useRef<FlatList>(null);
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            paddingTop: Platform.OS === 'ios' ? 50 : 16,
+            paddingBottom: 16,
+            paddingHorizontal: 16,
+            backgroundColor: theme.colors.background,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border, // Was glassBorder
+        },
+        backButton: {
+            padding: 8,
+            marginLeft: -8,
+        },
+        headerTitleContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        avatar: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            marginRight: 8,
+        },
+        avatarPlaceholder: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: theme.colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 8,
+        },
+        avatarText: {
+            color: '#ffffff',
+            fontWeight: 'bold',
+            fontSize: 14,
+        },
+        headerTitle: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: theme.colors.text,
+        },
+        list: {
+            padding: theme.spacing.m,
+            paddingBottom: 20,
+        },
+        messageBubble: {
+            maxWidth: '80%',
+            padding: 12,
+            borderRadius: 20,
+            marginBottom: 8,
+        },
+        myMessage: {
+            alignSelf: 'flex-end',
+            backgroundColor: theme.colors.primary,
+            borderBottomRightRadius: 4,
+        },
+        theirMessage: {
+            alignSelf: 'flex-start',
+            backgroundColor: theme.colors.surface,
+            borderBottomLeftRadius: 4,
+        },
+        messageText: {
+            fontSize: 16,
+            marginBottom: 4,
+        },
+        myMessageText: {
+            color: '#ffffff',
+        },
+        theirMessageText: {
+            color: theme.colors.text,
+        },
+        timeText: {
+            fontSize: 10,
+            alignSelf: 'flex-end',
+        },
+        myTimeText: {
+            color: 'rgba(255, 255, 255, 0.7)',
+        },
+        theirTimeText: {
+            color: theme.colors.textSecondary,
+        },
+        inputContainer: {
+            flexDirection: 'row',
+            padding: 12,
+            backgroundColor: theme.colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border, // Was glassBorder
+            alignItems: 'center',
+        },
+        input: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+            borderRadius: 24,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            maxHeight: 100,
+            color: theme.colors.text,
+            marginRight: 12,
+            fontSize: 16,
+        },
+        sendButton: {
+            backgroundColor: theme.colors.primary,
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        sendButtonDisabled: {
+            backgroundColor: theme.colors.textSecondary,
+            opacity: 0.5,
+        },
+    }), [theme]);
 
     const fetchUserProfile = async () => {
         try {
@@ -159,124 +282,4 @@ export const ChatScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        paddingTop: Platform.OS === 'ios' ? 50 : 16,
-        paddingBottom: 16,
-        paddingHorizontal: 16,
-        backgroundColor: theme.colors.background,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.glassBorder,
-    },
-    backButton: {
-        padding: 8,
-        marginLeft: -8,
-    },
-    headerTitleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 8,
-    },
-    avatarPlaceholder: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    avatarText: {
-        color: '#ffffff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: theme.colors.text,
-    },
-    list: {
-        padding: theme.spacing.m,
-        paddingBottom: 20,
-    },
-    messageBubble: {
-        maxWidth: '80%',
-        padding: 12,
-        borderRadius: 20,
-        marginBottom: 8,
-    },
-    myMessage: {
-        alignSelf: 'flex-end',
-        backgroundColor: theme.colors.primary,
-        borderBottomRightRadius: 4,
-    },
-    theirMessage: {
-        alignSelf: 'flex-start',
-        backgroundColor: theme.colors.surface,
-        borderBottomLeftRadius: 4,
-    },
-    messageText: {
-        fontSize: 16,
-        marginBottom: 4,
-    },
-    myMessageText: {
-        color: '#ffffff',
-    },
-    theirMessageText: {
-        color: theme.colors.text,
-    },
-    timeText: {
-        fontSize: 10,
-        alignSelf: 'flex-end',
-    },
-    myTimeText: {
-        color: 'rgba(255, 255, 255, 0.7)',
-    },
-    theirTimeText: {
-        color: theme.colors.textSecondary,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        padding: 12,
-        backgroundColor: theme.colors.surface,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.glassBorder,
-        alignItems: 'center',
-    },
-    input: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-        borderRadius: 24,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        maxHeight: 100,
-        color: theme.colors.text,
-        marginRight: 12,
-        fontSize: 16,
-    },
-    sendButton: {
-        backgroundColor: theme.colors.primary,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sendButtonDisabled: {
-        backgroundColor: theme.colors.textSecondary,
-        opacity: 0.5,
-    },
-});
+

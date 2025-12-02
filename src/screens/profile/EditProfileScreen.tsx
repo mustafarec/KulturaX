@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import ImagePicker from 'react-native-image-crop-picker';
 import { userService } from '../../services/backendApi';
@@ -11,6 +11,111 @@ import { useAuth } from '../../context/AuthContext';
 export const EditProfileScreen = () => {
     const navigation = useNavigation();
     const { user, updateUser } = useAuth();
+    const { theme } = useTheme();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            paddingTop: 60,
+            paddingBottom: 20,
+            backgroundColor: theme.colors.surface,
+            ...theme.shadows.soft,
+            zIndex: 10,
+        },
+        backButton: {
+            padding: 8,
+        },
+        headerTitle: {
+            fontSize: 18,
+            fontWeight: '700',
+            color: theme.colors.text,
+        },
+        saveButton: {
+            fontSize: 16,
+            fontWeight: '700',
+            color: theme.colors.primary,
+        },
+        content: {
+            flex: 1,
+        },
+        headerImageContainer: {
+            height: 150,
+            width: '100%',
+            position: 'relative',
+        },
+        headerImage: {
+            width: '100%',
+            height: '100%',
+            resizeMode: 'cover',
+        },
+        overlay: {
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        avatarSection: {
+            alignItems: 'center',
+            marginTop: -50,
+            marginBottom: 20,
+        },
+        avatar: {
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            borderWidth: 4,
+            borderColor: theme.colors.background,
+        },
+        avatarOverlay: {
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            borderRadius: 50,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        changePhotoText: {
+            marginTop: 8,
+            color: theme.colors.primary,
+            fontWeight: '600',
+            fontSize: 14,
+        },
+        form: {
+            padding: 20,
+        },
+        inputGroup: {
+            marginBottom: 24,
+        },
+        label: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.textSecondary,
+            marginBottom: 8,
+            marginLeft: 4,
+        },
+        input: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 16,
+            color: theme.colors.text,
+            fontSize: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.soft,
+        },
+        textArea: {
+            height: 100,
+            textAlignVertical: 'top',
+        },
+    }), [theme]);
 
     const [fullName, setFullName] = useState(user?.full_name || '');
     const [bio, setBio] = useState(user?.bio || '');
@@ -214,106 +319,4 @@ export const EditProfileScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 60,
-        paddingBottom: 20,
-        backgroundColor: theme.colors.surface,
-        ...theme.shadows.soft,
-        zIndex: 10,
-    },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: theme.colors.text,
-    },
-    saveButton: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: theme.colors.primary,
-    },
-    content: {
-        flex: 1,
-    },
-    headerImageContainer: {
-        height: 150,
-        width: '100%',
-        position: 'relative',
-    },
-    headerImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    overlay: {
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarSection: {
-        alignItems: 'center',
-        marginTop: -50,
-        marginBottom: 20,
-    },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 4,
-        borderColor: theme.colors.background,
-    },
-    avatarOverlay: {
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        borderRadius: 50,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    changePhotoText: {
-        marginTop: 8,
-        color: theme.colors.primary,
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    form: {
-        padding: 20,
-    },
-    inputGroup: {
-        marginBottom: 24,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: theme.colors.textSecondary,
-        marginBottom: 8,
-        marginLeft: 4,
-    },
-    input: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 16,
-        color: theme.colors.text,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-        ...theme.shadows.soft,
-    },
-    textArea: {
-        height: 100,
-        textAlignVertical: 'top',
-    },
-});
+

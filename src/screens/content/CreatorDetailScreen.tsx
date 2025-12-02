@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
-import { theme } from '../../theme/theme';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, FlatList, StatusBar } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/SimpleLineIcons';
 
 export const CreatorDetailScreen = ({ route }: any) => {
     const { id, name, type } = route.params; // type: 'person' (TMDB) or 'author' (Google Books)
@@ -11,6 +12,7 @@ export const CreatorDetailScreen = ({ route }: any) => {
     const [works, setWorks] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const navigation = useNavigation();
+    const { theme } = useTheme();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -64,6 +66,114 @@ export const CreatorDetailScreen = ({ route }: any) => {
         fetchData();
     }, [id, name, type]);
 
+    React.useLayoutEffect(() => {
+        navigation.setOptions({
+            headerShown: false,
+        });
+    }, [navigation]);
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            alignItems: 'center',
+            padding: 20,
+            paddingTop: 60,
+            backgroundColor: theme.colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        backButton: {
+            position: 'absolute',
+            top: 20,
+            left: 20,
+            zIndex: 10,
+            padding: 8,
+            backgroundColor: theme.colors.surface + 'CC',
+            borderRadius: 20,
+        },
+        profileImage: {
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            marginBottom: 16,
+        },
+        placeholderImage: {
+            backgroundColor: theme.colors.secondary,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        placeholderText: {
+            fontSize: 40,
+            color: '#fff',
+            fontWeight: 'bold',
+        },
+        name: {
+            fontSize: 24,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginBottom: 8,
+            textAlign: 'center',
+        },
+        info: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+            marginBottom: 12,
+        },
+        biography: {
+            fontSize: 14,
+            color: theme.colors.text,
+            textAlign: 'center',
+            lineHeight: 20,
+        },
+        section: {
+            padding: 16,
+        },
+        sectionTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginBottom: 16,
+        },
+        worksGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+        },
+        workCard: {
+            width: '31%',
+            marginBottom: 16,
+        },
+        workImage: {
+            width: '100%',
+            aspectRatio: 2 / 3,
+            borderRadius: 8,
+            marginBottom: 8,
+            backgroundColor: theme.colors.surface,
+        },
+        placeholderWorkImage: {
+            backgroundColor: theme.colors.secondary,
+        },
+        workTitle: {
+            fontSize: 12,
+            fontWeight: '600',
+            color: theme.colors.text,
+            marginBottom: 2,
+        },
+        workYear: {
+            fontSize: 10,
+            color: theme.colors.textSecondary,
+        },
+    }), [theme]);
+
     const handleWorkPress = (work: any) => {
         if (work.type === 'Film') {
             (navigation as any).push('MovieDetail', { movie: work });
@@ -82,7 +192,11 @@ export const CreatorDetailScreen = ({ route }: any) => {
 
     return (
         <ScrollView style={styles.container}>
+            <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
             <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
+                </TouchableOpacity>
                 {details?.profile_path ? (
                     <Image
                         source={{ uri: `https://image.tmdb.org/t/p/w500${details.profile_path}` }}
@@ -124,93 +238,4 @@ export const CreatorDetailScreen = ({ route }: any) => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    header: {
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: theme.colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    profileImage: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        marginBottom: 16,
-    },
-    placeholderImage: {
-        backgroundColor: theme.colors.secondary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    placeholderText: {
-        fontSize: 40,
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    name: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    info: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        marginBottom: 12,
-    },
-    biography: {
-        fontSize: 14,
-        color: theme.colors.text,
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-    section: {
-        padding: 16,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: 16,
-    },
-    worksGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-    },
-    workCard: {
-        width: '31%',
-        marginBottom: 16,
-    },
-    workImage: {
-        width: '100%',
-        aspectRatio: 2 / 3,
-        borderRadius: 8,
-        marginBottom: 8,
-        backgroundColor: theme.colors.surface,
-    },
-    placeholderWorkImage: {
-        backgroundColor: theme.colors.secondary,
-    },
-    workTitle: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: theme.colors.text,
-        marginBottom: 2,
-    },
-    workYear: {
-        fontSize: 10,
-        color: theme.colors.textSecondary,
-    },
-});
+

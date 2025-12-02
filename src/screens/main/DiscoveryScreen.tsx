@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
 
@@ -10,6 +10,7 @@ export const DiscoveryScreen = () => {
     const [results, setResults] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'trending' | 'movies' | 'books'>('trending');
+    const { theme } = useTheme();
     const navigation = useNavigation();
 
     const fetchData = async (tab: string, searchQuery: string) => {
@@ -130,6 +131,176 @@ export const DiscoveryScreen = () => {
         }
     };
 
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background, // Was #F8F9FA
+        },
+        header: {
+            paddingTop: 60,
+            paddingBottom: 10,
+            paddingHorizontal: 20,
+            backgroundColor: theme.colors.background, // Was #FFFFFF
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border, // Was rgba(0,0,0,0.05)
+        },
+        headerTitle: {
+            fontSize: 32,
+            fontWeight: '800',
+            color: theme.colors.text, // Was #1A1A1A
+            marginBottom: 16,
+            letterSpacing: -0.5,
+        },
+        searchContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface, // Was #F8F9FA
+            borderRadius: 16,
+            paddingHorizontal: 16,
+            height: 50,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        searchIcon: {
+            fontSize: 18,
+            marginRight: 10,
+            opacity: 0.5,
+            color: theme.colors.textSecondary,
+        },
+        searchInput: {
+            flex: 1,
+            fontSize: 16,
+            color: theme.colors.text, // Was #2C3E50
+            height: '100%',
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        content: {
+            flex: 1,
+        },
+        tabs: {
+            flexDirection: 'row',
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            backgroundColor: theme.colors.background, // Was #fff
+            marginBottom: 8,
+        },
+        tab: {
+            marginRight: 24,
+            paddingBottom: 8,
+        },
+        activeTab: {
+            borderBottomWidth: 3,
+            borderBottomColor: theme.colors.primary,
+        },
+        tabText: {
+            fontSize: 16,
+            color: theme.colors.textSecondary, // Was #95A5A6
+            fontWeight: '600',
+        },
+        activeTabText: {
+            color: theme.colors.text, // Was #2C3E50
+            fontWeight: '700',
+        },
+        list: {
+            paddingHorizontal: 16,
+            paddingBottom: 20,
+            paddingTop: 8,
+        },
+        row: {
+            justifyContent: 'space-between',
+        },
+        card: {
+            width: '48%',
+            backgroundColor: theme.colors.surface, // Was #FFFFFF
+            borderRadius: 16,
+            marginBottom: 16,
+            shadowColor: theme.shadows.default.shadowColor, // Was #000
+            shadowOffset: {
+                width: 0,
+                height: 4,
+            },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 3,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        imageContainer: {
+            height: 220,
+            width: '100%',
+            backgroundColor: theme.colors.background, // Was #F0F2F5
+        },
+        cardImage: {
+            height: '100%',
+            width: '100%',
+        },
+        placeholderImage: {
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        placeholderText: {
+            fontSize: 40,
+            fontWeight: 'bold',
+            color: theme.colors.textSecondary, // Was #BDC3C7
+        },
+        typeTag: {
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 8,
+        },
+        typeText: {
+            color: '#FFFFFF',
+            fontSize: 10,
+            fontWeight: '700',
+            textTransform: 'uppercase',
+        },
+        cardInfo: {
+            padding: 12,
+        },
+        cardTitle: {
+            fontWeight: '700',
+            color: theme.colors.text, // Was #2C3E50
+            fontSize: 14,
+            marginBottom: 4,
+            lineHeight: 20,
+        },
+        cardSubtitle: {
+            fontSize: 12,
+            color: theme.colors.textSecondary, // Was #95A5A6
+            fontWeight: '500',
+        },
+        emptyContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 100,
+        },
+        emptyIcon: {
+            fontSize: 64,
+            marginBottom: 16,
+            opacity: 0.5,
+            color: theme.colors.textSecondary,
+        },
+        emptyTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: theme.colors.text, // Was #2C3E50
+            marginBottom: 8,
+        },
+        emptyText: {
+            fontSize: 15,
+            color: theme.colors.textSecondary, // Was #95A5A6
+        },
+    }), [theme]);
+
     const renderItem = ({ item }: { item: any }) => (
         <TouchableOpacity
             style={styles.card}
@@ -224,166 +395,4 @@ export const DiscoveryScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F8F9FA',
-    },
-    header: {
-        paddingTop: 60,
-        paddingBottom: 10,
-        paddingHorizontal: 20,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    headerTitle: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: '#1A1A1A',
-        marginBottom: 16,
-        letterSpacing: -0.5,
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        height: 50,
-    },
-    searchIcon: {
-        fontSize: 18,
-        marginRight: 10,
-        opacity: 0.5,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 16,
-        color: '#2C3E50',
-        height: '100%',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    content: {
-        flex: 1,
-    },
-    tabs: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: '#fff',
-        marginBottom: 8,
-    },
-    tab: {
-        marginRight: 24,
-        paddingBottom: 8,
-    },
-    activeTab: {
-        borderBottomWidth: 3,
-        borderBottomColor: theme.colors.primary,
-    },
-    tabText: {
-        fontSize: 16,
-        color: '#95A5A6',
-        fontWeight: '600',
-    },
-    activeTabText: {
-        color: '#2C3E50',
-        fontWeight: '700',
-    },
-    list: {
-        paddingHorizontal: 16,
-        paddingBottom: 20,
-        paddingTop: 8,
-    },
-    row: {
-        justifyContent: 'space-between',
-    },
-    card: {
-        width: '48%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        marginBottom: 16,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-        overflow: 'hidden',
-    },
-    imageContainer: {
-        height: 220,
-        width: '100%',
-        backgroundColor: '#F0F2F5',
-    },
-    cardImage: {
-        height: '100%',
-        width: '100%',
-    },
-    placeholderImage: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    placeholderText: {
-        fontSize: 40,
-        fontWeight: 'bold',
-        color: '#BDC3C7',
-    },
-    typeTag: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    typeText: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    cardInfo: {
-        padding: 12,
-    },
-    cardTitle: {
-        fontWeight: '700',
-        color: '#2C3E50',
-        fontSize: 14,
-        marginBottom: 4,
-        lineHeight: 20,
-    },
-    cardSubtitle: {
-        fontSize: 12,
-        color: '#95A5A6',
-        fontWeight: '500',
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 100,
-    },
-    emptyIcon: {
-        fontSize: 64,
-        marginBottom: 16,
-        opacity: 0.5,
-    },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#2C3E50',
-        marginBottom: 8,
-    },
-    emptyText: {
-        fontSize: 15,
-        color: '#95A5A6',
-    },
-});
+

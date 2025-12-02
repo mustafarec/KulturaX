@@ -3,12 +3,86 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import DatePicker from 'react-native-date-picker';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 export const SignupScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
+    const { theme } = useTheme();
     const { signup, isLoading } = useAuth();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        scrollContainer: {
+            flexGrow: 1,
+            backgroundColor: theme.colors.background,
+        },
+        container: {
+            flex: 1,
+            padding: theme.spacing.l,
+            justifyContent: 'center',
+        },
+        title: {
+            ...theme.typography.h1,
+            marginBottom: theme.spacing.xl,
+            textAlign: 'center',
+            color: theme.colors.text,
+        },
+        inputContainer: {
+            marginBottom: theme.spacing.l,
+        },
+        input: {
+            backgroundColor: theme.colors.surface,
+            color: theme.colors.text,
+            padding: theme.spacing.m,
+            borderRadius: 8,
+            marginBottom: theme.spacing.m,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            justifyContent: 'center', // For TouchableOpacity inputs
+            height: 50, // Ensure consistent height
+        },
+        button: {
+            backgroundColor: theme.colors.primary,
+            padding: theme.spacing.m,
+            borderRadius: 8,
+            alignItems: 'center',
+            marginBottom: theme.spacing.m,
+        },
+        buttonText: {
+            color: '#ffffff',
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
+        linkText: {
+            color: theme.colors.secondary,
+            textAlign: 'center',
+            marginTop: theme.spacing.s,
+        },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalContent: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            padding: 10,
+            width: '80%',
+            elevation: 5,
+        },
+        modalItem: {
+            padding: 15,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        modalItemText: {
+            color: theme.colors.text,
+            fontSize: 16,
+            textAlign: 'center',
+        },
+    }), [theme]);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,7 +130,7 @@ export const SignupScreen = () => {
                     text1: 'Başarılı',
                     text2: 'Lütfen email adresinizi doğrulayın.',
                 });
-                navigation.navigate('Verification' as never, { email } as never);
+                navigation.navigate('Verification' as any, { email } as any);
             } else {
                 Toast.show({
                     type: 'success',
@@ -198,7 +272,7 @@ export const SignupScreen = () => {
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
+                <TouchableOpacity onPress={() => navigation.navigate('Login' as any)}>
                     <Text style={styles.linkText}>Zaten hesabınız var mı? Giriş Yapın</Text>
                 </TouchableOpacity>
             </View>
@@ -206,74 +280,4 @@ export const SignupScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    scrollContainer: {
-        flexGrow: 1,
-        backgroundColor: theme.colors.background,
-    },
-    container: {
-        flex: 1,
-        padding: theme.spacing.l,
-        justifyContent: 'center',
-    },
-    title: {
-        ...theme.typography.h1,
-        marginBottom: theme.spacing.xl,
-        textAlign: 'center',
-        color: theme.colors.text,
-    },
-    inputContainer: {
-        marginBottom: theme.spacing.l,
-    },
-    input: {
-        backgroundColor: theme.colors.surface,
-        color: theme.colors.text,
-        padding: theme.spacing.m,
-        borderRadius: 8,
-        marginBottom: theme.spacing.m,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        justifyContent: 'center', // For TouchableOpacity inputs
-        height: 50, // Ensure consistent height
-    },
-    button: {
-        backgroundColor: theme.colors.primary,
-        padding: theme.spacing.m,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: theme.spacing.m,
-    },
-    buttonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    linkText: {
-        color: theme.colors.secondary,
-        textAlign: 'center',
-        marginTop: theme.spacing.s,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 8,
-        padding: 10,
-        width: '80%',
-        elevation: 5,
-    },
-    modalItem: {
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    modalItemText: {
-        color: theme.colors.text,
-        fontSize: 16,
-        textAlign: 'center',
-    },
-});
+

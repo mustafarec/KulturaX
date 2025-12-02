@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { theme } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import { QuoteCard } from './QuoteCard';
 
@@ -29,6 +29,182 @@ export const PostCard: React.FC<PostCardProps> = ({
     currentUserId,
     onContentPress
 }) => {
+    const { theme } = useTheme();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            backgroundColor: theme.colors.surface, // Changed from transparent to surface for better layering
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        repostHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 4,
+            marginLeft: 42,
+        },
+        repostText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+            fontWeight: '600',
+        },
+        cardContent: {
+            flexDirection: 'row',
+        },
+        avatarContainer: {
+            marginRight: 12,
+            alignSelf: 'flex-start',
+        },
+        avatar: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+        },
+        avatarPlaceholder: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: theme.colors.secondary,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        avatarText: {
+            color: '#FFFFFF',
+            fontWeight: 'bold',
+            fontSize: 18,
+        },
+        mainContent: {
+            flex: 1,
+        },
+        headerRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 2,
+        },
+        userInfo: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+            flexWrap: 'wrap',
+        },
+        name: {
+            fontWeight: '700',
+            fontSize: 15,
+            color: theme.colors.text,
+            marginRight: 4,
+        },
+        username: {
+            color: theme.colors.textSecondary,
+            fontSize: 14,
+            marginRight: 4,
+        },
+        dot: {
+            color: theme.colors.textSecondary,
+            fontSize: 14,
+            marginRight: 4,
+        },
+        time: {
+            color: theme.colors.textSecondary,
+            fontSize: 13,
+        },
+        content: {
+            fontSize: 15,
+            color: theme.colors.text,
+            lineHeight: 20,
+            marginBottom: 8,
+        },
+        footer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingRight: 16,
+            marginTop: 4,
+        },
+        actionButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 4,
+        },
+        actionIcon: {
+            marginRight: 6,
+        },
+        actionCount: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+            fontWeight: '500',
+        },
+        likedText: {
+            color: theme.colors.error,
+        },
+        repostedText: {
+            color: theme.colors.success,
+        },
+        socialQuoteContainer: {
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: 12,
+            padding: 12,
+            marginTop: 4,
+        },
+        socialQuoteHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 8,
+        },
+        socialQuoteAvatar: {
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            marginRight: 8,
+        },
+        socialQuoteAvatarPlaceholder: {
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: theme.colors.secondary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 8,
+        },
+        socialQuoteAvatarText: {
+            color: '#FFFFFF',
+            fontWeight: 'bold',
+            fontSize: 10,
+        },
+        socialQuoteUserInfo: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+            flexWrap: 'wrap',
+        },
+        socialQuoteName: {
+            fontWeight: '700',
+            fontSize: 14,
+            color: theme.colors.text,
+            marginRight: 4,
+        },
+        socialQuoteUsername: {
+            color: theme.colors.textSecondary,
+            fontSize: 13,
+            marginRight: 4,
+        },
+        socialQuoteDot: {
+            color: theme.colors.textSecondary,
+            fontSize: 13,
+            marginRight: 4,
+        },
+        socialQuoteTime: {
+            color: theme.colors.textSecondary,
+            fontSize: 12,
+        },
+        socialQuoteContent: {
+            fontSize: 14,
+            color: theme.colors.text,
+            lineHeight: 20,
+        },
+    }), [theme]);
     const isRepost = !!post.original_post_id;
 
     // Alıntı kontrolü:
@@ -245,177 +421,4 @@ export const PostCard: React.FC<PostCardProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        backgroundColor: 'transparent', // Flat design: no background
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.glassBorder, // Separator
-    },
-    repostHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-        marginLeft: 42, // Align with content
-    },
-    repostText: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        fontWeight: '600',
-    },
-    cardContent: {
-        flexDirection: 'row',
-    },
-    avatarContainer: {
-        marginRight: 12,
-        alignSelf: 'flex-start',
-    },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-    },
-    avatarPlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: theme.colors.secondary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-        fontSize: 18,
-    },
-    mainContent: {
-        flex: 1,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 2,
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-        flexWrap: 'wrap',
-    },
-    name: {
-        fontWeight: '700',
-        fontSize: 15,
-        color: theme.colors.text,
-        marginRight: 4,
-    },
-    username: {
-        color: theme.colors.textSecondary,
-        fontSize: 14,
-        marginRight: 4,
-    },
-    dot: {
-        color: theme.colors.textSecondary,
-        fontSize: 14,
-        marginRight: 4,
-    },
-    time: {
-        color: theme.colors.textSecondary,
-        fontSize: 13,
-    },
-    content: {
-        fontSize: 15,
-        color: theme.colors.text,
-        lineHeight: 20,
-        marginBottom: 8,
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingRight: 16,
-        marginTop: 4,
-    },
-    actionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 4,
-    },
-    actionIcon: {
-        marginRight: 6,
-    },
-    actionCount: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        fontWeight: '500',
-    },
-    likedText: {
-        color: theme.colors.error,
-    },
-    repostedText: {
-        color: theme.colors.success,
-    },
-    socialQuoteContainer: {
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        borderRadius: 12,
-        padding: 12,
-        marginTop: 4,
-    },
-    socialQuoteHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    socialQuoteAvatar: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        marginRight: 8,
-    },
-    socialQuoteAvatarPlaceholder: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: theme.colors.secondary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    socialQuoteAvatarText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-        fontSize: 10,
-    },
-    socialQuoteUserInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-        flexWrap: 'wrap',
-    },
-    socialQuoteName: {
-        fontWeight: '700',
-        fontSize: 14,
-        color: theme.colors.text,
-        marginRight: 4,
-    },
-    socialQuoteUsername: {
-        color: theme.colors.textSecondary,
-        fontSize: 13,
-        marginRight: 4,
-    },
-    socialQuoteDot: {
-        color: theme.colors.textSecondary,
-        fontSize: 13,
-        marginRight: 4,
-    },
-    socialQuoteTime: {
-        color: theme.colors.textSecondary,
-        fontSize: 12,
-    },
-    socialQuoteContent: {
-        fontSize: 14,
-        color: theme.colors.text,
-        lineHeight: 20,
-    },
-});
+

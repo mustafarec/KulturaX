@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions, ImageBackground } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { postService, libraryService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
@@ -15,6 +15,7 @@ const { width } = Dimensions.get('window');
 
 export const ProfileScreen = () => {
     const { user, logout } = useAuth();
+    const { theme } = useTheme();
     console.log('ProfileScreen user:', user);
     const navigation = useNavigation();
     const [activeTab, setActiveTab] = useState('posts');
@@ -157,6 +158,279 @@ export const ProfileScreen = () => {
         }
     };
 
+    // Helper Components
+    const StatItem = ({ number, label }: { number: number, label: string }) => (
+        <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{number}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+
+    const TabButton = ({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
+        <TouchableOpacity style={[styles.tab, active && styles.activeTab]} onPress={onPress}>
+            <Text style={[styles.tabText, active && styles.activeTabText]}>{title}</Text>
+        </TouchableOpacity>
+    );
+
+    const EmptyState = ({ icon, text }: { icon: string, text: string }) => (
+        <View style={styles.emptyContainer}>
+            <Icon name={icon} size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+            <Text style={styles.emptyText}>{text}</Text>
+        </View>
+    );
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        headerImageContainer: {
+            height: 180,
+            width: '100%',
+            position: 'relative',
+        },
+        headerImage: {
+            width: '100%',
+            height: '100%',
+            resizeMode: 'cover',
+        },
+        headerGradient: {
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 100,
+        },
+        settingsButton: {
+            position: 'absolute',
+            top: 50,
+            right: 20,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            padding: 8,
+            borderRadius: 20,
+        },
+        profileInfoContainer: {
+            marginTop: -50, // Overlap header image
+            paddingBottom: 10,
+        },
+        avatarRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            paddingHorizontal: 20,
+            marginBottom: 12,
+        },
+        avatar: {
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            borderWidth: 4,
+            borderColor: theme.colors.background,
+            ...theme.shadows.soft,
+        },
+        actionButtons: {
+            flexDirection: 'row',
+            marginBottom: 10,
+        },
+        editButton: {
+            backgroundColor: theme.colors.surface,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            marginRight: 8,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.soft,
+        },
+        editButtonText: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.text,
+        },
+        shareButton: {
+            backgroundColor: theme.colors.surface,
+            padding: 8,
+            borderRadius: 20,
+            width: 40,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.soft,
+        },
+        userInfo: {
+            paddingHorizontal: 20,
+            marginBottom: 20,
+        },
+        nameRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 4,
+        },
+        name: {
+            fontSize: 24,
+            fontWeight: '800',
+            color: theme.colors.text,
+            marginRight: 8,
+        },
+        badge: {
+            backgroundColor: theme.colors.surface,
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        badgeText: {
+            fontSize: 10,
+            fontWeight: '700',
+            color: theme.colors.textSecondary,
+        },
+        username: {
+            fontSize: 15,
+            color: theme.colors.textSecondary,
+            fontWeight: '500',
+            marginBottom: 12,
+        },
+        bio: {
+            fontSize: 15,
+            color: theme.colors.text,
+            lineHeight: 22,
+            marginBottom: 12,
+        },
+        metaInfo: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        metaText: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+            marginLeft: 4,
+        },
+        listeningContainer: {
+            marginHorizontal: 20,
+            marginBottom: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(29, 185, 84, 0.1)', // Spotify green tint
+            padding: 12,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: 'rgba(29, 185, 84, 0.2)',
+        },
+        listeningLabel: {
+            fontSize: 10,
+            color: '#1DB954',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+        },
+        listeningTrack: {
+            fontSize: 14,
+            fontWeight: '700',
+            color: theme.colors.text,
+        },
+        listeningArtist: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+        },
+        albumArt: {
+            width: 48,
+            height: 48,
+            borderRadius: 8,
+        },
+        statsScroll: {
+            marginBottom: 20,
+        },
+        statsContent: {
+            paddingHorizontal: 20,
+        },
+        statItem: {
+            marginRight: 24,
+            alignItems: 'center',
+        },
+        statNumber: {
+            fontSize: 18,
+            fontWeight: '800',
+            color: theme.colors.text,
+        },
+        statLabel: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+            marginTop: 2,
+        },
+        tabsContainer: {
+            flexDirection: 'row',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            paddingHorizontal: 20,
+        },
+        tab: {
+            marginRight: 24,
+            paddingVertical: 12,
+            borderBottomWidth: 2,
+            borderBottomColor: 'transparent',
+        },
+        activeTab: {
+            borderBottomColor: theme.colors.primary,
+        },
+        tabText: {
+            fontSize: 15,
+            fontWeight: '600',
+            color: theme.colors.textSecondary,
+        },
+        activeTabText: {
+            color: theme.colors.primary,
+            fontWeight: '700',
+        },
+        contentContainer: {
+            padding: 20,
+        },
+        libraryItemCard: {
+            backgroundColor: theme.colors.surface,
+            padding: 16,
+            borderRadius: 12,
+            marginBottom: 12,
+            ...theme.shadows.soft,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        libraryItemHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+        },
+        libraryItemTitle: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.text,
+            flex: 1,
+            marginRight: 12,
+        },
+        statusBadge: {
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 12,
+        },
+        statusText: {
+            color: '#FFFFFF',
+            fontSize: 12,
+            fontWeight: 'bold',
+        },
+        libraryItemDate: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+        },
+        emptyContainer: {
+            alignItems: 'center',
+            padding: 40,
+        },
+        emptyText: {
+            color: theme.colors.textSecondary,
+            fontSize: 16,
+        },
+    }), [theme]);
+
     return (
         <ScrollView
             style={styles.container}
@@ -266,276 +540,3 @@ export const ProfileScreen = () => {
         </ScrollView>
     );
 };
-
-// Helper Components
-const StatItem = ({ number, label }: { number: number, label: string }) => (
-    <View style={styles.statItem}>
-        <Text style={styles.statNumber}>{number}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-    </View>
-);
-
-const TabButton = ({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
-    <TouchableOpacity style={[styles.tab, active && styles.activeTab]} onPress={onPress}>
-        <Text style={[styles.tabText, active && styles.activeTabText]}>{title}</Text>
-    </TouchableOpacity>
-);
-
-const EmptyState = ({ icon, text }: { icon: string, text: string }) => (
-    <View style={styles.emptyContainer}>
-        <Icon name={icon} size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
-        <Text style={styles.emptyText}>{text}</Text>
-    </View>
-);
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    headerImageContainer: {
-        height: 180,
-        width: '100%',
-        position: 'relative',
-    },
-    headerImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    headerGradient: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 100,
-    },
-    settingsButton: {
-        position: 'absolute',
-        top: 50,
-        right: 20,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        padding: 8,
-        borderRadius: 20,
-    },
-    profileInfoContainer: {
-        marginTop: -50, // Overlap header image
-        paddingBottom: 10,
-    },
-    avatarRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        paddingHorizontal: 20,
-        marginBottom: 12,
-    },
-    avatar: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 4,
-        borderColor: theme.colors.background,
-        ...theme.shadows.soft,
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        marginBottom: 10,
-    },
-    editButton: {
-        backgroundColor: theme.colors.surface,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        marginRight: 8,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        ...theme.shadows.soft,
-    },
-    editButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: theme.colors.text,
-    },
-    shareButton: {
-        backgroundColor: theme.colors.surface,
-        padding: 8,
-        borderRadius: 20,
-        width: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        ...theme.shadows.soft,
-    },
-    userInfo: {
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    name: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: theme.colors.text,
-        marginRight: 8,
-    },
-    badge: {
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: theme.colors.textSecondary,
-    },
-    username: {
-        fontSize: 15,
-        color: theme.colors.textSecondary,
-        fontWeight: '500',
-        marginBottom: 12,
-    },
-    bio: {
-        fontSize: 15,
-        color: theme.colors.text,
-        lineHeight: 22,
-        marginBottom: 12,
-    },
-    metaInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    metaText: {
-        fontSize: 13,
-        color: theme.colors.textSecondary,
-        marginLeft: 4,
-    },
-    listeningContainer: {
-        marginHorizontal: 20,
-        marginBottom: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(29, 185, 84, 0.1)', // Spotify green tint
-        padding: 12,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(29, 185, 84, 0.2)',
-    },
-    listeningLabel: {
-        fontSize: 10,
-        color: '#1DB954',
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    listeningTrack: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: theme.colors.text,
-    },
-    listeningArtist: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-    },
-    albumArt: {
-        width: 48,
-        height: 48,
-        borderRadius: 8,
-    },
-    statsScroll: {
-        marginBottom: 20,
-    },
-    statsContent: {
-        paddingHorizontal: 20,
-    },
-    statItem: {
-        marginRight: 24,
-        alignItems: 'center',
-    },
-    statNumber: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: theme.colors.text,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        marginTop: 2,
-    },
-    tabsContainer: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-        paddingHorizontal: 20,
-    },
-    tab: {
-        marginRight: 24,
-        paddingVertical: 12,
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent',
-    },
-    activeTab: {
-        borderBottomColor: theme.colors.primary,
-    },
-    tabText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: theme.colors.textSecondary,
-    },
-    activeTabText: {
-        color: theme.colors.primary,
-        fontWeight: '700',
-    },
-    contentContainer: {
-        padding: 20,
-    },
-    libraryItemCard: {
-        backgroundColor: theme.colors.glass,
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
-        ...theme.shadows.soft,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-    },
-    libraryItemHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    libraryItemTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: theme.colors.text,
-        flex: 1,
-        marginRight: 12,
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    statusText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    libraryItemDate: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        padding: 40,
-    },
-    emptyText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-});

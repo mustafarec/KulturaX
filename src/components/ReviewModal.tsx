@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { theme } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import { StarRating } from './StarRating';
 import { reviewService } from '../services/backendApi';
 
@@ -24,9 +24,76 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     userId,
     onReviewAdded
 }) => {
+    const { theme } = useTheme();
     const [rating, setRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        overlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'flex-end',
+        },
+        modal: {
+            backgroundColor: theme.colors.surface,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            padding: theme.spacing.l,
+            maxHeight: '80%',
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: theme.spacing.l,
+        },
+        title: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            flex: 1,
+        },
+        closeButton: {
+            fontSize: 24,
+            color: theme.colors.textSecondary,
+            padding: 4,
+        },
+        ratingSection: {
+            marginBottom: theme.spacing.l,
+        },
+        label: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.text,
+            marginBottom: theme.spacing.s,
+        },
+        reviewSection: {
+            marginBottom: theme.spacing.l,
+        },
+        textInput: {
+            backgroundColor: theme.colors.background,
+            borderRadius: 12,
+            padding: theme.spacing.m,
+            color: theme.colors.text,
+            minHeight: 100,
+            textAlignVertical: 'top',
+        },
+        submitButton: {
+            backgroundColor: theme.colors.primary,
+            borderRadius: 12,
+            padding: theme.spacing.m,
+            alignItems: 'center',
+        },
+        submitButtonDisabled: {
+            opacity: 0.6,
+        },
+        submitButtonText: {
+            color: '#fff',
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
+    }), [theme]);
 
     const handleSubmit = async () => {
         if (rating === 0) {
@@ -117,69 +184,3 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         </Modal>
     );
 };
-
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modal: {
-        backgroundColor: theme.colors.surface,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: theme.spacing.l,
-        maxHeight: '80%',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: theme.spacing.l,
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        flex: 1,
-    },
-    closeButton: {
-        fontSize: 24,
-        color: theme.colors.textSecondary,
-        padding: 4,
-    },
-    ratingSection: {
-        marginBottom: theme.spacing.l,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: theme.colors.text,
-        marginBottom: theme.spacing.s,
-    },
-    reviewSection: {
-        marginBottom: theme.spacing.l,
-    },
-    textInput: {
-        backgroundColor: theme.colors.background,
-        borderRadius: 12,
-        padding: theme.spacing.m,
-        color: theme.colors.text,
-        minHeight: 100,
-        textAlignVertical: 'top',
-    },
-    submitButton: {
-        backgroundColor: theme.colors.primary,
-        borderRadius: 12,
-        padding: theme.spacing.m,
-        alignItems: 'center',
-    },
-    submitButtonDisabled: {
-        opacity: 0.6,
-    },
-    submitButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-});

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { theme } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface StarRatingProps {
     rating: number;
@@ -15,6 +15,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
     editable = false,
     size = 24
 }) => {
+    const { theme } = useTheme();
     const renderStar = (index: number) => {
         const filled = index < rating;
         const star = filled ? '⭐' : '☆';
@@ -38,6 +39,19 @@ export const StarRating: React.FC<StarRatingProps> = ({
         );
     };
 
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        starButton: {
+            padding: 4,
+        },
+        star: {
+            color: theme.colors.primary,
+        },
+    }), [theme]);
+
     return (
         <View style={styles.container}>
             {[0, 1, 2, 3, 4].map(renderStar)}
@@ -45,15 +59,4 @@ export const StarRating: React.FC<StarRatingProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    starButton: {
-        padding: 4,
-    },
-    star: {
-        color: theme.colors.primary,
-    },
-});
+

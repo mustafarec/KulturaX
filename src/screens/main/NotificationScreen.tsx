@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter } from 'react-native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { notificationService } from '../../services/backendApi';
 import { useNavigation } from '@react-navigation/native';
@@ -23,6 +23,7 @@ export const NotificationScreen = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const { user } = useAuth();
+    const { theme } = useTheme();
     const navigation = useNavigation();
 
     const fetchNotifications = async () => {
@@ -119,6 +120,140 @@ export const NotificationScreen = () => {
         }
     };
 
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background, // Was #F8F9FA
+        },
+        header: {
+            paddingTop: Platform.OS === 'ios' ? 60 : 20,
+            paddingBottom: 20,
+            paddingHorizontal: 20,
+            backgroundColor: theme.colors.background, // Was #FFFFFF
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border, // Was rgba(0,0,0,0.05)
+        },
+        headerTitle: {
+            fontSize: 28,
+            fontWeight: '700',
+            color: theme.colors.text, // Was #1A1A1A
+            letterSpacing: 0.5,
+        },
+        list: {
+            padding: 16,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        item: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+            backgroundColor: theme.colors.surface, // Was #FFFFFF
+            borderRadius: 16,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was rgba(0,0,0,0.03)
+        },
+        shadowIOS: {
+            shadowColor: theme.shadows.default.shadowColor,
+            shadowOffset: {
+                width: 0,
+                height: 4,
+            },
+            shadowOpacity: 0.05,
+            shadowRadius: 12,
+        },
+        shadowAndroid: {
+            elevation: 3,
+        },
+        unreadItem: {
+            backgroundColor: theme.colors.surface, // Was #FFFFFF
+            borderColor: theme.colors.primary + '30',
+            borderWidth: 1,
+        },
+        iconContainer: {
+            width: 50,
+            height: 50,
+            borderRadius: 25,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 16,
+        },
+        contentContainer: {
+            flex: 1,
+        },
+        headerRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 4,
+        },
+        title: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.text, // Was #2C3E50
+            flex: 1,
+            marginRight: 8,
+        },
+        unreadText: {
+            color: theme.colors.text, // Was #000000
+            fontWeight: '700',
+        },
+        message: {
+            fontSize: 14,
+            color: theme.colors.textSecondary, // Was #7F8C8D
+            lineHeight: 20,
+        },
+        unreadMessage: {
+            color: theme.colors.text, // Was #34495E
+            fontWeight: '500',
+        },
+        time: {
+            fontSize: 12,
+            color: theme.colors.textSecondary, // Was #95A5A6
+            fontWeight: '500',
+        },
+        dot: {
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: theme.colors.primary,
+            marginLeft: 12,
+        },
+        emptyContainer: {
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 100,
+        },
+        emptyIcon: {
+            fontSize: 64,
+            marginBottom: 16,
+            opacity: 0.8,
+            color: theme.colors.textSecondary,
+        },
+        emptyTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: theme.colors.text, // Was #2C3E50
+            marginBottom: 8,
+        },
+        emptyText: {
+            fontSize: 15,
+            color: theme.colors.textSecondary, // Was #95A5A6
+            textAlign: 'center',
+            maxWidth: '70%',
+            lineHeight: 22,
+        },
+        avatar: {
+            width: 50,
+            height: 50,
+            borderRadius: 25,
+        },
+    }), [theme]);
 
     const renderItem = ({ item }: { item: Notification }) => {
         let icon = '🔔';
@@ -219,135 +354,4 @@ export const NotificationScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F8F9FA', // Lighter background for premium feel
-    },
-    header: {
-        paddingTop: Platform.OS === 'ios' ? 60 : 20,
-        paddingBottom: 20,
-        paddingHorizontal: 20,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    headerTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#1A1A1A',
-        letterSpacing: 0.5,
-    },
-    list: {
-        padding: 16,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    item: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.03)',
-    },
-    shadowIOS: {
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-    },
-    shadowAndroid: {
-        elevation: 3,
-    },
-    unreadItem: {
-        backgroundColor: '#FFFFFF',
-        borderColor: theme.colors.primary + '30',
-        borderWidth: 1,
-    },
-    iconContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    contentContainer: {
-        flex: 1,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#2C3E50',
-        flex: 1,
-        marginRight: 8,
-    },
-    unreadText: {
-        color: '#000000',
-        fontWeight: '700',
-    },
-    message: {
-        fontSize: 14,
-        color: '#7F8C8D',
-        lineHeight: 20,
-    },
-    unreadMessage: {
-        color: '#34495E',
-        fontWeight: '500',
-    },
-    time: {
-        fontSize: 12,
-        color: '#95A5A6',
-        fontWeight: '500',
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: theme.colors.primary,
-        marginLeft: 12,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 100,
-    },
-    emptyIcon: {
-        fontSize: 64,
-        marginBottom: 16,
-        opacity: 0.8,
-    },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#2C3E50',
-        marginBottom: 8,
-    },
-    emptyText: {
-        fontSize: 15,
-        color: '#95A5A6',
-        textAlign: 'center',
-        maxWidth: '70%',
-        lineHeight: 22,
-    },
-    avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-    },
-});
+

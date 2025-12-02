@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image,
 import Toast from 'react-native-toast-message';
 import ViewShot from 'react-native-view-shot';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { QuoteCard } from '../../components/QuoteCard';
 import { postService, libraryService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
@@ -31,7 +31,196 @@ export const CreateQuoteScreen = () => {
 
     const viewShotRef = useRef<any>(null);
     const { user } = useAuth();
+    const { theme } = useTheme();
     const navigation = useNavigation();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            paddingTop: 60,
+            paddingBottom: 20,
+            backgroundColor: theme.colors.surface, // Was glass
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border, // Was glassBorder
+        },
+        closeButton: {
+            padding: 8,
+        },
+        headerTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+        },
+        shareButton: {
+            backgroundColor: theme.colors.primary,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            ...theme.shadows.soft,
+        },
+        shareButtonText: {
+            color: '#fff',
+            fontWeight: 'bold',
+            fontSize: 14,
+        },
+        content: {
+            padding: 20,
+        },
+        previewContainer: {
+            marginBottom: 24,
+            ...theme.shadows.soft,
+        },
+        form: {
+            gap: 16,
+        },
+        input: {
+            backgroundColor: theme.colors.surface, // Was glass
+            color: theme.colors.text,
+            padding: 16,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            fontSize: 16,
+        },
+        textArea: {
+            minHeight: 120,
+            textAlignVertical: 'top',
+        },
+        sourceInputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface, // Was glass
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            paddingHorizontal: 16,
+            zIndex: 10,
+        },
+        inputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface, // Was glass
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            paddingHorizontal: 16,
+        },
+        inputIcon: {
+            marginRight: 12,
+        },
+        sourceInput: {
+            flex: 1,
+            paddingVertical: 16,
+            color: theme.colors.text,
+            fontSize: 15,
+        },
+        dropdown: {
+            position: 'absolute',
+            top: 200, // Adjust based on layout
+            left: 20,
+            right: 20,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.soft,
+            zIndex: 100,
+            maxHeight: 250,
+            overflow: 'hidden',
+        },
+        dropdownItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        dropdownImage: {
+            width: 40,
+            height: 60,
+            borderRadius: 4,
+            marginRight: 12,
+        },
+        dropdownImagePlaceholder: {
+            width: 40,
+            height: 60,
+            borderRadius: 4,
+            marginRight: 12,
+            backgroundColor: theme.colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        dropdownTitle: {
+            color: theme.colors.text,
+            fontWeight: 'bold',
+            fontSize: 14,
+            marginBottom: 2,
+        },
+        dropdownSubtitle: {
+            color: theme.colors.textSecondary,
+            fontSize: 12,
+        },
+        quotePreview: {
+            width: '100%',
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 12,
+        },
+        previewText: {
+            fontSize: 16,
+            color: theme.colors.text,
+            marginBottom: 12,
+        },
+        originalPostContainer: {
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: 8,
+            overflow: 'hidden',
+        },
+        statusContainer: {
+            marginTop: 8,
+        },
+        statusLabel: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.textSecondary,
+            marginBottom: 12,
+            marginLeft: 4,
+        },
+        statusScroll: {
+            flexDirection: 'row',
+        },
+        statusButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            backgroundColor: theme.colors.surface, // Was glass
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            marginRight: 10,
+        },
+        activeStatusButton: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+        },
+        statusButtonText: {
+            fontSize: 13,
+            fontWeight: '600',
+            color: theme.colors.textSecondary,
+        },
+        activeStatusButtonText: {
+            color: '#fff',
+        },
+    }), [theme]);
 
     const handleSearchSource = async (query: string) => {
         setSource(query);
@@ -364,191 +553,3 @@ export const CreateQuoteScreen = () => {
         </ScrollView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 60,
-        paddingBottom: 20,
-        backgroundColor: theme.colors.glass,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.glassBorder,
-    },
-    closeButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-    },
-    shareButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        ...theme.shadows.soft,
-    },
-    shareButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    content: {
-        padding: 20,
-    },
-    previewContainer: {
-        marginBottom: 24,
-        ...theme.shadows.soft,
-    },
-    form: {
-        gap: 16,
-    },
-    input: {
-        backgroundColor: theme.colors.glass,
-        color: theme.colors.text,
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        fontSize: 16,
-    },
-    textArea: {
-        minHeight: 120,
-        textAlignVertical: 'top',
-    },
-    sourceInputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.glass,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        paddingHorizontal: 16,
-        zIndex: 10,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.glass,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        paddingHorizontal: 16,
-    },
-    inputIcon: {
-        marginRight: 12,
-    },
-    sourceInput: {
-        flex: 1,
-        paddingVertical: 16,
-        color: theme.colors.text,
-        fontSize: 15,
-    },
-    dropdown: {
-        position: 'absolute',
-        top: 200, // Adjust based on layout
-        left: 20,
-        right: 20,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        ...theme.shadows.soft,
-        zIndex: 100,
-        maxHeight: 250,
-        overflow: 'hidden',
-    },
-    dropdownItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    dropdownImage: {
-        width: 40,
-        height: 60,
-        borderRadius: 4,
-        marginRight: 12,
-    },
-    dropdownImagePlaceholder: {
-        width: 40,
-        height: 60,
-        borderRadius: 4,
-        marginRight: 12,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    dropdownTitle: {
-        color: theme.colors.text,
-        fontWeight: 'bold',
-        fontSize: 14,
-        marginBottom: 2,
-    },
-    dropdownSubtitle: {
-        color: theme.colors.textSecondary,
-        fontSize: 12,
-    },
-    quotePreview: {
-        width: '100%',
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 12,
-    },
-    previewText: {
-        fontSize: 16,
-        color: theme.colors.text,
-        marginBottom: 12,
-    },
-    originalPostContainer: {
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: 8,
-        overflow: 'hidden',
-    },
-    statusContainer: {
-        marginTop: 8,
-    },
-    statusLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: theme.colors.textSecondary,
-        marginBottom: 12,
-        marginLeft: 4,
-    },
-    statusScroll: {
-        flexDirection: 'row',
-    },
-    statusButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: theme.colors.glass,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        marginRight: 10,
-    },
-    activeStatusButton: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
-    },
-    statusButtonText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: theme.colors.textSecondary,
-    },
-    activeStatusButtonText: {
-        color: '#fff',
-    },
-});

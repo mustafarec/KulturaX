@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, StatusBar } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { postService } from '../../services/backendApi';
 import { ReviewModal } from '../../components/ReviewModal';
@@ -16,6 +16,7 @@ export const BookDetailScreen = () => {
     const params = route.params as { bookId?: string; book?: any };
     const bookId = params.bookId || params.book?.id;
     const { user } = useAuth();
+    const { theme } = useTheme();
 
     const [book, setBook] = useState<any>(params.book || null);
     const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +61,256 @@ export const BookDetailScreen = () => {
             headerShown: false,
         });
     }, [navigation]);
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            flexDirection: 'row',
+            padding: theme.spacing.l,
+            backgroundColor: theme.colors.surface,
+            borderBottomLeftRadius: theme.borderRadius.xl,
+            borderBottomRightRadius: theme.borderRadius.xl,
+            ...theme.shadows.soft,
+            paddingTop: 60, // Adjust for status bar
+        },
+        backButton: {
+            position: 'absolute',
+            top: 20,
+            left: 20,
+            zIndex: 10,
+            padding: 8,
+            backgroundColor: theme.colors.surface + 'CC', // Transparent surface
+            borderRadius: 20,
+        },
+        coverImage: {
+            width: 100,
+            height: 150,
+            borderRadius: theme.borderRadius.m,
+            marginRight: theme.spacing.m,
+            ...theme.shadows.soft,
+        },
+        placeholderImage: {
+            backgroundColor: theme.colors.secondary,
+        },
+        headerInfo: {
+            flex: 1,
+            justifyContent: 'center',
+        },
+        title: {
+            fontSize: 20,
+            fontWeight: '800',
+            color: theme.colors.text,
+            marginBottom: 8,
+            letterSpacing: -0.5,
+        },
+        authorText: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+            marginBottom: 8,
+            fontWeight: '500',
+        },
+        dateText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+            marginBottom: 8,
+        },
+        ratingContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        ratingText: {
+            fontSize: 14,
+            color: theme.colors.text,
+            marginLeft: 8,
+        },
+        tabs: {
+            flexDirection: 'row',
+            backgroundColor: theme.colors.surface, // Was glass
+            marginHorizontal: 20,
+            marginTop: 20,
+            borderRadius: 16,
+            padding: 4,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            // ...theme.shadows.glass, // Removed glass shadow
+        },
+        tab: {
+            flex: 1,
+            paddingVertical: 12,
+            alignItems: 'center',
+            borderRadius: 12,
+        },
+        activeTab: {
+            backgroundColor: theme.colors.primary + '15',
+        },
+        tabText: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+            fontWeight: '600',
+        },
+        activeTabText: {
+            color: theme.colors.primary,
+            fontWeight: '700',
+        },
+        tabContent: {
+            padding: theme.spacing.l,
+        },
+        sectionTitle: {
+            fontSize: 18,
+            fontWeight: '800',
+            color: theme.colors.text,
+            marginBottom: 12,
+            letterSpacing: -0.5,
+        },
+        overview: {
+            fontSize: 15,
+            color: theme.colors.text,
+            lineHeight: 24,
+            marginBottom: 20,
+        },
+        authorContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 20,
+            backgroundColor: theme.colors.surface, // Was glass
+            padding: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+        },
+        authorLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginRight: 8,
+        },
+        authorName: {
+            fontSize: 14,
+            color: theme.colors.primary,
+            fontWeight: '600',
+        },
+        quotesHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+        },
+        addQuoteButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 20,
+            ...theme.shadows.soft,
+        },
+        addQuoteButtonText: {
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 'bold',
+        },
+        quoteCard: {
+            backgroundColor: theme.colors.surface, // Was glass
+            padding: 20,
+            borderRadius: theme.borderRadius.liquid,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            ...theme.shadows.soft,
+        },
+        quoteIcon: {
+            marginBottom: 12,
+            opacity: 0.8,
+        },
+        quoteText: {
+            fontSize: 16,
+            fontStyle: 'italic',
+            color: theme.colors.text,
+            marginBottom: 16,
+            lineHeight: 24,
+            fontWeight: '500',
+        },
+        quoteFooter: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border, // Was rgba(0,0,0,0.05)
+            paddingTop: 12,
+        },
+        quoteUser: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+            fontWeight: '600',
+        },
+        quoteDate: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+        },
+        reviewsHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+        },
+        addReviewButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 20,
+            ...theme.shadows.soft,
+        },
+        addReviewButtonText: {
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 'bold',
+        },
+        reviewCard: {
+            backgroundColor: theme.colors.surface, // Was glass
+            padding: 16,
+            borderRadius: theme.borderRadius.liquid,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border, // Was glassBorder
+            ...theme.shadows.soft,
+        },
+        reviewHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+        },
+        reviewUsername: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+        },
+        reviewText: {
+            fontSize: 14,
+            color: theme.colors.text,
+            marginBottom: 8,
+            lineHeight: 22,
+        },
+        reviewDate: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+        },
+        emptyContainer: {
+            alignItems: 'center',
+            padding: 40,
+        },
+        emptyText: {
+            textAlign: 'center',
+            color: theme.colors.textSecondary,
+            marginTop: 8,
+            fontSize: 16,
+        },
+    }), [theme]);
 
     const renderTabContent = () => {
         if (!book) return null;
@@ -165,6 +416,7 @@ export const BookDetailScreen = () => {
 
     return (
         <ScrollView style={styles.container}>
+            <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Icon name="arrow-left" size={24} color={theme.colors.text} />
@@ -238,250 +490,4 @@ export const BookDetailScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        flexDirection: 'row',
-        padding: theme.spacing.l,
-        backgroundColor: theme.colors.surface,
-        borderBottomLeftRadius: theme.borderRadius.xl,
-        borderBottomRightRadius: theme.borderRadius.xl,
-        ...theme.shadows.soft,
-        paddingTop: 60, // Adjust for status bar
-    },
-    backButton: {
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        zIndex: 10,
-        padding: 8,
-        backgroundColor: 'rgba(255,255,255,0.8)',
-        borderRadius: 20,
-    },
-    coverImage: {
-        width: 100,
-        height: 150,
-        borderRadius: theme.borderRadius.m,
-        marginRight: theme.spacing.m,
-        ...theme.shadows.soft,
-    },
-    placeholderImage: {
-        backgroundColor: theme.colors.secondary,
-    },
-    headerInfo: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: theme.colors.text,
-        marginBottom: 8,
-        letterSpacing: -0.5,
-    },
-    authorText: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        marginBottom: 8,
-        fontWeight: '500',
-    },
-    dateText: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        marginBottom: 8,
-    },
-    ratingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    ratingText: {
-        fontSize: 14,
-        color: theme.colors.text,
-        marginLeft: 8,
-    },
-    tabs: {
-        flexDirection: 'row',
-        backgroundColor: theme.colors.glass,
-        marginHorizontal: 20,
-        marginTop: 20,
-        borderRadius: 16,
-        padding: 4,
-        ...theme.shadows.glass,
-    },
-    tab: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-        borderRadius: 12,
-    },
-    activeTab: {
-        backgroundColor: theme.colors.primary + '15',
-    },
-    tabText: {
-        fontSize: 13,
-        color: theme.colors.textSecondary,
-        fontWeight: '600',
-    },
-    activeTabText: {
-        color: theme.colors.primary,
-        fontWeight: '700',
-    },
-    tabContent: {
-        padding: theme.spacing.l,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: theme.colors.text,
-        marginBottom: 12,
-        letterSpacing: -0.5,
-    },
-    overview: {
-        fontSize: 15,
-        color: theme.colors.text,
-        lineHeight: 24,
-        marginBottom: 20,
-    },
-    authorContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-        backgroundColor: theme.colors.glass,
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-    },
-    authorLabel: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginRight: 8,
-    },
-    authorName: {
-        fontSize: 14,
-        color: theme.colors.primary,
-        fontWeight: '600',
-    },
-    quotesHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    addQuoteButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 20,
-        ...theme.shadows.soft,
-    },
-    addQuoteButtonText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    quoteCard: {
-        backgroundColor: theme.colors.glass,
-        padding: 20,
-        borderRadius: theme.borderRadius.liquid,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        ...theme.shadows.soft,
-    },
-    quoteIcon: {
-        marginBottom: 12,
-        opacity: 0.8,
-    },
-    quoteText: {
-        fontSize: 16,
-        fontStyle: 'italic',
-        color: theme.colors.text,
-        marginBottom: 16,
-        lineHeight: 24,
-        fontWeight: '500',
-    },
-    quoteFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.05)',
-        paddingTop: 12,
-    },
-    quoteUser: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        fontWeight: '600',
-    },
-    quoteDate: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-    },
-    reviewsHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    addReviewButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 20,
-        ...theme.shadows.soft,
-    },
-    addReviewButtonText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    reviewCard: {
-        backgroundColor: theme.colors.glass,
-        padding: 16,
-        borderRadius: theme.borderRadius.liquid,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.glassBorder,
-        ...theme.shadows.soft,
-    },
-    reviewHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    reviewUsername: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-    },
-    reviewText: {
-        fontSize: 14,
-        color: theme.colors.text,
-        marginBottom: 8,
-        lineHeight: 22,
-    },
-    reviewDate: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        padding: 40,
-    },
-    emptyText: {
-        textAlign: 'center',
-        color: theme.colors.textSecondary,
-        marginTop: 8,
-        fontSize: 16,
-    },
-});
+

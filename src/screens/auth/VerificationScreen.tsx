@@ -2,13 +2,71 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 export const VerificationScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const route = useRoute();
+    const { theme } = useTheme();
     const { verifyEmail, resendEmailCode, isLoading } = useAuth();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            padding: theme.spacing.l,
+            justifyContent: 'center',
+            backgroundColor: theme.colors.background,
+        },
+        title: {
+            ...theme.typography.h1,
+            marginBottom: theme.spacing.s,
+            textAlign: 'center',
+            color: theme.colors.text,
+        },
+        subtitle: {
+            ...theme.typography.body,
+            marginBottom: theme.spacing.xl,
+            textAlign: 'center',
+            color: theme.colors.textSecondary,
+        },
+        input: {
+            backgroundColor: theme.colors.surface,
+            color: theme.colors.text,
+            padding: theme.spacing.m,
+            borderRadius: 8,
+            marginBottom: theme.spacing.m,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            textAlign: 'center',
+            fontSize: 20,
+            letterSpacing: 5,
+        },
+        button: {
+            backgroundColor: theme.colors.primary,
+            padding: theme.spacing.m,
+            borderRadius: 8,
+            alignItems: 'center',
+            marginBottom: theme.spacing.m,
+        },
+        buttonText: {
+            color: '#ffffff',
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
+        resendButton: {
+            padding: theme.spacing.m,
+            alignItems: 'center',
+        },
+        disabledButton: {
+            opacity: 0.5,
+        },
+        resendText: {
+            color: theme.colors.secondary,
+            fontSize: 14,
+        },
+    }), [theme]);
+
     const [code, setCode] = useState('');
     const [email, setEmail] = useState('');
     const [timer, setTimer] = useState(0);
@@ -112,58 +170,4 @@ export const VerificationScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: theme.spacing.l,
-        justifyContent: 'center',
-        backgroundColor: theme.colors.background,
-    },
-    title: {
-        ...theme.typography.h1,
-        marginBottom: theme.spacing.s,
-        textAlign: 'center',
-        color: theme.colors.text,
-    },
-    subtitle: {
-        ...theme.typography.body,
-        marginBottom: theme.spacing.xl,
-        textAlign: 'center',
-        color: theme.colors.textSecondary,
-    },
-    input: {
-        backgroundColor: theme.colors.surface,
-        color: theme.colors.text,
-        padding: theme.spacing.m,
-        borderRadius: 8,
-        marginBottom: theme.spacing.m,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        textAlign: 'center',
-        fontSize: 20,
-        letterSpacing: 5,
-    },
-    button: {
-        backgroundColor: theme.colors.primary,
-        padding: theme.spacing.m,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: theme.spacing.m,
-    },
-    buttonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    resendButton: {
-        padding: theme.spacing.m,
-        alignItems: 'center',
-    },
-    disabledButton: {
-        opacity: 0.5,
-    },
-    resendText: {
-        color: theme.colors.secondary,
-        fontSize: 14,
-    },
-});
+

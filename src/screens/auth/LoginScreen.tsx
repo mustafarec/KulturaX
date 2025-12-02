@@ -2,12 +2,58 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
+    const { theme } = useTheme();
     const { login, isLoading } = useAuth();
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+            padding: theme.spacing.l,
+            justifyContent: 'center',
+        },
+        title: {
+            ...theme.typography.h1,
+            marginBottom: theme.spacing.xl,
+            textAlign: 'center',
+            color: theme.colors.text,
+        },
+        inputContainer: {
+            marginBottom: theme.spacing.l,
+        },
+        input: {
+            backgroundColor: theme.colors.surface,
+            color: theme.colors.text,
+            padding: theme.spacing.m,
+            borderRadius: 8,
+            marginBottom: theme.spacing.m,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        button: {
+            backgroundColor: theme.colors.primary,
+            padding: theme.spacing.m,
+            borderRadius: 8,
+            alignItems: 'center',
+            marginBottom: theme.spacing.m,
+        },
+        buttonText: {
+            color: '#ffffff',
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
+        linkText: {
+            color: theme.colors.secondary,
+            textAlign: 'center',
+            marginTop: theme.spacing.s,
+        },
+    }), [theme]);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -62,46 +108,4 @@ export const LoginScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-        padding: theme.spacing.l,
-        justifyContent: 'center',
-    },
-    title: {
-        ...theme.typography.h1,
-        marginBottom: theme.spacing.xl,
-        textAlign: 'center',
-        color: theme.colors.text,
-    },
-    inputContainer: {
-        marginBottom: theme.spacing.l,
-    },
-    input: {
-        backgroundColor: theme.colors.surface,
-        color: theme.colors.text,
-        padding: theme.spacing.m,
-        borderRadius: 8,
-        marginBottom: theme.spacing.m,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-    },
-    button: {
-        backgroundColor: theme.colors.primary,
-        padding: theme.spacing.m,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: theme.spacing.m,
-    },
-    buttonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    linkText: {
-        color: theme.colors.secondary,
-        textAlign: 'center',
-        marginTop: theme.spacing.s,
-    },
-});
+
