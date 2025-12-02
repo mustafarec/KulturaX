@@ -1,7 +1,9 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Switch, TouchableWithoutFeedback } from 'react-native';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Switch, TouchableWithoutFeedback, Animated, Dimensions, Easing } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/Ionicons';
+
+const { height } = Dimensions.get('window');
 
 interface ThemeSelectorModalProps {
     visible: boolean;
@@ -10,6 +12,47 @@ interface ThemeSelectorModalProps {
 
 export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible, onClose }) => {
     const { theme, themeMode, darkThemeStyle, setThemeMode, setDarkThemeStyle } = useTheme();
+    const [showModal, setShowModal] = useState(visible);
+
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(height)).current;
+
+    useEffect(() => {
+        if (visible) {
+            setShowModal(true);
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: true,
+                    easing: Easing.out(Easing.cubic),
+                }),
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 250,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: height,
+                    duration: 250,
+                    useNativeDriver: true,
+                    easing: Easing.in(Easing.cubic),
+                }),
+            ]).start(() => setShowModal(false));
+        }
+    }, [visible]);
+
+    const handleClose = () => {
+        onClose();
+    };
 
     const isDarkMode = themeMode === 'dark';
     const isAutoMode = themeMode === 'auto';
@@ -26,13 +69,6 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
         if (value) {
             setThemeMode('auto');
         } else {
-            // If turning off auto, revert to current system state or default to light?
-            // Better UX: if currently dark (due to system), stay dark. If light, stay light.
-            // For simplicity, let's default to 'light' if turning off auto, or 'dark' if it was already dark.
-            // Actually, let's just toggle to the explicit mode corresponding to the current active theme.
-            // But we don't have easy access to "active theme" here without checking system scheme again.
-            // Let's just default to 'light' for now as "off", or 'dark' if the user was previously dark.
-            // A safer bet: if turning off auto, go to 'light' as a base, or let user toggle Dark Mode manually.
             setThemeMode('light');
         }
     };
@@ -130,23 +166,23 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
 
     return (
         <Modal
-            visible={visible}
+            visible={showModal}
             transparent
-            animationType="slide"
-            onRequestClose={onClose}
+            animationType="none"
+            onRequestClose={handleClose}
         >
-            <TouchableWithoutFeedback onPress={onClose}>
-                <View style={styles.overlay}>
+            <TouchableWithoutFeedback onPress={handleClose}>
+                <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
                     <TouchableWithoutFeedback onPress={() => { }}>
-                        <View style={styles.container}>
+                        <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>
                             <View style={styles.header}>
                                 <View style={styles.handle} />
-                                <Text style={styles.title}>Dark mode</Text>
+                                <Text style={styles.title}>Karanlık mod</Text>
                             </View>
 
                             <View style={styles.section}>
                                 <View style={styles.row}>
-                                    <Text style={styles.label}>Dark mode</Text>
+                                    <Text style={styles.label}>Karanlık mod</Text>
                                     <Switch
                                         value={isDarkMode}
                                         onValueChange={handleDarkModeToggle}
@@ -158,9 +194,9 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
 
                                 <View style={styles.row}>
                                     <View style={styles.labelContainer}>
-                                        <Text style={styles.label}>Use device settings</Text>
+                                        <Text style={styles.label}>Cihaz ayarlarını kullan</Text>
                                         <Text style={styles.subLabel}>
-                                            Set Dark mode to use the Light or Dark selection located in your device Display & Brightness settings.
+                                            Karanlık modun cihazınızın Ekran ve Parlaklık ayarlarındaki seçime göre ayarlanmasını sağlayın.
                                         </Text>
                                     </View>
                                     <Switch
@@ -174,13 +210,13 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
 
                             {(isDarkMode || isAutoMode) && (
                                 <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Theme</Text>
+                                    <Text style={styles.sectionTitle}>Tema</Text>
 
                                     <TouchableOpacity
                                         style={styles.radioRow}
                                         onPress={() => setDarkThemeStyle('dim')}
                                     >
-                                        <Text style={styles.radioLabel}>Dim</Text>
+                                        <Text style={styles.radioLabel}>Loş</Text>
                                         <View style={[styles.radioButton, darkThemeStyle === 'dim' && styles.radioButtonSelected]}>
                                             {darkThemeStyle === 'dim' && <View style={styles.radioButtonInner} />}
                                         </View>
@@ -190,16 +226,16 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
                                         style={styles.radioRow}
                                         onPress={() => setDarkThemeStyle('black')}
                                     >
-                                        <Text style={styles.radioLabel}>Lights out</Text>
+                                        <Text style={styles.radioLabel}>Işıkları kapat</Text>
                                         <View style={[styles.radioButton, darkThemeStyle === 'black' && styles.radioButtonSelected]}>
                                             {darkThemeStyle === 'black' && <View style={styles.radioButtonInner} />}
                                         </View>
                                     </TouchableOpacity>
                                 </View>
                             )}
-                        </View>
+                        </Animated.View>
                     </TouchableWithoutFeedback>
-                </View>
+                </Animated.View>
             </TouchableWithoutFeedback>
         </Modal>
     );
