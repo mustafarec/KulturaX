@@ -28,7 +28,7 @@ if (!Validator::validateString($data->password, 1, 255)) {
 }
 
 try {
-    $query = "SELECT id, email, password, username, full_name, avatar_url, is_email_verified FROM users WHERE email = :email LIMIT 1";
+    $query = "SELECT id, email, password, username, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified FROM users WHERE email = :email LIMIT 1";
     $stmt = $conn->prepare($query);
 
     $email = Validator::sanitizeInput($data->email);

@@ -1,24 +1,25 @@
 export const theme = {
     colors: {
-        primary: '#6C5CE7', // Soft Purple (Liquid main)
-        secondary: '#A8A4E6', // Light Purple
+        primary: '#14B8A6', // Teal (Deniz Yeşili)
+        secondary: '#0EA5E9', // Sky Blue (Gökyüzü Mavisi)
+        accent: '#10B981', // Emerald (Zümrüt Yeşili)
         background: '#F0F3F8', // Very light cool gray/blue
         surface: '#FFFFFF',
         text: '#2D3436',
         textSecondary: '#636E72',
         border: 'rgba(255, 255, 255, 0.5)', // Glass border
-        error: '#FF7675',
-        success: '#55EFC4',
-        warning: '#FFEAA7',
+        error: '#EF4444', // Red
+        success: '#10B981', // Emerald
+        warning: '#F59E0B', // Amber
 
         // Liquid Glass Specifics
         glass: 'rgba(255, 255, 255, 0.75)', // Main glass background
         glassBorder: 'rgba(255, 255, 255, 0.8)', // Highlight border
-        glassShadow: 'rgba(108, 92, 231, 0.15)', // Colored shadow
+        glassShadow: 'rgba(20, 184, 166, 0.15)', // Teal shadow
 
         // Gradients (for reference/usage in styles)
-        gradientStart: '#a8c0ff',
-        gradientEnd: '#3f2b96',
+        gradientStart: '#14B8A6', // Teal
+        gradientEnd: '#0EA5E9', // Sky Blue
     },
     spacing: {
         xs: 4,
@@ -45,7 +46,7 @@ export const theme = {
             elevation: 3,
         },
         soft: {
-            shadowColor: "#6C5CE7",
+            shadowColor: "#14B8A6",
             shadowOffset: { width: 0, height: 10 },
             shadowOpacity: 0.1,
             shadowRadius: 20,

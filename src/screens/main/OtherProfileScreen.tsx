@@ -7,7 +7,6 @@ import { useAuth } from '../../context/AuthContext';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
 import { ReviewCard } from '../../components/ReviewCard';
-import { CommentModal } from '../../components/CommentModal';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -273,7 +272,7 @@ export const OtherProfileScreen = () => {
                             }}
                             onContentPress={handleContentPress}
                             onLike={() => handleLike(post)}
-                            onComment={() => setSelectedPostId(post.id)}
+                            onComment={() => (navigation as any).navigate('PostDetail', { postId: post.id, autoFocusComment: true })}
                             onRepost={() => handleRepost(post)}
                         />
                     ))
@@ -443,16 +442,7 @@ export const OtherProfileScreen = () => {
 
             <View style={{ height: 100 }} />
 
-            {selectedPostId && (
-                <CommentModal
-                    visible={!!selectedPostId}
-                    onClose={() => setSelectedPostId(null)}
-                    postId={selectedPostId}
-                    onCommentAdded={() => {
-                        fetchProfileData();
-                    }}
-                />
-            )}
+            <View style={{ height: 100 }} />
 
             <RepostMenu
                 visible={repostMenuVisible}

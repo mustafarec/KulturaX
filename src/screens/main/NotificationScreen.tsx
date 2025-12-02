@@ -96,7 +96,10 @@ export const NotificationScreen = () => {
             const data = item.data ? JSON.parse(item.data) : null;
             if (item.type === 'like' || item.type === 'comment' || item.type === 'reply' || item.type === 'repost') {
                 if (data.post_id) {
-                    (navigation as any).navigate('PostDetail', { postId: data.post_id });
+                    (navigation as any).navigate('PostDetail', {
+                        postId: data.post_id,
+                        autoFocusComment: item.type === 'comment' || item.type === 'reply'
+                    });
                 }
             } else if (item.type === 'message') {
                 if (data.sender_id) {

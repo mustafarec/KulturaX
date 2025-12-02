@@ -5,7 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { postService, interactionService } from '../../services/backendApi';
-import { CommentModal } from '../../components/CommentModal';
 import { PostCard } from '../../components/PostCard';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
@@ -214,7 +213,7 @@ export const FeedScreen = () => {
                 post={item}
                 onPress={() => setSelectedPostId(interactionId)}
                 onLike={() => handleLike(item)}
-                onComment={() => setSelectedPostId(interactionId)}
+                onComment={() => (navigation as any).navigate('PostDetail', { postId: interactionId, autoFocusComment: true })}
                 onRepost={() => handleRepostPress(item)}
                 onDelete={user && user.username === item.user.username ? () => handleDelete(item) : undefined}
                 onUserPress={(userId) => (navigation as any).navigate('OtherProfile', { userId: userId || item.user.id })}
@@ -307,17 +306,6 @@ export const FeedScreen = () => {
             >
                 <Icon name={newPostMenuVisible ? "close" : "pencil"} size={24} color="#FFFFFF" />
             </TouchableOpacity>
-
-            {selectedPostId && (
-                <CommentModal
-                    visible={!!selectedPostId}
-                    onClose={() => setSelectedPostId(null)}
-                    postId={selectedPostId}
-                    onCommentAdded={() => {
-                        fetchFeed();
-                    }}
-                />
-            )}
 
             <RepostMenu
                 visible={repostMenuVisible}
