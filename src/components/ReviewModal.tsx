@@ -1,0 +1,185 @@
+import React, { useState } from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { theme } from '../theme/theme';
+import { StarRating } from './StarRating';
+import { reviewService } from '../services/backendApi';
+
+interface ReviewModalProps {
+    visible: boolean;
+    onClose: () => void;
+    contentType: 'movie' | 'book';
+    contentId: string;
+    contentTitle: string;
+    userId: number;
+    onReviewAdded?: () => void;
+}
+
+export const ReviewModal: React.FC<ReviewModalProps> = ({
+    visible,
+    onClose,
+    contentType,
+    contentId,
+    contentTitle,
+    userId,
+    onReviewAdded
+}) => {
+    const [rating, setRating] = useState(0);
+    const [reviewText, setReviewText] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        if (rating === 0) {
+            Toast.show({
+                type: 'info',
+                text1: 'Dikkat',
+                text2: 'Lütfen bir puan seçin.',
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await reviewService.addReview(userId, contentType, contentId, rating, reviewText);
+            Toast.show({
+                type: 'success',
+                text1: 'Başarılı',
+                text2: 'İncelemeniz kaydedildi!',
+            });
+            setRating(0);
+            setReviewText('');
+            if (onReviewAdded) onReviewAdded();
+            onClose();
+        } catch (error) {
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'İnceleme kaydedilemedi.',
+            });
+            console.error(error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.overlay}>
+                <View style={styles.modal}>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>İncele: {contentTitle}</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Text style={styles.closeButton}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.ratingSection}>
+                        <Text style={styles.label}>Puanınız:</Text>
+                        <StarRating
+                            rating={rating}
+                            onRatingChange={setRating}
+                            editable
+                            size={32}
+                        />
+                    </View>
+
+                    <View style={styles.reviewSection}>
+                        <Text style={styles.label}>İncelemeniz (opsiyonel):</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder="Ne düşündünüz?"
+                            multiline
+                            numberOfLines={4}
+                            value={reviewText}
+                            onChangeText={setReviewText}
+                            placeholderTextColor={theme.colors.textSecondary}
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                        onPress={handleSubmit}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.submitButtonText}>Kaydet</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modal: {
+        backgroundColor: theme.colors.surface,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: theme.spacing.l,
+        maxHeight: '80%',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.l,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        flex: 1,
+    },
+    closeButton: {
+        fontSize: 24,
+        color: theme.colors.textSecondary,
+        padding: 4,
+    },
+    ratingSection: {
+        marginBottom: theme.spacing.l,
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginBottom: theme.spacing.s,
+    },
+    reviewSection: {
+        marginBottom: theme.spacing.l,
+    },
+    textInput: {
+        backgroundColor: theme.colors.background,
+        borderRadius: 12,
+        padding: theme.spacing.m,
+        color: theme.colors.text,
+        minHeight: 100,
+        textAlignVertical: 'top',
+    },
+    submitButton: {
+        backgroundColor: theme.colors.primary,
+        borderRadius: 12,
+        padding: theme.spacing.m,
+        alignItems: 'center',
+    },
+    submitButtonDisabled: {
+        opacity: 0.6,
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+});

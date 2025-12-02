@@ -1,0 +1,389 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { theme } from '../../theme/theme';
+import { tmdbApi } from '../../services/tmdbApi';
+import { googleBooksApi } from '../../services/googleBooksApi';
+
+export const DiscoveryScreen = () => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState<'trending' | 'movies' | 'books'>('trending');
+    const navigation = useNavigation();
+
+    const fetchData = async (tab: string, searchQuery: string) => {
+        setIsLoading(true);
+        setResults([]);
+        try {
+            let data: any[] = [];
+
+            if (tab === 'trending') {
+                const movies = await tmdbApi.getTrendingMovies();
+
+                // Filter out movies with Chinese characters in title
+                const filteredMovies = movies.filter((movie: any) => !/[\u4e00-\u9fa5]/.test(movie.title));
+
+                // Fetch directors for movies in parallel
+                const moviesWithDirectors = await Promise.all(filteredMovies.map(async (movie: any) => {
+                    let director = '';
+                    try {
+                        const credits = await tmdbApi.getMovieCredits(movie.id);
+                        const directorInfo = credits?.crew?.find((person: any) => person.job === 'Director');
+                        director = directorInfo ? directorInfo.name : '';
+                    } catch (e) {
+                        console.log('Error fetching director for movie', movie.id);
+                    }
+
+                    return {
+                        id: movie.id.toString(),
+                        title: movie.title,
+                        type: 'Film',
+                        image: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+                        overview: movie.overview,
+                        author: director
+                    };
+                }));
+
+                data = moviesWithDirectors;
+            } else if (tab === 'movies') {
+                let movies = [];
+                if (searchQuery) {
+                    movies = await tmdbApi.searchMovies(searchQuery);
+                } else {
+                    movies = await tmdbApi.getPopularMovies();
+                }
+
+                // Filter out movies with Chinese characters in title
+                const filteredMovies = movies.filter((movie: any) => !/[\u4e00-\u9fa5]/.test(movie.title));
+
+                // Fetch directors for movies in parallel
+                const moviesWithDirectors = await Promise.all(filteredMovies.map(async (movie: any) => {
+                    let director = '';
+                    try {
+                        const credits = await tmdbApi.getMovieCredits(movie.id);
+                        const directorInfo = credits?.crew?.find((person: any) => person.job === 'Director');
+                        director = directorInfo ? directorInfo.name : '';
+                    } catch (e) {
+                        console.log('Error fetching director for movie', movie.id);
+                    }
+
+                    return {
+                        id: movie.id.toString(),
+                        title: movie.title,
+                        type: 'Film',
+                        image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+                        overview: movie.overview,
+                        author: director
+                    };
+                }));
+
+                data = moviesWithDirectors;
+            } else if (tab === 'books') {
+                let books = [];
+                if (searchQuery) {
+                    books = await googleBooksApi.searchBooks(searchQuery);
+                } else {
+                    books = await googleBooksApi.searchBooks('subject:fiction', 'newest');
+                }
+
+                data = books.map((book: any) => ({
+                    id: book.id,
+                    title: book.volumeInfo.title,
+                    type: 'Kitap',
+                    image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:'),
+                    author: book.volumeInfo.authors?.join(', '),
+                    description: book.volumeInfo.description
+                }));
+            }
+
+            setResults(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData(activeTab, query);
+    }, [activeTab]);
+
+    const handleSearch = () => {
+        if (!query.trim()) {
+            fetchData(activeTab, '');
+            return;
+        }
+
+        if (activeTab === 'trending') {
+            setActiveTab('movies');
+        } else {
+            fetchData(activeTab, query);
+        }
+    };
+
+    const handleItemPress = (item: any) => {
+        if (item.type === 'Kitap') {
+            (navigation as any).navigate('BookDetail', { book: item });
+        } else if (item.type === 'Film') {
+            (navigation as any).navigate('MovieDetail', { movie: item });
+        }
+    };
+
+    const renderItem = ({ item }: { item: any }) => (
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleItemPress(item)}
+            activeOpacity={0.8}
+        >
+            <View style={styles.imageContainer}>
+                {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+                ) : (
+                    <View style={[styles.cardImage, styles.placeholderImage]}>
+                        <Text style={styles.placeholderText}>{item.title?.charAt(0)}</Text>
+                    </View>
+                )}
+                <View style={styles.typeTag}>
+                    <Text style={styles.typeText}>{item.type}</Text>
+                </View>
+            </View>
+            <View style={styles.cardInfo}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                {item.author ? <Text style={styles.cardSubtitle} numberOfLines={1}>{item.author}</Text> : null}
+            </View>
+        </TouchableOpacity>
+    );
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Keşfet</Text>
+                <View style={styles.searchContainer}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Kitap veya film ara..."
+                        placeholderTextColor="#95A5A6"
+                        value={query}
+                        onChangeText={(text) => {
+                            setQuery(text);
+                            if (!text) fetchData(activeTab, '');
+                        }}
+                        onSubmitEditing={handleSearch}
+                    />
+                </View>
+            </View>
+
+            <View style={styles.tabs}>
+                <TouchableOpacity
+                    onPress={() => setActiveTab('trending')}
+                    style={[styles.tab, activeTab === 'trending' && styles.activeTab]}
+                >
+                    <Text style={[styles.tabText, activeTab === 'trending' && styles.activeTabText]}>Trendler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => setActiveTab('movies')}
+                    style={[styles.tab, activeTab === 'movies' && styles.activeTab]}
+                >
+                    <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>Film</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => setActiveTab('books')}
+                    style={[styles.tab, activeTab === 'books' && styles.activeTab]}
+                >
+                    <Text style={[styles.tabText, activeTab === 'books' && styles.activeTabText]}>Kitap</Text>
+                </TouchableOpacity>
+            </View>
+
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                </View>
+            ) : (
+                <View style={styles.content}>
+                    <FlatList
+                        data={results}
+                        renderItem={renderItem}
+                        keyExtractor={item => item.id}
+                        numColumns={2}
+                        columnWrapperStyle={styles.row}
+                        contentContainerStyle={styles.list}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={
+                            <View style={styles.emptyContainer}>
+                                <Text style={styles.emptyIcon}>🔍</Text>
+                                <Text style={styles.emptyTitle}>Sonuç Bulunamadı</Text>
+                                <Text style={styles.emptyText}>Farklı bir arama yapmayı deneyin.</Text>
+                            </View>
+                        }
+                    />
+                </View>
+            )}
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+    },
+    header: {
+        paddingTop: 60,
+        paddingBottom: 10,
+        paddingHorizontal: 20,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    headerTitle: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#1A1A1A',
+        marginBottom: 16,
+        letterSpacing: -0.5,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8F9FA',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        height: 50,
+    },
+    searchIcon: {
+        fontSize: 18,
+        marginRight: 10,
+        opacity: 0.5,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#2C3E50',
+        height: '100%',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    content: {
+        flex: 1,
+    },
+    tabs: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        marginBottom: 8,
+    },
+    tab: {
+        marginRight: 24,
+        paddingBottom: 8,
+    },
+    activeTab: {
+        borderBottomWidth: 3,
+        borderBottomColor: theme.colors.primary,
+    },
+    tabText: {
+        fontSize: 16,
+        color: '#95A5A6',
+        fontWeight: '600',
+    },
+    activeTabText: {
+        color: '#2C3E50',
+        fontWeight: '700',
+    },
+    list: {
+        paddingHorizontal: 16,
+        paddingBottom: 20,
+        paddingTop: 8,
+    },
+    row: {
+        justifyContent: 'space-between',
+    },
+    card: {
+        width: '48%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    imageContainer: {
+        height: 220,
+        width: '100%',
+        backgroundColor: '#F0F2F5',
+    },
+    cardImage: {
+        height: '100%',
+        width: '100%',
+    },
+    placeholderImage: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    placeholderText: {
+        fontSize: 40,
+        fontWeight: 'bold',
+        color: '#BDC3C7',
+    },
+    typeTag: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    typeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+    },
+    cardInfo: {
+        padding: 12,
+    },
+    cardTitle: {
+        fontWeight: '700',
+        color: '#2C3E50',
+        fontSize: 14,
+        marginBottom: 4,
+        lineHeight: 20,
+    },
+    cardSubtitle: {
+        fontSize: 12,
+        color: '#95A5A6',
+        fontWeight: '500',
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 100,
+    },
+    emptyIcon: {
+        fontSize: 64,
+        marginBottom: 16,
+        opacity: 0.5,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#2C3E50',
+        marginBottom: 8,
+    },
+    emptyText: {
+        fontSize: 15,
+        color: '#95A5A6',
+    },
+});
