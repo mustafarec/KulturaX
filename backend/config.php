@@ -22,12 +22,21 @@ try {
     exit();
 }
 
-// Spotify API Keys
-define('SPOTIFY_CLIENT_ID', '9f168a9782ab454bbd7d2d6572499150');
-define('SPOTIFY_CLIENT_SECRET', 'b05f3705eb614afba5f113cd0034e271');
-define('SPOTIFY_REDIRECT_URI', 'https://mmreeo.online/api/integrations/spotify_callback.php');
+// Load environment variables
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    $env = parse_ini_file($envFile);
+    
+    // Spotify API Keys
+    define('SPOTIFY_CLIENT_ID', $env['SPOTIFY_CLIENT_ID'] ?? '');
+    define('SPOTIFY_CLIENT_SECRET', $env['SPOTIFY_CLIENT_SECRET'] ?? '');
+    define('SPOTIFY_REDIRECT_URI', $env['SPOTIFY_REDIRECT_URI'] ?? '');
 
-// Last.fm API Keys
-define('LASTFM_API_KEY', '2af8256d971b6182268a0139188b0ebb');
-define('LASTFM_SHARED_SECRET', 'da780a226d6201805eb0e24866646622');
+    // Last.fm API Keys
+    define('LASTFM_API_KEY', $env['LASTFM_API_KEY'] ?? '');
+    define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
+} else {
+    // Fallback or error logging
+    error_log("Config: .env file not found");
+}
 ?>
