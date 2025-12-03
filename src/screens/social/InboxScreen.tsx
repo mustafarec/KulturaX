@@ -21,7 +21,7 @@ export const InboxScreen = () => {
         },
         header: {
             padding: theme.spacing.l,
-            paddingTop: 40, // Adjust for status bar
+            paddingTop: 30, // Adjust for status bar
             backgroundColor: theme.colors.surface,
             borderBottomLeftRadius: theme.borderRadius.xl,
             borderBottomRightRadius: theme.borderRadius.xl,

@@ -31,9 +31,9 @@ export const TabNavigator = () => {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    height: 85,
+                    height: 75,
                     elevation: 0, // Remove default elevation to handle shadow manually if needed
-                    paddingBottom: 20,
+                    paddingBottom: 15,
                     paddingTop: 10,
                     paddingHorizontal: 10,
                     alignItems: 'center',
