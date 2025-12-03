@@ -36,6 +36,7 @@ export const InboxScreen = () => {
         },
         list: {
             padding: theme.spacing.m,
+            paddingBottom: 120,
         },
         item: {
             flexDirection: 'row',

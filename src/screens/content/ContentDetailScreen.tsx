@@ -445,6 +445,25 @@ export const ContentDetailScreen = () => {
         return html.replace(/<[^>]*>?/gm, '');
     };
 
+    const cleanLyrics = (text: string) => {
+        if (!text) return '';
+        // Remove lines that look like metadata (e.g. "6 ContributorsTranslationsEnglish...")
+        // Also remove text inside brackets like [Song Name Lyrics] which often appears at start
+        let cleaned = text;
+
+        // Remove the specific pattern seen in the screenshot: Number + Contributors + Translations + ...
+        cleaned = cleaned.replace(/^\d+\s*Contributors.*Lyrics(\[.*?\])?/s, '');
+
+        // Remove generic "Lyrics" header if it appears at the start
+        cleaned = cleaned.replace(/^.*Lyrics(\[.*?\])?\s*/, '');
+
+        // Remove "TranslationsEnglish" or similar if it remains
+        cleaned = cleaned.replace(/Translations.*English/g, '');
+
+        // Clean up extra whitespace at the start
+        return cleaned.trim();
+    };
+
     const renderTabContent = () => {
         if (!content) return null;
 
@@ -587,10 +606,28 @@ export const ContentDetailScreen = () => {
                                 <Text style={[styles.metaText, { marginBottom: 16, fontStyle: 'italic' }]}>
                                     Alıntı yapmak istediğiniz satıra dokunun.
                                 </Text>
-                                {lyrics.split('\n').map((line, index) => {
+                                {cleanLyrics(lyrics).split('\n').map((line, index) => {
                                     if (!line.trim()) return <View key={index} style={{ height: 16 }} />;
 
                                     const isSelected = selectedLineIndex === index;
+                                    const isHeader = line.trim().startsWith('[') && line.trim().endsWith(']');
+
+                                    if (isHeader) {
+                                        return (
+                                            <View key={index} style={{ marginBottom: 12, marginTop: 8 }}>
+                                                <Text style={[
+                                                    styles.overview,
+                                                    {
+                                                        marginBottom: 0,
+                                                        fontWeight: 'bold',
+                                                        color: theme.colors.primary
+                                                    }
+                                                ]}>
+                                                    {line}
+                                                </Text>
+                                            </View>
+                                        );
+                                    }
 
                                     return (
                                         <View key={index} style={{ marginBottom: 8, alignItems: 'flex-start' }}>
@@ -697,7 +734,7 @@ export const ContentDetailScreen = () => {
     }
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
             <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>

@@ -68,7 +68,7 @@ try {
     if (!empty($search)) {
         $searchTerm = "%$search%";
         $prefix = $hasWhere ? " AND " : " WHERE ";
-        $query .= $prefix . "(p.content LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
+        $query .= $prefix . "(p.content LIKE :search OR p.quote_text LIKE :search OR p.comment_text LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.quote_text LIKE :search OR op.comment_text LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
     }
 
     $query .= " ORDER BY p.created_at DESC";

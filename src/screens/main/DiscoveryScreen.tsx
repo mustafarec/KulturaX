@@ -225,7 +225,7 @@ export const DiscoveryScreen = () => {
         },
         list: {
             paddingHorizontal: 16,
-            paddingBottom: 20,
+            paddingBottom: 120,
             paddingTop: 8,
         },
         row: {

@@ -5,8 +5,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ThemeSelectorModal } from '../../components/ThemeSelectorModal';
-import { postService, interactionService } from '../../services/backendApi';
+import { postService, interactionService, userService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
+import { UserCard } from '../../components/UserCard';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import ThemeIcon from 'react-native-vector-icons/Ionicons';
@@ -200,8 +201,28 @@ export const FeedScreen = () => {
         try {
             // Map 'trend' to empty string (all posts), others to their values
             const filter = activeTab === 'trend' ? '' : activeTab;
-            const data = await postService.getFeed(user?.id, filter, searchQuery);
-            setFeed(data);
+
+            let feedData = [];
+
+            // If searching, search for users too
+            if (searchQuery.trim().length > 0) {
+                const [posts, users] = await Promise.all([
+                    postService.getFeed(user?.id, filter, searchQuery),
+                    userService.search(searchQuery)
+                ]);
+
+                // Mark types for rendering
+                const markedPosts = posts.map((p: any) => ({ ...p, type: 'post' }));
+                const markedUsers = users.map((u: any) => ({ ...u, type: 'user', id: `user_${u.id}`, originalId: u.id })); // Avoid ID collision
+
+                // Combine results (users first)
+                feedData = [...markedUsers, ...markedPosts];
+            } else {
+                const posts = await postService.getFeed(user?.id, filter, searchQuery);
+                feedData = posts.map((p: any) => ({ ...p, type: 'post' }));
+            }
+
+            setFeed(feedData);
         } catch (error) {
             console.error(error);
         } finally {
@@ -390,6 +411,21 @@ export const FeedScreen = () => {
     };
 
     const renderItem = ({ item }: { item: any }) => {
+        if (item.type === 'user') {
+            return (
+                <UserCard
+                    user={{
+                        id: item.originalId,
+                        username: item.username,
+                        name: item.name,
+                        surname: item.surname,
+                        avatar_url: item.avatar_url
+                    }}
+                    onPress={() => (navigation as any).navigate('OtherProfile', { userId: item.originalId })}
+                />
+            );
+        }
+
         // Direct Repost kontrolü
         const isRepost = !!item.original_post_id;
         const isQuoteRepost = isRepost && item.original_post &&
@@ -470,7 +506,7 @@ export const FeedScreen = () => {
                     <ThemeIcon name="search" size={16} color={theme.colors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Gönderi ara..."
+                        placeholder="Kullanıcı veya gönderi ara..."
                         placeholderTextColor={theme.colors.textSecondary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}

@@ -303,6 +303,15 @@ export const notificationService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
+    getUnreadCount: async (userId: number) => {
+        try {
+            const response = await backendApi.get(`/notifications/get_unread_count.php?user_id=${userId}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+
     markAsRead: async (userId: number, notificationId: number) => {
         try {
             const response = await backendApi.post('/notifications/mark_read.php', { user_id: userId, notification_id: notificationId });
@@ -424,8 +433,18 @@ export const userService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    search: async (query: string) => {
+        try {
+            const response = await backendApi.get(`/users/search.php?query=${encodeURIComponent(query)}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
+
+
 
 export const spotifyService = {
     searchTracks: async (query: string) => {

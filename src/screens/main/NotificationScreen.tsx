@@ -4,6 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { notificationService } from '../../services/backendApi';
 import { useNavigation } from '@react-navigation/native';
+import { useNotification } from '../../context/NotificationContext';
 
 interface Notification {
     id: number;
@@ -25,6 +26,7 @@ export const NotificationScreen = () => {
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
+    const { fetchUnreadCount } = useNotification();
 
     const fetchNotifications = async () => {
         if (!user) return;
@@ -87,6 +89,8 @@ export const NotificationScreen = () => {
                 setNotifications(prev =>
                     prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
                 );
+                // Update global unread count
+                fetchUnreadCount();
             } catch (error) {
                 console.error('Failed to mark as read:', error);
             }
@@ -142,6 +146,7 @@ export const NotificationScreen = () => {
         },
         list: {
             padding: 16,
+            paddingBottom: 120,
         },
         loadingContainer: {
             flex: 1,
@@ -353,5 +358,3 @@ export const NotificationScreen = () => {
         </View>
     );
 };
-
-

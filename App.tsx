@@ -7,6 +7,8 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import { initOneSignal } from './src/services/OneSignalService';
 import Toast from 'react-native-toast-message';
 
+import { NotificationProvider } from './src/context/NotificationContext';
+
 function App(): React.JSX.Element {
   useEffect(() => {
     initOneSignal();
@@ -17,7 +19,9 @@ function App(): React.JSX.Element {
       <AuthProvider>
         <ThemeProvider>
           <MessageProvider>
-            <AppNavigator />
+            <NotificationProvider>
+              <AppNavigator />
+            </NotificationProvider>
           </MessageProvider>
         </ThemeProvider>
       </AuthProvider>
