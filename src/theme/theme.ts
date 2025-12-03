@@ -106,7 +106,7 @@ export const blackTheme = {
         glassBorder: '#2F3336',
         glassShadow: 'rgba(255, 255, 255, 0.05)',
         icon: '#E7E9EA',
-        primary: '#1D9BF0', // Keeping X Blue-ish for consistency in dark mode if desired, or revert to Teal.
+
     },
     shadows: {
         ...lightTheme.shadows,

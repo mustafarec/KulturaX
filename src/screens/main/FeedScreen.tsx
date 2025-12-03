@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +22,19 @@ export const FeedScreen = () => {
     const navigation = useNavigation();
     const { theme, themeMode, toggleTheme, setThemeMode } = useTheme();
 
+    const [activeTab, setActiveTab] = useState<'trend' | 'movie' | 'book'>('trend');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const searchAnim = React.useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.timing(searchAnim, {
+            toValue: isSearchVisible ? 1 : 0,
+            duration: 300,
+            useNativeDriver: false, // Height animation doesn't support native driver
+        }).start();
+    }, [isSearchVisible]);
+
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
             flex: 1,
@@ -33,10 +46,61 @@ export const FeedScreen = () => {
             alignItems: 'center',
             paddingHorizontal: 20,
             paddingTop: 40,
-            paddingBottom: 20,
+            paddingBottom: 10,
             backgroundColor: theme.colors.surface,
-            ...theme.shadows.soft,
             zIndex: 10,
+        },
+        searchContainer: {
+            paddingHorizontal: 20,
+            backgroundColor: theme.colors.surface,
+            zIndex: 9,
+            overflow: 'hidden',
+        },
+        searchInputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.background,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            height: 40,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginBottom: 10,
+        },
+        searchInput: {
+            flex: 1,
+            marginLeft: 8,
+            fontSize: 14,
+            color: theme.colors.text,
+            height: '100%',
+            paddingVertical: 0, // Android fix
+        },
+        tabsContainer: {
+            flexDirection: 'row',
+            paddingHorizontal: 20,
+            backgroundColor: theme.colors.surface,
+            paddingBottom: 0,
+            ...theme.shadows.soft,
+            zIndex: 9,
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        tab: {
+            marginRight: 24,
+            paddingVertical: 12,
+        },
+        activeTab: {
+            borderBottomWidth: 3,
+            borderBottomColor: theme.colors.primary,
+        },
+        tabText: {
+            fontSize: 16,
+            color: theme.colors.textSecondary,
+            fontWeight: '600',
+        },
+        activeTabText: {
+            color: theme.colors.text,
+            fontWeight: '700',
         },
         headerLeft: {
             width: 40,
@@ -75,7 +139,7 @@ export const FeedScreen = () => {
         },
         listContainer: {
             paddingBottom: 160,
-            paddingTop: 0,
+            paddingTop: 8,
         },
         loadingContainer: {
             flex: 1,
@@ -134,7 +198,9 @@ export const FeedScreen = () => {
     const fetchFeed = async () => {
         if (!refreshing) setIsLoading(true);
         try {
-            const data = await postService.getFeed(user?.id);
+            // Map 'trend' to empty string (all posts), others to their values
+            const filter = activeTab === 'trend' ? '' : activeTab;
+            const data = await postService.getFeed(user?.id, filter, searchQuery);
             setFeed(data);
         } catch (error) {
             console.error(error);
@@ -147,14 +213,30 @@ export const FeedScreen = () => {
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         fetchFeed();
-    }, []);
+    }, [activeTab, searchQuery]);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
             fetchFeed();
         });
         return unsubscribe;
-    }, [navigation, user]);
+    }, [navigation, user, activeTab, searchQuery]);
+
+    // Also trigger fetch when activeTab changes directly (for immediate feedback)
+    useEffect(() => {
+        fetchFeed();
+    }, [activeTab]);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (isSearchVisible) {
+                fetchFeed();
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
 
     const handleLike = async (item: any) => {
         if (!user) return;
@@ -370,6 +452,74 @@ export const FeedScreen = () => {
                         />
                     </TouchableOpacity>
                 </View>
+            </View>
+
+            <Animated.View style={[
+                styles.searchContainer,
+                {
+                    height: searchAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 60] // 40 height + 10 margin + extra buffer if needed
+                    }),
+                    opacity: searchAnim,
+                    transform: [{
+                        translateY: searchAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-20, 0]
+                        })
+                    }]
+                }
+            ]}>
+                <View style={styles.searchInputContainer}>
+                    <ThemeIcon name="search" size={16} color={theme.colors.textSecondary} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Gönderi ara..."
+                        placeholderTextColor={theme.colors.textSecondary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    // autoFocus // Removing autoFocus as it might cause issues during animation
+                    />
+                </View>
+            </Animated.View>
+
+            <View style={styles.tabsContainer}>
+                <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('trend')}
+                        style={[styles.tab, activeTab === 'trend' && styles.activeTab]}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'trend' && styles.activeTabText]}>Trendler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('movie')}
+                        style={[styles.tab, activeTab === 'movie' && styles.activeTab]}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'movie' && styles.activeTabText]}>Film</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('book')}
+                        style={[styles.tab, activeTab === 'book' && styles.activeTab]}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'book' && styles.activeTabText]}>Kitap</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                    onPress={() => {
+                        setIsSearchVisible(!isSearchVisible);
+                        if (isSearchVisible) {
+                            setSearchQuery(''); // Clear search when closing
+                        }
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ paddingVertical: 12 }}
+                >
+                    <ThemeIcon
+                        name={isSearchVisible ? "close" : "search"}
+                        size={20}
+                        color={theme.colors.text}
+                    />
+                </TouchableOpacity>
             </View>
 
             {isLoading && !refreshing ? (

@@ -44,11 +44,35 @@ try {
               FROM posts p
               JOIN users u ON p.user_id = u.id
               LEFT JOIN posts op ON p.original_post_id = op.id
-              LEFT JOIN users ou ON op.user_id = ou.id
-              ORDER BY p.created_at DESC";
+              LEFT JOIN users ou ON op.user_id = ou.id";
+
+    $hasWhere = false;
+
+    // Filter logic
+    $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
+    if ($filter == 'book') {
+        $query .= " WHERE (p.content_type = 'book' OR op.content_type = 'book')";
+        $hasWhere = true;
+    } elseif ($filter == 'movie') {
+        $query .= " WHERE (p.content_type = 'movie' OR op.content_type = 'movie')";
+        $hasWhere = true;
+    }
+
+    // Search logic
+    $search = isset($_GET['search']) ? $_GET['search'] : '';
+    if (!empty($search)) {
+        $searchTerm = "%$search%";
+        $prefix = $hasWhere ? " AND " : " WHERE ";
+        $query .= $prefix . "(p.content LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
+    }
+
+    $query .= " ORDER BY p.created_at DESC";
 
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':user_id', $user_id);
+    if (!empty($search)) {
+        $stmt->bindParam(':search', $searchTerm);
+    }
     $stmt->execute();
 
     $posts = array();

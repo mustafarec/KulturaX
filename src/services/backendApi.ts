@@ -136,9 +136,13 @@ export const postService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    getFeed: async (userId?: number) => {
+    getFeed: async (userId?: number, filter?: string, search?: string) => {
         try {
-            const response = await backendApi.get(`/posts/get_feed.php${userId ? `?user_id=${userId}` : ''}`);
+            let url = `/posts/get_feed.php?`;
+            if (userId) url += `user_id=${userId}&`;
+            if (filter) url += `filter=${filter}&`;
+            if (search) url += `search=${search}`;
+            const response = await backendApi.get(url);
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
