@@ -5,7 +5,7 @@ import ViewShot from 'react-native-view-shot';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { QuoteCard } from '../../components/QuoteCard';
-import { postService, libraryService } from '../../services/backendApi';
+import { postService, libraryService, spotifyService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { tmdbApi } from '../../services/tmdbApi';
@@ -15,13 +15,20 @@ export const CreateQuoteScreen = () => {
     const route = useRoute<any>();
     const originalPost = route.params?.originalPost;
     const mode = route.params?.mode || 'quote'; // 'quote' | 'thought'
+    const initialText = route.params?.initialText || '';
+    const initialSource = route.params?.initialSource || '';
+    const initialAuthor = route.params?.initialAuthor || '';
+    const initialImage = route.params?.initialImage || undefined;
+    const initialType = route.params?.initialType || null;
+    const initialId = route.params?.initialId || null;
 
-    const [text, setText] = useState('');
-    const [source, setSource] = useState('');
-    const [author, setAuthor] = useState('');
-    const [selectedImage, setSelectedImage] = useState<string | undefined>(undefined);
-    const [selectedType, setSelectedType] = useState<'book' | 'movie' | null>(null);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [quoteText, setQuoteText] = useState(initialText);
+    const [comment, setComment] = useState('');
+    const [source, setSource] = useState(initialSource);
+    const [author, setAuthor] = useState(initialAuthor);
+    const [selectedImage, setSelectedImage] = useState<string | undefined>(initialImage);
+    const [selectedType, setSelectedType] = useState<'book' | 'movie' | 'music' | null>(initialType);
+    const [selectedId, setSelectedId] = useState<string | null>(initialId);
     const [status, setStatus] = useState<string | null>(null);
 
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -90,8 +97,12 @@ export const CreateQuoteScreen = () => {
             fontSize: 16,
         },
         textArea: {
-            minHeight: 120,
+            minHeight: 100,
             textAlignVertical: 'top',
+        },
+        commentInput: {
+            minHeight: 60,
+            marginBottom: 16,
         },
         sourceInputContainer: {
             flexDirection: 'row',
@@ -232,11 +243,12 @@ export const CreateQuoteScreen = () => {
 
         setIsSearching(true);
         try {
-            // 1. Kitap, Film ve Kişi araması yap
-            const [books, movies, people] = await Promise.all([
+            // 1. Kitap, Film, Kişi ve Müzik araması yap
+            const [books, movies, people, tracks] = await Promise.all([
                 googleBooksApi.searchBooks(query),
                 tmdbApi.searchMovies(query),
-                tmdbApi.searchPerson(query)
+                tmdbApi.searchPerson(query),
+                spotifyService.searchTracks(query)
             ]);
 
             let allResults: any[] = [];
@@ -278,8 +290,18 @@ export const CreateQuoteScreen = () => {
                 image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:')
             }));
 
-            // 5. Hepsini birleştir ve ID'ye göre tekrar edenleri kaldır
-            allResults = [...allResults, ...formattedMovies, ...formattedBooks];
+            // 5. Müzik sonuçlarını formatla
+            const formattedTracks = tracks.map((track: any) => ({
+                id: track.id,
+                title: track.title,
+                subtitle: `Müzik • ${track.artist}`,
+                type: 'music',
+                author: track.artist,
+                image: track.image
+            }));
+
+            // 6. Hepsini birleştir ve ID'ye göre tekrar edenleri kaldır
+            allResults = [...allResults, ...formattedMovies, ...formattedBooks, ...formattedTracks];
 
             const uniqueResults = Array.from(new Map(allResults.map(item => [item.id + item.type, item])).values());
 
@@ -325,8 +347,8 @@ export const CreateQuoteScreen = () => {
     };
 
     const handleShare = async () => {
-        if (!text && !originalPost) {
-            Toast.show({ type: 'error', text1: 'Hata', text2: 'Lütfen bir şeyler yazın.' });
+        if (!quoteText && !originalPost && mode !== 'thought') {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'Lütfen bir alıntı yazın.' });
             return;
         }
 
@@ -341,7 +363,8 @@ export const CreateQuoteScreen = () => {
                 if (originalPost) {
                     await postService.create(
                         user.id,
-                        text,
+                        '', // Quote is empty for reposts
+                        comment || '', // Comment
                         'Paylaşım',
                         originalPost.user.username,
                         originalPost.id
@@ -351,15 +374,30 @@ export const CreateQuoteScreen = () => {
                     const finalSource = mode === 'thought' ? 'Düşünce' : source;
                     const finalAuthor = mode === 'thought' ? user.username : author;
 
+                    // Thought mode: quote is empty, text goes to comment
+                    // Quote mode: quote is quoteText, comment is comment
+                    const quotePayload = mode === 'thought' ? '' : (quoteText || '');
+                    const commentPayload = mode === 'thought' ? (quoteText || '') : (comment || '');
+
+                    console.log('DEBUG: handleShare', {
+                        selectedType,
+                        initialType,
+                        finalSource,
+                        finalAuthor,
+                        quotePayload,
+                        commentPayload
+                    });
+
                     await postService.create(
                         user.id,
-                        text,
+                        quotePayload,
+                        commentPayload,
                         finalSource,
                         finalAuthor,
                         undefined,
-                        selectedType || undefined,
-                        selectedId || undefined,
-                        selectedImage
+                        selectedType || initialType || undefined,
+                        selectedId || initialId || undefined,
+                        selectedImage || initialImage // Use the cover image directly
                     );
 
                     // Update library status if selected
@@ -397,6 +435,14 @@ export const CreateQuoteScreen = () => {
                 { label: 'Yarım Bıraktım', value: 'dropped', icon: 'close' },
             ];
         }
+        else if (selectedType === 'music') {
+            return [
+                { label: 'Dinledim', value: 'read', icon: 'check' },
+                { label: 'Dinliyorum', value: 'reading', icon: 'volume-2' },
+                { label: 'Dinleyeceğim', value: 'want_to_read', icon: 'clock' },
+                { label: 'Yarım Bıraktım', value: 'dropped', icon: 'close' },
+            ];
+        }
         return [];
     };
 
@@ -423,10 +469,21 @@ export const CreateQuoteScreen = () => {
             </View>
 
             <View style={styles.content}>
+                {/* Comment Input - Always visible if it's a quote or repost */}
+                {(mode === 'quote' || originalPost) && (
+                    <TextInput
+                        style={[styles.input, styles.commentInput]}
+                        placeholder="Bu alıntı hakkında ne düşünüyorsunuz?"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        value={comment}
+                        onChangeText={setComment}
+                        multiline
+                    />
+                )}
+
                 <View style={styles.previewContainer}>
                     {originalPost ? (
                         <View style={styles.quotePreview}>
-                            <Text style={styles.previewText}>{text || 'Yorumunuz...'}</Text>
                             <View style={styles.originalPostContainer}>
                                 <QuoteCard
                                     text={originalPost.content}
@@ -439,7 +496,7 @@ export const CreateQuoteScreen = () => {
                     ) : (
                         <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
                             <QuoteCard
-                                text={text || 'Alıntınız buraya gelecek...'}
+                                text={quoteText || (mode === 'thought' ? 'Düşünceniz...' : 'Alıntınız buraya gelecek...')}
                                 source={source || 'Kaynak'}
                                 author={author}
                                 imageUrl={selectedImage}
@@ -449,19 +506,18 @@ export const CreateQuoteScreen = () => {
                 </View>
 
                 <View style={styles.form}>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder={
-                            originalPost
-                                ? "Bu gönderi hakkında ne düşünüyorsunuz?"
-                                : (mode === 'thought' ? "Aklınızdan geçenleri yazın..." : "Alıntı metnini giriniz...")
-                        }
-                        placeholderTextColor={theme.colors.textSecondary}
-                        value={text}
-                        onChangeText={setText}
-                        multiline
-                        autoFocus={!originalPost}
-                    />
+                    {/* Quote Text Input - Only for new quotes/thoughts */}
+                    {!originalPost && (
+                        <TextInput
+                            style={[styles.input, styles.textArea]}
+                            placeholder={mode === 'thought' ? "Aklınızdan geçenleri yazın..." : "Alıntı metnini giriniz..."}
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={quoteText}
+                            onChangeText={setQuoteText}
+                            multiline
+                            autoFocus={!originalPost && mode === 'thought'}
+                        />
+                    )}
 
                     {!originalPost && mode !== 'thought' && (
                         <>
@@ -469,7 +525,7 @@ export const CreateQuoteScreen = () => {
                                 <Icon name="magnifier" size={18} color={theme.colors.textSecondary} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.sourceInput}
-                                    placeholder="Kitap veya Film Ara..."
+                                    placeholder="Kitap, Film veya Müzik Ara..."
                                     placeholderTextColor={theme.colors.textSecondary}
                                     value={source}
                                     onChangeText={handleSearchSource}
@@ -490,7 +546,7 @@ export const CreateQuoteScreen = () => {
                                                     <Image source={{ uri: item.image }} style={styles.dropdownImage} />
                                                 ) : (
                                                     <View style={styles.dropdownImagePlaceholder}>
-                                                        <Icon name={item.type === 'book' ? 'book-open' : 'camrecorder'} size={20} color="#fff" />
+                                                        <Icon name={item.type === 'book' ? 'book-open' : (item.type === 'music' ? 'music-tone-alt' : 'camrecorder')} size={20} color="#fff" />
                                                     </View>
                                                 )}
                                                 <View style={{ flex: 1 }}>
@@ -517,7 +573,7 @@ export const CreateQuoteScreen = () => {
                             {selectedType && (
                                 <View style={styles.statusContainer}>
                                     <Text style={styles.statusLabel}>
-                                        {selectedType === 'book' ? 'Bu kitabı ne yaptın?' : 'Bu filmi ne yaptın?'}
+                                        {selectedType === 'book' ? 'Bu kitabı ne yaptın?' : (selectedType === 'music' ? 'Bu şarkıyı ne yaptın?' : 'Bu filmi ne yaptın?')}
                                     </Text>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
                                         {getStatusOptions().map((option) => (

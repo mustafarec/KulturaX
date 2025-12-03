@@ -29,6 +29,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
 }) => {
     const { theme } = useTheme();
     const [quoteText, setQuoteText] = useState('');
+    const [commentText, setCommentText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const styles = React.useMemo(() => StyleSheet.create({
@@ -42,7 +43,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             padding: theme.spacing.l,
-            maxHeight: '80%',
+            maxHeight: '90%', // Increased height
         },
         header: {
             flexDirection: 'row',
@@ -62,7 +63,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             padding: 4,
         },
         inputSection: {
-            marginBottom: theme.spacing.l,
+            marginBottom: theme.spacing.m,
         },
         label: {
             fontSize: 16,
@@ -75,15 +76,19 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             borderRadius: 12,
             padding: theme.spacing.m,
             color: theme.colors.text,
-            minHeight: 120,
+            minHeight: 100,
             textAlignVertical: 'top',
             fontSize: 16,
+        },
+        commentInput: {
+            minHeight: 80,
         },
         submitButton: {
             backgroundColor: theme.colors.primary,
             borderRadius: 12,
             padding: theme.spacing.m,
             alignItems: 'center',
+            marginTop: theme.spacing.s,
         },
         submitButtonDisabled: {
             opacity: 0.6,
@@ -94,6 +99,22 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             fontWeight: 'bold',
         },
     }), [theme]);
+
+    const getPlaceholder = () => {
+        switch (initialContentType) {
+            case 'movie':
+                return "Filmden bir replik yazın...";
+            case 'music':
+                return "Şarkıdan bir söz yazın...";
+            case 'book':
+            default:
+                return "Kitaptan bir alıntı yazın...";
+        }
+    };
+
+    const getTitle = () => {
+        return "Alıntı ve Yorum Ekle";
+    };
 
     const handleSubmit = async () => {
         if (!quoteText.trim()) {
@@ -110,6 +131,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             await postService.create(
                 userId,
                 quoteText,
+                commentText, // Pass the comment
                 source,
                 author,
                 undefined, // originalPostId
@@ -121,16 +143,17 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             Toast.show({
                 type: 'success',
                 text1: 'Başarılı',
-                text2: 'Alıntı paylaşıldı!',
+                text2: 'Paylaşım yapıldı!',
             });
             setQuoteText('');
+            setCommentText('');
             if (onQuoteAdded) onQuoteAdded();
             onClose();
         } catch (error: any) {
             Toast.show({
                 type: 'error',
                 text1: 'Hata',
-                text2: error.message || 'Alıntı paylaşılamadı.',
+                text2: error.message || 'Paylaşım yapılamadı.',
             });
             console.error(error);
         } finally {
@@ -147,7 +170,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             <View style={styles.overlay}>
                 <View style={styles.modal}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Alıntı Ekle: {source}</Text>
+                        <Text style={styles.title}>{getTitle()}: {source}</Text>
                         <TouchableOpacity onPress={onClose}>
                             <Text style={styles.closeButton}>✕</Text>
                         </TouchableOpacity>
@@ -157,15 +180,28 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
                         <Text style={styles.label}>Alıntı:</Text>
                         <TextInput
                             style={styles.textInput}
-                            placeholder="Kitaptan bir alıntı yazın..."
+                            placeholder={getPlaceholder()}
                             multiline
-                            numberOfLines={6}
+                            numberOfLines={4}
                             value={quoteText}
                             onChangeText={setQuoteText}
                             placeholderTextColor={theme.colors.textSecondary}
                             autoFocus
                         />
-                    </View >
+                    </View>
+
+                    <View style={styles.inputSection}>
+                        <Text style={styles.label}>Yorumunuz (İsteğe bağlı):</Text>
+                        <TextInput
+                            style={[styles.textInput, styles.commentInput]}
+                            placeholder="Bu alıntı hakkında ne düşünüyorsunuz?"
+                            multiline
+                            numberOfLines={3}
+                            value={commentText}
+                            onChangeText={setCommentText}
+                            placeholderTextColor={theme.colors.textSecondary}
+                        />
+                    </View>
 
                     <TouchableOpacity
                         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -178,8 +214,8 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
                             <Text style={styles.submitButtonText}>Paylaş</Text>
                         )}
                     </TouchableOpacity>
-                </View >
-            </View >
-        </Modal >
+                </View>
+            </View>
+        </Modal>
     );
 };

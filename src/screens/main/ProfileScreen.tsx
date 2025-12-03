@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions, ImageBackground } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { postService, libraryService } from '../../services/backendApi';
+import { postService, libraryService, API_URL } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
 import { ReviewCard } from '../../components/ReviewCard';
@@ -56,7 +56,7 @@ export const ProfileScreen = () => {
     const fetchNowPlaying = async () => {
         if (!user) return;
         try {
-            const response = await fetch(`https://mmreeo.online/api/integrations/spotify_proxy.php?user_id=${user.id}`);
+            const response = await fetch(`${API_URL}/integrations/spotify_proxy.php?user_id=${user.id}`);
             const data = await response.json();
             if (data && data.is_playing) {
                 setNowPlaying(data);

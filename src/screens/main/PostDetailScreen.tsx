@@ -147,7 +147,8 @@ export const PostDetailScreen = () => {
         try {
             await postService.create(
                 currentUser.id,
-                'Yeniden paylaşım',
+                '', // quote
+                'Yeniden paylaşım', // comment
                 'App',
                 currentUser.username,
                 selectedRepostPost.id

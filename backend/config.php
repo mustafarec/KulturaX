@@ -9,10 +9,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$host = "localhost";
-$db_name = "trakyali_kitapmuzikfilmapp"; // Veritabanı adınızı buraya yazın
-$username = "trakyali_admin"; // Veritabanı kullanıcı adınızı buraya yazın
-$password = "Marmara34.?"; // Veritabanı şifrenizi buraya yazın
+// Load environment variables first
+$envFile = __DIR__ . '/.env';
+$env = [];
+if (file_exists($envFile)) {
+    $env = parse_ini_file($envFile);
+} else {
+    error_log("Config: .env file not found");
+}
+
+// Database Configuration
+// Prioritize .env values, fallback to defaults if not set
+$host = $env['DB_HOST'] ?? "localhost";
+$db_name = $env['DB_NAME'] ?? "trakyali_kitapmuzikfilmapp";
+$username = $env['DB_USER'] ?? "trakyali_admin";
+$password = $env['DB_PASS'] ?? "Marmara34.?";
 
 try {
     $conn = new PDO("mysql:host=" . $host . ";dbname=" . $db_name . ";charset=utf8", $username, $password);
@@ -22,21 +33,13 @@ try {
     exit();
 }
 
-// Load environment variables
-$envFile = __DIR__ . '/.env';
-if (file_exists($envFile)) {
-    $env = parse_ini_file($envFile);
-    
-    // Spotify API Keys
-    define('SPOTIFY_CLIENT_ID', $env['SPOTIFY_CLIENT_ID'] ?? '');
-    define('SPOTIFY_CLIENT_SECRET', $env['SPOTIFY_CLIENT_SECRET'] ?? '');
-    define('SPOTIFY_REDIRECT_URI', $env['SPOTIFY_REDIRECT_URI'] ?? '');
+// Define API Constants from .env
+define('SPOTIFY_CLIENT_ID', $env['SPOTIFY_CLIENT_ID'] ?? '');
+define('SPOTIFY_CLIENT_SECRET', $env['SPOTIFY_CLIENT_SECRET'] ?? '');
+define('SPOTIFY_REDIRECT_URI', $env['SPOTIFY_REDIRECT_URI'] ?? '');
 
-    // Last.fm API Keys
-    define('LASTFM_API_KEY', $env['LASTFM_API_KEY'] ?? '');
-    define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
-} else {
-    // Fallback or error logging
-    error_log("Config: .env file not found");
-}
+define('LASTFM_API_KEY', $env['LASTFM_API_KEY'] ?? '');
+define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
+
+define('GENIUS_ACCESS_TOKEN', $env['GENIUS_ACCESS_TOKEN'] ?? '');
 ?>

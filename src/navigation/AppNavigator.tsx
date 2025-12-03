@@ -8,6 +8,7 @@ import { CreateQuoteScreen } from '../screens/social/CreateQuoteScreen';
 import { ChatScreen } from '../screens/social/ChatScreen';
 import { BookDetailScreen } from '../screens/content/BookDetailScreen';
 import { MovieDetailScreen } from '../screens/content/MovieDetailScreen';
+import { ContentDetailScreen } from '../screens/content/ContentDetailScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
 import { OtherProfileScreen } from '../screens/main/OtherProfileScreen';
@@ -60,6 +61,16 @@ export const AppNavigator = () => {
                             options={{
                                 headerShown: true,
                                 title: 'Film Detayı',
+                                headerStyle: { backgroundColor: theme.colors.background },
+                                headerTintColor: theme.colors.text,
+                            }}
+                        />
+                        <Stack.Screen
+                            name="ContentDetail"
+                            component={ContentDetailScreen}
+                            options={{
+                                headerShown: true,
+                                title: 'İçerik Detayı',
                                 headerStyle: { backgroundColor: theme.colors.background },
                                 headerTintColor: theme.colors.text,
                             }}

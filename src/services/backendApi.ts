@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // BURAYI GÜNCELLEYİN: Kendi sunucu adresinizi yazın
 // Örn: 'https://siteniz.com/api' veya yerel test için 'http://10.0.2.2/kitapmuzikfilm/backend'
-const API_URL = 'https://mmreeo.online/api';
+export const API_URL = 'https://mmreeo.online/api';
 
 const backendApi = axios.create({
     baseURL: API_URL,
@@ -119,11 +119,12 @@ export const authService = {
 };
 
 export const postService = {
-    create: async (userId: number, content: string, source: string, author: string, originalPostId?: number, contentType?: string, contentId?: string, imageUrl?: string) => {
+    create: async (userId: number, quote: string, comment: string, source: string, author: string, originalPostId?: number, contentType?: string, contentId?: string, imageUrl?: string) => {
         try {
             const response = await backendApi.post('/posts/create.php', {
                 user_id: userId,
-                content,
+                quote,
+                comment,
                 source,
                 author,
                 original_post_id: originalPostId,
@@ -159,6 +160,18 @@ export const postService = {
     delete: async (userId: number, postId: number) => {
         try {
             const response = await backendApi.post('/posts/delete.php', { user_id: userId, post_id: postId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    uploadImage: async (userId: number, formData: FormData) => {
+        try {
+            const response = await backendApi.post('/posts/upload_image.php', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -336,7 +349,7 @@ export const interactionService = {
 };
 
 export const reviewService = {
-    addReview: async (userId: number, contentType: 'movie' | 'book', contentId: string, rating: number, reviewText: string) => {
+    addReview: async (userId: number, contentType: 'movie' | 'book' | 'music', contentId: string, rating: number, reviewText: string) => {
         try {
             const response = await backendApi.post('/interactions/add_review.php', {
                 user_id: userId,
@@ -350,7 +363,7 @@ export const reviewService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    getReviews: async (contentType: 'movie' | 'book', contentId: string) => {
+    getReviews: async (contentType: 'movie' | 'book' | 'music', contentId: string) => {
         try {
             const response = await backendApi.get(`/interactions/get_reviews.php?content_type=${contentType}&content_id=${contentId}`);
             return response.data;
@@ -410,6 +423,39 @@ export const userService = {
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
+        }
+    }
+};
+
+export const spotifyService = {
+    searchTracks: async (query: string) => {
+        try {
+            const response = await backendApi.get(`/integrations/spotify_search.php?query=${encodeURIComponent(query)}`);
+            return response.data.results;
+        } catch (error) {
+            console.error('Spotify Search Error:', error);
+            return [];
+        }
+    },
+    getTrack: async (id: string) => {
+        try {
+            const response = await backendApi.get(`/integrations/spotify_track.php?id=${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Spotify Get Track Error:', error);
+            return null;
+        }
+    }
+};
+
+export const lyricsService = {
+    getLyrics: async (artist: string, title: string) => {
+        try {
+            const response = await backendApi.get(`/integrations/lyrics_proxy.php?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+            return response.data.lyrics || null;
+        } catch (error) {
+            console.error('getLyrics error:', error);
+            return null;
         }
     }
 };

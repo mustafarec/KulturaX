@@ -22,7 +22,7 @@ export const FeedScreen = () => {
     const navigation = useNavigation();
     const { theme, themeMode, toggleTheme, setThemeMode } = useTheme();
 
-    const [activeTab, setActiveTab] = useState<'trend' | 'movie' | 'book'>('trend');
+    const [activeTab, setActiveTab] = useState<'trend' | 'movie' | 'book' | 'music'>('trend');
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const searchAnim = React.useRef(new Animated.Value(0)).current;
@@ -328,7 +328,7 @@ export const FeedScreen = () => {
             const newAuthor = originalPosterUsername;
             const originalPostId = item.id;
 
-            await postService.create(user.id, content, newSource, newAuthor, originalPostId);
+            await postService.create(user.id, '', content, newSource, newAuthor, originalPostId);
             fetchFeed();
             Toast.show({
                 type: 'success',
@@ -385,12 +385,8 @@ export const FeedScreen = () => {
         );
     };
 
-    const handleContentPress = (type: 'book' | 'movie', id: string) => {
-        if (type === 'book') {
-            (navigation as any).navigate('BookDetail', { bookId: id });
-        } else if (type === 'movie') {
-            (navigation as any).navigate('MovieDetail', { movieId: parseInt(id, 10) });
-        }
+    const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
+        (navigation as any).navigate('ContentDetail', { id, type });
     };
 
     const renderItem = ({ item }: { item: any }) => {
@@ -502,6 +498,12 @@ export const FeedScreen = () => {
                         style={[styles.tab, activeTab === 'book' && styles.activeTab]}
                     >
                         <Text style={[styles.tabText, activeTab === 'book' && styles.activeTabText]}>Kitap</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('music')}
+                        style={[styles.tab, activeTab === 'music' && styles.activeTab]}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'music' && styles.activeTabText]}>Müzik</Text>
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity

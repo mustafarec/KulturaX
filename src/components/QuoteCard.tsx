@@ -122,8 +122,6 @@ export const QuoteCard = ({
         const Content = (
             <View style={styles.compactCard}>
                 <View style={styles.compactContent}>
-                    {text ? <Text style={styles.compactText}>{text}</Text> : null}
-
                     {status && (
                         <Text style={styles.statusText}>{status}</Text>
                     )}
@@ -148,6 +146,12 @@ export const QuoteCard = ({
                             </View>
                         </View>
                     )}
+
+                    {text ? (
+                        <Text style={[styles.compactText, { marginTop: 12 }]}>
+                            {text.replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
+                        </Text>
+                    ) : null}
                 </View>
             </View>
         );

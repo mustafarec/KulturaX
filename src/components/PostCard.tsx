@@ -216,10 +216,72 @@ export const PostCard: React.FC<PostCardProps> = ({
         post.content !== 'Yeniden paylaşım' &&
         post.content !== post.original_post.content;
 
+    // İçerik Ayrıştırma (JSON vs Plain Text vs New Columns)
+    let displayComment = '';
+    let displayQuote = '';
+
+    // 1. Yeni Sütunlar (Varsa öncelikli)
+    if (post.quote_text != null || post.comment_text != null) {
+        displayQuote = post.quote_text || '';
+        displayComment = post.comment_text || '';
+    }
+
+    // 2. Fallback: Content Parsing (Eğer yeni sütunlar boşsa veya null ise)
+    if (!displayQuote && !displayComment && post.content) {
+        try {
+            // Try to parse content as JSON (new format)
+            if (post.content.startsWith('{')) {
+                const parsed = JSON.parse(post.content);
+                if (parsed.quote !== undefined) {
+                    displayComment = parsed.comment;
+                    displayQuote = parsed.quote;
+                } else {
+                    // Fallback for non-standard JSON
+                    displayQuote = post.content;
+                }
+            } else {
+                // Legacy format (Plain text)
+                // If it's a content post (book/movie/music) OR has a specific source, the content was the quote
+                if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
+                    displayQuote = post.content;
+                } else {
+                    // For thoughts or other types, it's the main content
+                    displayComment = post.content;
+                }
+            }
+        } catch (e) {
+            // Not JSON, treat as plain text
+            if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
+                displayQuote = post.content;
+            } else {
+                displayComment = post.content;
+            }
+        }
+    }
+
     // Görüntülenecek Post (İçerik için)
     // Quote Repost ise: Post'un kendisi (çünkü yorumu var)
     // Direct Repost ise: Orijinal post (çünkü sadece onu gösteriyoruz)
     const displayPost = isQuoteRepost ? post : (isRepost && post.original_post ? post.original_post : post);
+
+    // Repost durumunda orijinal içeriği de ayrıştır
+    let originalQuote = '';
+    if (isRepost && post.original_post) {
+        if (post.original_post.quote_text != null) {
+            originalQuote = post.original_post.quote_text;
+        } else {
+            try {
+                if (post.original_post.content && post.original_post.content.startsWith('{')) {
+                    const parsed = JSON.parse(post.original_post.content);
+                    originalQuote = parsed.quote || post.original_post.content;
+                } else {
+                    originalQuote = post.original_post.content;
+                }
+            } catch (e) {
+                originalQuote = post.original_post.content;
+            }
+        }
+    }
 
     // Görüntülenecek Yazar
     // Quote Repost ise: Post sahibi (Reposter)
@@ -288,11 +350,11 @@ export const PostCard: React.FC<PostCardProps> = ({
                         )}
                     </View>
 
-                    {(!showQuoteCard || isQuoteRepost || displayPost.content_type === 'book' || displayPost.content_type === 'movie') && (
+                    {displayComment ? (
                         <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-                            <Text style={[styles.content, (displayPost.content_type === 'book' || displayPost.content_type === 'movie') && { marginBottom: 0 }]}>{displayPost.content}</Text>
+                            <Text style={[styles.content, (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music') && { marginBottom: 8 }]}>{displayComment}</Text>
                         </TouchableOpacity>
-                    )}
+                    ) : null}
 
                     {showQuoteCard && (
                         <View style={{ marginTop: 0, marginBottom: 8 }}>
@@ -324,30 +386,21 @@ export const PostCard: React.FC<PostCardProps> = ({
                                         </View>
 
                                         {post.original_post.content ? (
-                                            <Text style={styles.socialQuoteContent}>{post.original_post.content}</Text>
+                                            <Text style={styles.socialQuoteContent}>{post.original_post.content.startsWith('{') ? (JSON.parse(post.original_post.content).comment || '') : post.original_post.content}</Text>
                                         ) : null}
                                     </TouchableOpacity>
 
-                                    {(post.original_post.content_type === 'book' || post.original_post.content_type === 'movie') && (
+                                    {(post.original_post.content_type === 'book' || post.original_post.content_type === 'movie' || post.original_post.content_type === 'music') && (
                                         <QuoteCard
-                                            text=""
+                                            text={originalQuote}
                                             source={post.original_post.source}
                                             author={post.original_post.author}
                                             variant="compact"
                                             imageUrl={post.original_post.image_url}
                                             status={post.original_post.content_type === 'book' ? 'Kitabı okuyor' : undefined}
                                             onPress={() => {
-                                                console.log('DEBUG: QuoteCard (Repost) pressed');
-                                                console.log('DEBUG: content_type:', post.original_post.content_type);
-                                                console.log('DEBUG: content_id:', post.original_post.content_id);
-                                                if (onContentPress) {
-                                                    if (post.original_post.content_id) {
-                                                        onContentPress(post.original_post.content_type, post.original_post.content_id);
-                                                    } else {
-                                                        console.log('DEBUG: content_id is missing');
-                                                    }
-                                                } else {
-                                                    console.log('DEBUG: onContentPress prop is missing');
+                                                if (onContentPress && post.original_post.content_id) {
+                                                    onContentPress(post.original_post.content_type, post.original_post.content_id);
                                                 }
                                             }}
                                         />
@@ -356,24 +409,15 @@ export const PostCard: React.FC<PostCardProps> = ({
                             ) : (
                                 <QuoteCard
                                     // Normal post (Direct share)
-                                    text={(displayPost.content_type === 'book' || displayPost.content_type === 'movie') ? "" : displayPost.content}
+                                    text={displayQuote}
                                     source={displayPost.source}
                                     author={displayPost.author}
                                     variant="compact"
                                     imageUrl={displayPost.image_url}
                                     status={displayPost.content_type === 'book' ? 'Kitabı okuyor' : undefined}
                                     onPress={() => {
-                                        console.log('DEBUG: QuoteCard (Direct) pressed');
-                                        console.log('DEBUG: content_type:', displayPost.content_type);
-                                        console.log('DEBUG: content_id:', displayPost.content_id);
-                                        if (onContentPress) {
-                                            if (displayPost.content_id) {
-                                                onContentPress(displayPost.content_type, displayPost.content_id);
-                                            } else {
-                                                console.log('DEBUG: content_id is missing');
-                                            }
-                                        } else {
-                                            console.log('DEBUG: onContentPress prop is missing');
+                                        if (onContentPress && displayPost.content_id) {
+                                            onContentPress(displayPost.content_type, displayPost.content_id);
                                         }
                                     }}
                                 />

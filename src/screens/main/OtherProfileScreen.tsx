@@ -522,7 +522,8 @@ export const OtherProfileScreen = () => {
         try {
             await postService.create(
                 currentUser.id,
-                'Yeniden paylaşım',
+                '', // quote
+                'Yeniden paylaşım', // comment
                 'App',
                 currentUser.username,
                 selectedRepostPost.id

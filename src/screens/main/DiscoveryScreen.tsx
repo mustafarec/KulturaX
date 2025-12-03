@@ -4,12 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
+import backendApi, { spotifyService } from '../../services/backendApi';
 
 export const DiscoveryScreen = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'trending' | 'movies' | 'books'>('trending');
+    const [activeTab, setActiveTab] = useState<'trending' | 'movies' | 'books' | 'music'>('trending');
     const { theme } = useTheme();
     const navigation = useNavigation();
 
@@ -96,6 +97,20 @@ export const DiscoveryScreen = () => {
                     author: book.volumeInfo.authors?.join(', '),
                     description: book.volumeInfo.description
                 }));
+            } else if (tab === 'music') {
+                let tracks = [];
+                // Default search if query is empty, e.g., 'Top 50' or a popular artist
+                const query = searchQuery || 'pop';
+                tracks = await spotifyService.searchTracks(query);
+
+                data = tracks.map((track: any) => ({
+                    id: track.id,
+                    title: track.title,
+                    type: 'Müzik',
+                    image: track.image,
+                    author: track.artist,
+                    description: track.album
+                }));
             }
 
             setResults(data);
@@ -124,10 +139,13 @@ export const DiscoveryScreen = () => {
     };
 
     const handleItemPress = (item: any) => {
-        if (item.type === 'Kitap') {
-            (navigation as any).navigate('BookDetail', { book: item });
-        } else if (item.type === 'Film') {
-            (navigation as any).navigate('MovieDetail', { movie: item });
+        let type = '';
+        if (item.type === 'Kitap') type = 'book';
+        else if (item.type === 'Film') type = 'movie';
+        else if (item.type === 'Müzik') type = 'music';
+
+        if (type) {
+            (navigation as any).navigate('ContentDetail', { id: item.id, type, initialData: item });
         }
     };
 
@@ -364,6 +382,12 @@ export const DiscoveryScreen = () => {
                     style={[styles.tab, activeTab === 'books' && styles.activeTab]}
                 >
                     <Text style={[styles.tabText, activeTab === 'books' && styles.activeTabText]}>Kitap</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => setActiveTab('music')}
+                    style={[styles.tab, activeTab === 'music' && styles.activeTab]}
+                >
+                    <Text style={[styles.tabText, activeTab === 'music' && styles.activeTabText]}>Müzik</Text>
                 </TouchableOpacity>
             </View>
 

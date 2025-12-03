@@ -39,7 +39,9 @@ try {
                 
                 op.image_url as op_image_url,
                 op.content_type as op_content_type,
-                op.content_id as op_content_id
+                op.content_id as op_content_id,
+                op.quote_text as op_quote_text,
+                op.comment_text as op_comment_text
 
               FROM posts p
               JOIN users u ON p.user_id = u.id
@@ -55,6 +57,9 @@ try {
         $hasWhere = true;
     } elseif ($filter == 'movie') {
         $query .= " WHERE (p.content_type = 'movie' OR op.content_type = 'movie')";
+        $hasWhere = true;
+    } elseif ($filter == 'music') {
+        $query .= " WHERE (p.content_type = 'music' OR op.content_type = 'music')";
         $hasWhere = true;
     }
 
@@ -95,6 +100,8 @@ try {
             $row['original_post'] = array(
                 'id' => $row['op_id'],
                 'content' => $row['op_content'],
+                'quote_text' => $row['op_quote_text'],
+                'comment_text' => $row['op_comment_text'],
                 'source' => $row['op_source'],
                 'author' => $row['op_author'],
                 'created_at' => $row['op_created_at'],
@@ -121,6 +128,8 @@ try {
         unset($row['avatar_url']);
         unset($row['op_id']);
         unset($row['op_content']);
+        unset($row['op_quote_text']);
+        unset($row['op_comment_text']);
         unset($row['op_source']);
         unset($row['op_author']);
         unset($row['op_created_at']);
