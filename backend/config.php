@@ -42,4 +42,5 @@ define('LASTFM_API_KEY', $env['LASTFM_API_KEY'] ?? '');
 define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
 
 define('GENIUS_ACCESS_TOKEN', $env['GENIUS_ACCESS_TOKEN'] ?? '');
+define('TICKETMASTER_API_KEY', $env['TICKETMASTER_API_KEY'] ?? '');
 ?>

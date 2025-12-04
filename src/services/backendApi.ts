@@ -479,4 +479,16 @@ export const lyricsService = {
     }
 };
 
+export const ticketmasterService = {
+    searchEvents: async (keyword: string = '', city: string = '', page: number = 0) => {
+        try {
+            const response = await backendApi.get(`/integrations/ticketmaster.php?keyword=${encodeURIComponent(keyword)}&city=${encodeURIComponent(city)}&page=${page}`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Ticketmaster Search Error:', error);
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    }
+};
+
 export default backendApi;

@@ -347,12 +347,20 @@ export const DiscoveryScreen = () => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Keşfet</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <Text style={[styles.headerTitle, { marginBottom: 0 }]}>Keşfet</Text>
+                    <TouchableOpacity
+                        onPress={() => (navigation as any).navigate('Concerts')}
+                        style={{ backgroundColor: theme.colors.primary + '20', padding: 8, borderRadius: 12 }}
+                    >
+                        <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>🎫 Konserler</Text>
+                    </TouchableOpacity>
+                </View>
                 <View style={styles.searchContainer}>
                     <Text style={styles.searchIcon}>🔍</Text>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Kitap veya film ara..."
+                        placeholder="Kitap, film veya müzik ara..."
                         placeholderTextColor="#95A5A6"
                         value={query}
                         onChangeText={(text) => {

@@ -9,6 +9,7 @@ import { ChatScreen } from '../screens/social/ChatScreen';
 import { BookDetailScreen } from '../screens/content/BookDetailScreen';
 import { MovieDetailScreen } from '../screens/content/MovieDetailScreen';
 import { ContentDetailScreen } from '../screens/content/ContentDetailScreen';
+import { ConcertScreen } from '../screens/content/ConcertScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
 import { OtherProfileScreen } from '../screens/main/OtherProfileScreen';
@@ -73,6 +74,13 @@ export const AppNavigator = () => {
                                 title: 'İçerik Detayı',
                                 headerStyle: { backgroundColor: theme.colors.background },
                                 headerTintColor: theme.colors.text,
+                            }}
+                        />
+                        <Stack.Screen
+                            name="Concerts"
+                            component={ConcertScreen}
+                            options={{
+                                headerShown: false,
                             }}
                         />
                         <Stack.Screen
