@@ -50,7 +50,8 @@ if(
             $title = "Yeni Mesaj: @$senderName";
             $message = (strlen($data->content) > 50) ? substr($data->content, 0, 47) . "..." : $data->content;
             
-            // 1. Veritabanına Kaydet
+            // 1. Veritabanına Kaydet (İPTAL EDİLDİ: Mesajlar için bildirim tablosuna kayıt atılmıyor artık)
+            /*
             try {
                 $notifData = json_encode(array("sender_id" => $senderId));
                 $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'message', :title, :message, :data)";
@@ -70,6 +71,7 @@ if(
                 error_log("Notification insert error in send.php: " . $e->getMessage());
                 file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Message Notif Exception: " . $e->getMessage() . "\n", FILE_APPEND);
             }
+            */
             
             // 2. Push Bildirim Gönder (OneSignal)
             if (file_exists('../notifications/OneSignal.php')) {

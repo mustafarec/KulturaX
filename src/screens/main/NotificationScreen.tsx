@@ -37,8 +37,10 @@ export const NotificationScreen = () => {
         try {
             const data = await notificationService.getNotifications(user.id);
             console.log('Notification data:', JSON.stringify(data, null, 2));
-            // Ensure data is an array
-            setNotifications(Array.isArray(data) ? data : []);
+            // Ensure data is an array and filter out message notifications
+            const validData = Array.isArray(data) ? data : [];
+            const filteredData = validData.filter(n => n.type !== 'message');
+            setNotifications(filteredData);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
