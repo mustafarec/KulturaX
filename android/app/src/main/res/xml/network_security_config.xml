@@ -7,4 +7,18 @@
             <pin digest="SHA-256">78ggMZbnTmIU5f47O1O7m9bRSEYYQ3WQqDUefplvYNU=</pin>
         </pin-set>
     </domain-config>
+    
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Trust user added CAs -->
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>

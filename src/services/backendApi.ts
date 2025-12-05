@@ -504,6 +504,20 @@ export const spotifyService = {
             console.error('Spotify Get Track Error:', error);
             return null;
         }
+    },
+    getTop50Tracks: async () => {
+        try {
+            const response = await backendApi.get('/integrations/spotify_top50.php');
+            console.log("Spotify Backend Response:", response.data); // Debug Log
+            return response.data.results;
+        } catch (error: any) {
+            console.error('Spotify Top 50 Error:', error);
+            if (error.response) {
+                console.error('Spotify Error Data:', error.response.data);
+                console.error('Spotify Error Status:', error.response.status);
+            }
+            return [];
+        }
     }
 };
 
