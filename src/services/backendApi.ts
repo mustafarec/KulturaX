@@ -13,7 +13,43 @@ const backendApi = axios.create({
     },
 });
 
-// ... (Token logic remains same) ...
+// Token yönetimi
+let authToken: string | null = null;
+
+export const setAuthToken = async (token: string) => {
+    authToken = token;
+    await AsyncStorage.setItem('authToken', token);
+};
+
+export const getAuthToken = async (): Promise<string | null> => {
+    if (!authToken) {
+        authToken = await AsyncStorage.getItem('authToken');
+    }
+    return authToken;
+};
+
+export const clearAuthToken = async () => {
+    authToken = null;
+    await AsyncStorage.removeItem('authToken');
+};
+
+// Axios interceptor - Her istekte token ekle
+backendApi.interceptors.request.use(
+    async (config) => {
+        const token = await getAuthToken();
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+            config.headers['X-Auth-Token'] = token;
+
+            // Fallback: Add token to params for servers that strip headers
+            config.params = { ...config.params, token: token };
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 // Axios interceptor - Yanıtları kontrol et
 backendApi.interceptors.response.use(
