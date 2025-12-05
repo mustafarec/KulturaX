@@ -6,11 +6,12 @@ import { theme } from '../theme/theme';
 interface RepostMenuProps {
     visible: boolean;
     onClose: () => void;
-    onRepost: () => void;
-    onQuote: () => void;
+    onDirectRepost: () => void;
+    onQuoteRepost: () => void;
+    postId?: number; // Optional postId if needed for internal logic, though callbacks handle it
 }
 
-export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onRepost, onQuote }) => {
+export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDirectRepost, onQuoteRepost }) => {
     return (
         <Modal
             animationType="slide"
@@ -24,12 +25,12 @@ export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onRepo
                         <View style={styles.content}>
                             <View style={styles.handle} />
 
-                            <TouchableOpacity style={styles.option} onPress={onRepost}>
+                            <TouchableOpacity style={styles.option} onPress={onDirectRepost}>
                                 <Icon name="loop" size={20} color={theme.colors.text} style={styles.icon} />
                                 <Text style={styles.optionText}>Yeniden gönder</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={styles.option} onPress={onQuote}>
+                            <TouchableOpacity style={styles.option} onPress={onQuoteRepost}>
                                 <Icon name="pencil" size={20} color={theme.colors.text} style={styles.icon} />
                                 <Text style={styles.optionText}>Alıntı</Text>
                             </TouchableOpacity>

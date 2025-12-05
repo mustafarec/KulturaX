@@ -1,16 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated, TouchableWithoutFeedback } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { ThemeSelectorModal } from '../../components/ThemeSelectorModal';
+
 import { postService, interactionService, userService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
 import { UserCard } from '../../components/UserCard';
+
+// SideMenu is now global, we use context to control it
+import { useSideMenu } from '../../context/SideMenuContext';
+import { useMessage } from '../../context/MessageContext';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import ThemeIcon from 'react-native-vector-icons/Ionicons';
+
+const UnreadBadge = () => {
+    const { unreadCount } = useMessage();
+    const { theme } = useTheme();
+
+    if (unreadCount === 0) return null;
+
+    return (
+        <View style={{
+            position: 'absolute',
+            right: -6,
+            top: -4,
+            backgroundColor: theme.colors.error,
+            borderRadius: 10,
+            minWidth: 18,
+            height: 18,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.surface,
+        }}>
+            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+            </Text>
+        </View>
+    );
+};
 
 export const FeedScreen = () => {
     const [feed, setFeed] = useState<any[]>([]);
@@ -18,10 +49,11 @@ export const FeedScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
     const [newPostMenuVisible, setNewPostMenuVisible] = useState(false);
-    const [themeModalVisible, setThemeModalVisible] = useState(false);
+    // const [sideMenuVisible, setSideMenuVisible] = useState(false); // Removed local state
     const { user } = useAuth();
     const navigation = useNavigation();
     const { theme, themeMode, toggleTheme, setThemeMode } = useTheme();
+    const { openMenu, toggleMenu } = useSideMenu(); // Use global side menu
 
     const [activeTab, setActiveTab] = useState<'trend' | 'movie' | 'book' | 'music'>('trend');
     const [searchQuery, setSearchQuery] = useState('');
@@ -127,6 +159,15 @@ export const FeedScreen = () => {
             fontSize: 14,
             fontWeight: 'bold',
             color: '#FFFFFF',
+        },
+        menuOverlay: {
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 999,
         },
         pageTitleContainer: {
             alignItems: 'center',
@@ -440,7 +481,7 @@ export const FeedScreen = () => {
                 post={item}
                 onPress={() => setSelectedPostId(interactionId)}
                 onLike={() => handleLike(item)}
-                onComment={() => (navigation as any).navigate('PostDetail', { postId: interactionId, autoFocusComment: true })}
+                onComment={() => (navigation as any).navigate('PostDetail', { postId: interactionId, autoFocusComment: false })}
                 onRepost={() => handleRepostPress(item)}
                 onDelete={user && user.username === item.user.username ? () => handleDelete(item) : undefined}
                 onUserPress={(userId) => (navigation as any).navigate('OtherProfile', { userId: userId || item.user.id })}
@@ -456,14 +497,8 @@ export const FeedScreen = () => {
             <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={() => (navigation as any).navigate('Profile')}>
-                        {user?.avatar_url ? (
-                            <Image source={{ uri: user.avatar_url }} style={styles.headerAvatar} />
-                        ) : (
-                            <View style={styles.headerAvatarPlaceholder}>
-                                <Text style={styles.headerAvatarText}>{user?.username?.charAt(0).toUpperCase()}</Text>
-                            </View>
-                        )}
+                    <TouchableOpacity onPress={toggleMenu} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Icon name="menu" size={24} color={theme.colors.text} />
                     </TouchableOpacity>
                 </View>
                 <View style={styles.pageTitleContainer}>
@@ -474,14 +509,10 @@ export const FeedScreen = () => {
                 </View>
                 <View style={styles.headerRight}>
                     <TouchableOpacity
-                        onPress={() => setThemeModalVisible(true)}
+                        onPress={() => setIsSearchVisible(!isSearchVisible)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                        <ThemeIcon
-                            name={themeMode === 'auto' ? 'color-wand-outline' : (themeMode === 'dark' ? 'moon' : 'sunny')}
-                            size={24}
-                            color={theme.colors.text}
-                        />
+                        <ThemeIcon name="search" size={24} color={theme.colors.text} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -543,24 +574,17 @@ export const FeedScreen = () => {
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity
-                    onPress={() => {
-                        setIsSearchVisible(!isSearchVisible);
-                        if (isSearchVisible) {
-                            setSearchQuery(''); // Clear search when closing
-                        }
-                    }}
+                    onPress={() => (navigation as any).navigate('Inbox')}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={{ paddingVertical: 12 }}
                 >
-                    <ThemeIcon
-                        name={isSearchVisible ? "close" : "search"}
-                        size={20}
-                        color={theme.colors.text}
-                    />
+                    <View>
+                        <Icon name="bubble" size={24} color={theme.colors.text} />
+                        <UnreadBadge />
+                    </View>
                 </TouchableOpacity>
             </View>
 
-            {isLoading && !refreshing ? (
+            {isLoading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
@@ -568,67 +592,71 @@ export const FeedScreen = () => {
                 <FlatList
                     data={feed}
                     renderItem={renderItem}
-                    keyExtractor={item => item.id.toString()}
+                    keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.listContainer}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Icon name="social-dropbox" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
-                            <Text style={styles.emptyText}>Henüz gönderi yok.</Text>
-                        </View>
-                    }
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
                     }
-                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Icon name="ghost" size={40} color={theme.colors.textSecondary} />
+                            <Text style={styles.emptyText}>Henüz içerik yok</Text>
+                        </View>
+                    }
                 />
             )}
 
-            {/* New Post Menu */}
-            {newPostMenuVisible && (
-                <View style={styles.newPostMenu}>
-                    <TouchableOpacity
-                        style={styles.newPostMenuItem}
-                        onPress={() => {
-                            setNewPostMenuVisible(false);
-                            (navigation as any).navigate('CreateQuote', { mode: 'thought' });
-                        }}
-                    >
-                        <Icon name="bubble" size={20} color={theme.colors.text} style={{ marginRight: 12 }} />
-                        <Text style={styles.newPostMenuText}>Düşünceni Paylaş</Text>
-                    </TouchableOpacity>
-                    <View style={styles.menuDivider} />
-                    <TouchableOpacity
-                        style={styles.newPostMenuItem}
-                        onPress={() => {
-                            setNewPostMenuVisible(false);
-                            (navigation as any).navigate('CreateQuote', { mode: 'quote' });
-                        }}
-                    >
-                        <Icon name="book-open" size={20} color={theme.colors.text} style={{ marginRight: 12 }} />
-                        <Text style={styles.newPostMenuText}>Alıntı/İnceleme Yap</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
+            {/* Floating Action Button */}
             <TouchableOpacity
                 style={styles.fab}
-                onPress={() => setNewPostMenuVisible(!newPostMenuVisible)}
+                onPress={() => setNewPostMenuVisible(true)}
                 activeOpacity={0.8}
             >
-                <Icon name={newPostMenuVisible ? "close" : "pencil"} size={24} color="#FFFFFF" />
+                <Icon name="pencil" size={24} color="#FFF" />
             </TouchableOpacity>
+
+            {/* Modals */}
+            {/* New Post Menu */}
+            {newPostMenuVisible && (
+                <TouchableWithoutFeedback onPress={() => setNewPostMenuVisible(false)}>
+                    <View style={styles.menuOverlay}>
+                        <View style={styles.newPostMenu}>
+                            <TouchableOpacity
+                                style={styles.newPostMenuItem}
+                                onPress={() => {
+                                    setNewPostMenuVisible(false);
+                                    (navigation as any).navigate('CreateQuote', { mode: 'thought' });
+                                }}
+                            >
+                                <Icon name="bubble" size={20} color={theme.colors.text} style={{ marginRight: 12 }} />
+                                <Text style={styles.newPostMenuText}>Düşünceni paylaş</Text>
+                            </TouchableOpacity>
+                            <View style={styles.menuDivider} />
+                            <TouchableOpacity
+                                style={styles.newPostMenuItem}
+                                onPress={() => {
+                                    setNewPostMenuVisible(false);
+                                    (navigation as any).navigate('CreateQuote', { mode: 'quote' });
+                                }}
+                            >
+                                <Icon name="book-open" size={20} color={theme.colors.text} style={{ marginRight: 12 }} />
+                                <Text style={styles.newPostMenuText}>Alıntı/İnceleme yap</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
+            )}
+
+            {/* SideMenu is now handled globally, so we don't render it here */}
 
             <RepostMenu
                 visible={repostMenuVisible}
                 onClose={() => setRepostMenuVisible(false)}
-                onRepost={handleDirectRepost}
-                onQuote={handleQuoteRepost}
+                onDirectRepost={handleDirectRepost}
+                onQuoteRepost={handleQuoteRepost}
             />
 
-            <ThemeSelectorModal
-                visible={themeModalVisible}
-                onClose={() => setThemeModalVisible(false)}
-            />
+
         </View>
     );
 };

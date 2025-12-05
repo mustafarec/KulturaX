@@ -26,7 +26,7 @@ export const NotificationScreen = () => {
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
-    const { fetchUnreadCount } = useNotification();
+    const { fetchUnreadCount, decrementUnreadCount } = useNotification();
 
     const fetchNotifications = async () => {
         if (!user) return;
@@ -36,10 +36,13 @@ export const NotificationScreen = () => {
 
         try {
             const data = await notificationService.getNotifications(user.id);
-            console.log('Notification data:', JSON.stringify(data, null, 2));
             // Ensure data is an array and filter out message notifications
             const validData = Array.isArray(data) ? data : [];
-            const filteredData = validData.filter(n => n.type !== 'message');
+            const mappedData = validData.map((n: any) => ({
+                ...n,
+                is_read: n.is_read == 1 || n.is_read === '1' || n.is_read === true
+            }));
+            const filteredData = mappedData.filter(n => n.type !== 'message');
             setNotifications(filteredData);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
@@ -92,7 +95,9 @@ export const NotificationScreen = () => {
                     prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
                 );
                 // Update global unread count
-                fetchUnreadCount();
+                decrementUnreadCount();
+                // Also fetch to be sure (optional, maybe delayed)
+                // fetchUnreadCount();
             } catch (error) {
                 console.error('Failed to mark as read:', error);
             }
@@ -100,16 +105,26 @@ export const NotificationScreen = () => {
 
         // Navigate based on type
         try {
-            const data = item.data ? JSON.parse(item.data) : null;
-            if (item.type === 'like' || item.type === 'comment' || item.type === 'reply' || item.type === 'repost') {
-                if (data.post_id) {
+            let data: any = null;
+            if (typeof item.data === 'string') {
+                try {
+                    data = JSON.parse(item.data);
+                } catch (e) {
+                    // console.error('JSON parse error:', e);
+                }
+            } else {
+                data = item.data;
+            }
+
+            if (item.type === 'like' || item.type === 'comment' || item.type === 'reply' || item.type === 'repost' || item.type === 'quote') {
+                if (data && data.post_id) {
                     (navigation as any).navigate('PostDetail', {
                         postId: data.post_id,
-                        autoFocusComment: item.type === 'comment' || item.type === 'reply'
+                        autoFocusComment: false
                     });
                 }
             } else if (item.type === 'message') {
-                if (data.sender_id) {
+                if (data && data.sender_id) {
                     (navigation as any).navigate('Chat', {
                         otherUserId: data.sender_id,
                         otherUserName: item.sender_username,
@@ -117,12 +132,12 @@ export const NotificationScreen = () => {
                     });
                 }
             } else if (item.type === 'follow') {
-                if (data.sender_id) {
+                if (data && data.sender_id) {
                     (navigation as any).navigate('OtherProfile', { userId: data.sender_id });
                 }
             }
         } catch (e) {
-            console.error('Error parsing notification data:', e);
+            console.error('Error handling notification press:', e);
         }
     };
 

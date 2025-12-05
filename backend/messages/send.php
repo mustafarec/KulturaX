@@ -31,6 +31,14 @@ if(
     $stmt->bindParam(':content', $data->content);
 
     if($stmt->execute()){
+        // 4. Auto-accept permission: Eğer ben mesaj atıyorsam, karşı tarafın bana mesaj atmasını kabul etmişimdir.
+        // Bu sayede takipleşme bitse bile konuşma gelen kutumda kalır.
+        $permQuery = "INSERT INTO message_permissions (user_id, partner_id, status) VALUES (:sender_id, :receiver_id, 'accepted') ON DUPLICATE KEY UPDATE status = 'accepted'";
+        $permStmt = $conn->prepare($permQuery);
+        $permStmt->bindParam(':sender_id', $data->sender_id);
+        $permStmt->bindParam(':receiver_id', $data->receiver_id);
+        $permStmt->execute();
+
         http_response_code(201);
         echo json_encode(array("message" => "Message sent."));
         

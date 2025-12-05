@@ -64,6 +64,22 @@ try {
     $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
     $image_url = isset($data->image_url) ? filter_var($data->image_url, FILTER_SANITIZE_URL) : null;
 
+    // Duplicate Repost Check
+    // Sadece repost (alıntı metni olmayan) için kontrol et
+    if ($original_post_id && empty($quote_text)) {
+        $checkDupQuery = "SELECT id FROM posts WHERE user_id = :user_id AND original_post_id = :original_post_id AND (quote_text IS NULL OR quote_text = '')";
+        $checkDupStmt = $conn->prepare($checkDupQuery);
+        $checkDupStmt->bindParam(':user_id', $userId);
+        $checkDupStmt->bindParam(':original_post_id', $original_post_id);
+        $checkDupStmt->execute();
+
+        if ($checkDupStmt->rowCount() > 0) {
+            http_response_code(400);
+            echo json_encode(array("message" => "Bu gönderiyi zaten paylaştınız."));
+            exit;
+        }
+    }
+
     $query = "INSERT INTO posts (user_id, content, quote_text, comment_text, source, author, original_post_id, content_type, content_id, image_url) VALUES (:user_id, :content, :quote_text, :comment_text, :source, :author, :original_post_id, :content_type, :content_id, :image_url)";
     $stmt = $conn->prepare($query);
 
@@ -79,8 +95,17 @@ try {
     $stmt->bindParam(':image_url', $image_url);
 
     if($stmt->execute()){
+        $newPostId = $conn->lastInsertId();
+
+        // Bildirim Mantığı (Repost ve Alıntı için)
+        if ($original_post_id) {
+            include_once '../notifications/notification_helper.php';
+            $notifType = !empty($quote_text) ? 'quote' : 'repost';
+            sendRepostNotification($conn, $userId, $newPostId, $original_post_id, $notifType);
+        }
+
         http_response_code(201);
-        echo json_encode(array("message" => "Gönderi oluşturuldu.", "post_id" => $conn->lastInsertId()));
+        echo json_encode(array("message" => "Gönderi oluşturuldu.", "post_id" => $newPostId));
     } else {
         http_response_code(503);
         echo json_encode(array("message" => "Gönderi oluşturulamadı."));

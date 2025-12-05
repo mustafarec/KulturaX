@@ -11,27 +11,41 @@ import { MovieDetailScreen } from '../screens/content/MovieDetailScreen';
 import { ContentDetailScreen } from '../screens/content/ContentDetailScreen';
 import { ConcertScreen } from '../screens/content/ConcertScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
+import { ChatDetailScreen } from '../screens/main/ChatDetailScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
 import { OtherProfileScreen } from '../screens/main/OtherProfileScreen';
 import { PostDetailScreen } from '../screens/main/PostDetailScreen';
 import { CreatorDetailScreen } from '../screens/content/CreatorDetailScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { VerificationScreen } from '../screens/auth/VerificationScreen';
-import { theme } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import { navigationRef } from '../services/NavigationService';
 
 const Stack = createNativeStackNavigator();
 
+import { SideMenuProvider } from '../context/SideMenuContext';
+import { DrawerLayout } from '../components/DrawerLayout';
+
+const MainWithDrawer = () => (
+    <SideMenuProvider>
+        <DrawerLayout>
+            <TabNavigator />
+        </DrawerLayout>
+    </SideMenuProvider>
+);
+
 export const AppNavigator = () => {
-    const { user } = useAuth(); // Assuming user state is managed by a hook
+    const { user } = useAuth();
+    const { theme } = useTheme();
 
     return (
         <NavigationContainer ref={navigationRef}>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {user ? (
                     <>
-                        <Stack.Screen name="Main" component={TabNavigator} />
+                        <Stack.Screen name="Main" component={MainWithDrawer} />
                         <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
+                        <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
                         <Stack.Screen name="Messages" component={MessageScreen} options={{ headerShown: false }} />
 
                         <Stack.Screen name="OtherProfile" component={OtherProfileScreen} options={{ headerShown: false }} />

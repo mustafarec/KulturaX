@@ -252,9 +252,9 @@ export const messageService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    getInbox: async (userId: number) => {
+    getInbox: async (userId: number, type: 'inbox' | 'requests' = 'inbox') => {
         try {
-            const response = await backendApi.get(`/messages/inbox.php?user_id=${userId}`);
+            const response = await backendApi.get(`/messages/inbox.php?user_id=${userId}&type=${type}`);
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -271,6 +271,22 @@ export const messageService = {
     markMessagesRead: async (userId: number, otherUserId: number) => {
         try {
             const response = await backendApi.post('/messages/mark_read.php', { user_id: userId, other_user_id: otherUserId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    acceptRequest: async (userId: number, partnerId: number) => {
+        try {
+            const response = await backendApi.post('/messages/accept_request.php', { user_id: userId, partner_id: partnerId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    declineRequest: async (userId: number, partnerId: number) => {
+        try {
+            const response = await backendApi.post('/messages/decline_request.php', { user_id: userId, partner_id: partnerId });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');

@@ -1,16 +1,15 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { FeedScreen } from '../screens/main/FeedScreen';
 import { DiscoveryScreen } from '../screens/main/DiscoveryScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
-import { InboxScreen } from '../screens/social/InboxScreen';
+import { MessageScreen } from '../screens/main/MessageScreen';
 import { NotificationScreen } from '../screens/main/NotificationScreen';
 import { useTheme } from '../context/ThemeContext'; // Import useTheme
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import { useAuth } from '../context/AuthContext';
-import { useMessage } from '../context/MessageContext';
 import { useNotification } from '../context/NotificationContext';
 
 const Tab = createBottomTabNavigator();
@@ -35,7 +34,7 @@ export const TabNavigator = () => {
                     elevation: 0, // Remove default elevation to handle shadow manually if needed
                     paddingBottom: 15,
                     paddingTop: 10,
-                    paddingHorizontal: 10,
+                    // paddingHorizontal: 10, // Kaldırıldı
                     alignItems: 'center',
                     justifyContent: 'center',
                 },
@@ -98,39 +97,6 @@ export const TabNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name="Inbox"
-                component={InboxScreen}
-                options={{
-                    tabBarIcon: ({ color }) => {
-                        const { unreadCount } = useMessage();
-                        return (
-                            <View>
-                                <Icon name="bubble" size={24} color={color} />
-                                {unreadCount > 0 && (
-                                    <View style={{
-                                        position: 'absolute',
-                                        right: -6,
-                                        top: -4,
-                                        backgroundColor: theme.colors.error,
-                                        borderRadius: 10,
-                                        minWidth: 18,
-                                        height: 18,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        borderWidth: 2,
-                                        borderColor: theme.colors.surface,
-                                    }}>
-                                        <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>
-                                            {unreadCount > 99 ? '99+' : unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        );
-                    },
-                }}
-            />
-            <Tab.Screen
                 name="Notifications"
                 component={NotificationScreen}
                 options={{
@@ -170,9 +136,17 @@ export const TabNavigator = () => {
                     tabBarIcon: ({ color }) => {
                         const { user } = useAuth();
                         const showBadge = user && user.is_email_verified == 0;
+
                         return (
                             <View>
-                                <Icon name="user" size={24} color={color} />
+                                {user?.avatar_url ? (
+                                    <Image
+                                        source={{ uri: user.avatar_url }}
+                                        style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: color }}
+                                    />
+                                ) : (
+                                    <Icon name="user" size={24} color={color} />
+                                )}
                                 {showBadge && (
                                     <View style={{
                                         position: 'absolute',
@@ -189,6 +163,14 @@ export const TabNavigator = () => {
                             </View>
                         );
                     },
+                }}
+            />
+            <Tab.Screen
+                name="Inbox"
+                component={MessageScreen}
+                options={{
+                    tabBarButton: () => null,
+                    tabBarItemStyle: { display: 'none' }, // Layout'ta yer kaplamaması için
                 }}
             />
         </Tab.Navigator>

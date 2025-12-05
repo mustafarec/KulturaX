@@ -485,12 +485,82 @@ export const CreateQuoteScreen = () => {
                     {originalPost ? (
                         <View style={styles.quotePreview}>
                             <View style={styles.originalPostContainer}>
-                                <QuoteCard
-                                    text={originalPost.content}
-                                    source={originalPost.source}
-                                    author={originalPost.author !== originalPost.user.username ? originalPost.author : undefined}
-                                    variant="compact"
-                                />
+                                {(() => {
+                                    // Content Parsing Logic (Ported from PostCard)
+                                    let displayComment = '';
+                                    let displayQuote = '';
+                                    const post = originalPost;
+
+                                    if (post.quote_text != null || post.comment_text != null) {
+                                        displayQuote = post.quote_text || '';
+                                        displayComment = post.comment_text || '';
+                                    } else if (post.content) {
+                                        try {
+                                            if (post.content.startsWith('{')) {
+                                                const parsed = JSON.parse(post.content);
+                                                if (parsed.quote !== undefined) {
+                                                    displayComment = parsed.comment;
+                                                    displayQuote = parsed.quote;
+                                                } else {
+                                                    displayQuote = post.content;
+                                                }
+                                            } else {
+                                                if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
+                                                    displayQuote = post.content;
+                                                } else {
+                                                    displayComment = post.content;
+                                                }
+                                            }
+                                        } catch (e) {
+                                            if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
+                                                displayQuote = post.content;
+                                            } else {
+                                                displayComment = post.content;
+                                            }
+                                        }
+                                    }
+
+                                    return (
+                                        <View style={{ padding: 12 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                                {post.user.avatar_url ? (
+                                                    <Image source={{ uri: post.user.avatar_url }} style={{ width: 24, height: 24, borderRadius: 12, marginRight: 8 }} />
+                                                ) : (
+                                                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.secondary, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+                                                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
+                                                            {post.user.username ? post.user.username.charAt(0).toUpperCase() : '?'}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                <View>
+                                                    <Text style={{ fontWeight: 'bold', color: theme.colors.text, fontSize: 14 }}>
+                                                        {post.user.full_name || post.user.username}
+                                                    </Text>
+                                                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                                                        @{post.user.username}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {displayComment ? (
+                                                <Text style={{ color: theme.colors.text, fontSize: 14, marginBottom: 8, lineHeight: 20 }}>
+                                                    {displayComment}
+                                                </Text>
+                                            ) : null}
+
+                                            {(displayQuote || (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music')) && (
+                                                <QuoteCard
+                                                    text={displayQuote}
+                                                    source={post.source === 'Paylaşım' ? 'Gönderi' : post.source}
+                                                    author={post.author !== post.user.username ? post.author : undefined}
+                                                    variant="compact"
+                                                    imageUrl={post.image_url}
+                                                    status={post.content_type === 'book' ? 'Kitabı okuyor' : undefined}
+                                                />
+                                            )}
+                                        </View>
+                                    );
+                                })()}
                             </View>
                         </View>
                     ) : (

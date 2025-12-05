@@ -410,7 +410,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                                 <QuoteCard
                                     // Normal post (Direct share)
                                     text={displayQuote}
-                                    source={displayPost.source}
+                                    source={displayPost.source === 'Paylaşım' ? 'Gönderi' : displayPost.source}
                                     author={displayPost.author}
                                     variant="compact"
                                     imageUrl={displayPost.image_url}

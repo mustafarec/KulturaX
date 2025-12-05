@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ana Sayfa Akışı</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"/>
+<!-- BEGIN: Custom Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'app-bg': '#121212',
+            'card-bg': '#1E1E1E',
+            'card-item-bg': '#2C2C2C',
+            'action-bg': '#2A2A2A',
+            'action-bg-hover': '#3a3a3a',
+            'text-primary': '#FFFFFF',
+            'text-secondary': '#B3B3B3',
+            'accent': '#FFFFFF',
+          }
+        }
+      }
+    }
+  </script>
+<!-- END: Custom Tailwind Configuration -->
+<!-- BEGIN: Base Styles -->
+<style data-purpose="base-styles">
+    /* Applying the background color and ensuring the app feels native */
+    body {
+      background-color: #121212;
+      color: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    }
+  </style>
+<!-- END: Base Styles -->
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-app-bg text-text-primary">
+<div class="max-w-md mx-auto relative min-h-screen" id="app-container">
+<!-- BEGIN: MainHeader -->
+<header class="bg-app-bg sticky top-0 z-10 px-4 pt-12 pb-4" data-purpose="page-header">
+<!-- Header top bar with icons -->
+<div class="flex justify-between items-center mb-4">
+<h1 class="text-4xl font-bold">Ana Sayfa Akışı</h1>
+<div class="flex items-center space-x-6 text-2xl">
+<i class="fas fa-search"></i>
+<i class="fas fa-user-circle"></i>
+</div>
+</div>
+<!-- Category navigation -->
+<nav data-purpose="category-filter">
+<ul class="flex items-center space-x-2">
+<li><a class="block bg-gray-700 text-white font-semibold px-4 py-2 rounded-full" href="#">Trendler</a></li>
+<li><a class="block text-text-secondary font-semibold px-4 py-2 rounded-full hover:bg-gray-700" href="#">Film</a></li>
+<li><a class="block text-text-secondary font-semibold px-4 py-2 rounded-full hover:bg-gray-700" href="#">Kitap</a></li>
+<li><a class="block text-text-secondary font-semibold px-4 py-2 rounded-full hover:bg-gray-700" href="#">Müzik</a></li>
+</ul>
+</nav>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: ContentFeed -->
+<main class="px-4 pb-28" data-purpose="content-feed">
+<div class="space-y-4">
+<!-- BEGIN: Post 1 (Text) -->
+<article class="bg-card-bg p-4 rounded-xl" data-purpose="feed-post">
+<!-- Post Header -->
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center space-x-3">
+<img alt="bookworm_jane avatar" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgfHelfKoKQ7fyHqigIV2O9cH53o0iXwDXelEQ56mpzXDQCqwoLUxXb3Jsl6M3uOtoEtFp9aVA2EpX70PDB0eQPm3b1blR8BQBpQw9-hCMCaqs1MqnNzPTYW3YnJ_od_55RDBqLci_6Koh2faBQe_dEBMQriVST6xViyx1EMzgkMxxVGeXSQHNokUXHY0PaFZ6vPulL5artgVuhE8Z-jyOwMttRVjrWU01B-WpOPOfspEJw1bl3RPV8VYdn4PgKxMHkdr21BgzOBS3"/>
+<div>
+<p class="font-bold text-sm">bookworm_jane</p>
+<p class="text-xs text-gray-400">1 sa. önce</p>
+</div>
+</div>
+<button class="text-text-secondary"><i class="fa-solid fa-ellipsis"></i></button>
+</div>
+<!-- Post Content -->
+<div class="text-text-primary text-sm space-y-2 mb-4">
+<p>“Harika işler yapmanın tek yolu, yaptığınız işi sevmektir.” – Steve Jobs</p>
+<p>Bu söz her zaman bana ilham veriyor!</p>
+</div>
+<!-- Post Actions -->
+<div class="flex items-center space-x-2 text-sm">
+<button class="bg-action-bg hover:bg-action-bg-hover text-text-secondary flex items-center space-x-2 px-3 py-1.5 rounded-full">
+<i class="far fa-comment"></i>
+<span>12</span>
+</button>
+<button class="bg-action-bg hover:bg-action-bg-hover text-text-secondary flex items-center space-x-2 px-3 py-1.5 rounded-full">
+<i class="far fa-heart"></i>
+<span>45</span>
+</button>
+<button class="bg-action-bg hover:bg-action-bg-hover text-text-secondary px-3 py-1.5 rounded-full">
+<i class="fas fa-upload"></i>
+</button>
+</div>
+</article>
+<!-- END: Post 1 (Text) -->
+<!-- BEGIN: Post 2 (Movie) -->
+<article class="bg-card-bg p-4 rounded-xl" data-purpose="feed-post">
+<!-- Post Header -->
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center space-x-3">
+<img alt="cinephile_mark avatar" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKMH7Ozsi0rR0PQtRcepl7whhR8EL-Zza-E4vh_YWgbeArOcpNQ494xWY3_FNah71na3No4OMw_NY-tl9SQ6IUsi9g6J_ZDEW0MiHQg2_jpxz-OJG8MAXioJtLGzWo51x2LNcVYRXToaG883qIRAF3MWzVVYUrwWiF_GfbERSs55q0UB-JNxkp_9arR0SWEyq43FACSgcEKZqY42UBhgHj4ktvmIPJv8fJawTX5M2PO15jKMhWWcuCjnckVhOdbqUuBnuS9y6Q1oXa"/>
+<div>
+<p class="font-bold text-sm">cinephile_mark</p>
+<p class="text-xs text-gray-400">3 sa. önce</p>
+</div>
+</div>
+<button class="text-text-secondary"><i class="fa-solid fa-ellipsis"></i></button>
+</div>
+<!-- Post Content -->
+<div class="space-y-3 mb-4">
+<!-- Embedded movie card -->
+<div class="bg-card-item-bg p-3 rounded-lg flex items-center space-x-4">
+<div class="relative w-16 h-16 flex-shrink-0">
+<img alt="Inception movie poster" class="w-full h-full object-cover rounded-md" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvqjO7ZJ34u_HIwXLUdjBtzBn1wH6LzoZhICpJm1FVSsaZ-E95NeZ1uh8DEZc3jV5jEol0eEszkPIt46qxO92GQU2rqRwtyAq97YdUiyTwOiQjmUny67c4t3-elwn2FP2NcmupFXmdi0dKgdV0TepLoEwD4NAxgdeckvywRF0aKtOFvSNE4CgBi7cTeBzhjcTx0-760sirrFeDSOa5m23CxFptERP90Gf1onzVQgRlN41v8W7rECrXkWCHxWcZj8F_YHZI31In45P8"/>
+<span class="absolute bottom-1 left-1 text-white text-[8px] font-bold bg-black bg-opacity-50 px-1 rounded-sm">INCEPTION</span>
+</div>
+<div>
+<p class="font-semibold">Başlangıç</p>
+<p class="text-sm text-text-secondary">Christopher Nolan</p>
+</div>
+</div>
+<p class="text-text-primary text-sm">Bu film tam bir başyapıt, tekrar izlemeliyim.</p>
+</div>
+<!-- Post Actions -->
+<div class="flex items-center space-x-2 text-sm">
+<button class="bg-action-bg hover:bg-action-bg-hover text-text-secondary flex items-center space-x-2 px-3 py-1.5 rounded-full">
+<i class="far fa-comment"></i>
+<span>8</span>
+</button>
+<button class="bg-action-bg hover:bg-action-bg-hover text-text-secondary flex items-center space-x-2 px-3 py-1.5 rounded-full">
+<i class="far fa-heart"></i>
+<span>32</span>
+</button>
+<button class="bg-action-bg hover:bg-action-bg-hover text-text-secondary px-3 py-1.5 rounded-full">
+<i class="fas fa-upload"></i>
+</button>
+</div>
+</article>
+<!-- END: Post 2 (Movie) -->
+<!-- BEGIN: Post 3 (Music) -->
+<article class="bg-card-bg p-4 rounded-xl" data-purpose="feed-post">
+<!-- Post Header -->
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center space-x-3">
+<img alt="music_fan_alex avatar" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC22PYbegEXK_0OjkwilZh4pjEVV7u3fUgXiFkYCiwBtngsUOmFT-MiXOugWqlVhHsLP7EPlM_ZCbhGKkX8x3v2H7vDGGUKgGuux3gZV7z8M8fDQgGEJb-Qr2z5lEiJ2inwk7S9gn91B1Ugls9IG9a3WK9XXU1XMHOlZpcY05-mbIQXTdOsXa_Sx6RtJGuzB2Q8qCK-pUMR9Z_KVs2XKObWm4zVAcT4KdxbQ4Z6W-tG4dUl0EgPSNQO6GJTIhIBBqdHNri_-Olsyn5f"/>
+<div>
+<p class="font-bold text-sm">music_fan_alex</p>
+<p class="text-xs text-gray-400">5 sa. önce</p>
+</div>
+</div>
+<button class="text-text-secondary"><i class="fa-solid fa-ellipsis"></i></button>
+</div>
+<!-- Post Content -->
+<div class="space-y-3">
+<!-- Embedded music card -->
+<div class="bg-card-item-bg p-3 rounded-lg flex items-center space-x-4">
+<img alt="Bohemian Rhapsody album art" class="w-16 h-16 object-cover rounded-md flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJC8E5aVnU31l-ZgY3NYAEgV34dAKjzBl_oN6qXT7HUAKvHq_yQ8cnujgtGKwFvFUxw135Xq0qC5T373_xX7hqHZZsjNYFPWBld2fiaGx3YOHpq7aSdbDE744KgwFwthdTMVYK7f5RdUgpeqddAgFYpWlPB-Icq4UrkcoEC0QA6gTA5dZjiQ8ctYMIM_zVOMp5db6xDk_eXZA7IBmLYz-UBp42JJy0sQXiyi7sxkN1x86rdP8WaSsvXdg0HMwYNnNlesRU8sjKOUl3"/>
+<div>
+<p class="font-semibold">Bohemian Rhapsody</p>
+<p class="text-sm text-text-secondary">Queen</p>
+</div>
+</div>
+<p class="text-text-primary text-sm">Efsane bir şarkı, asla eskimez.</p>
+</div>
+</article>
+<!-- END: Post 3 (Music) -->
+</div>
+</main>
+<!-- END: ContentFeed -->
+<!-- BEGIN: FloatingActionButton -->
+<div class="fixed bottom-24 right-6 z-20" data-purpose="floating-action-button">
+<button class="text-app-bg w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-gray-200">
+<i class="fas fa-plus text-2xl"></i>
+</button>
+</div>
+<!-- END: FloatingActionButton -->
+<!-- BEGIN: BottomNavigationBar -->
+<footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card-bg border-t border-gray-700" data-purpose="bottom-navigation">
+<nav class="flex justify-around items-start pt-2 pb-8">
+<a aria-current="page" class="flex flex-col items-center text-accent w-1/4" href="#">
+<i class="fas fa-home text-xl mb-1"></i>
+<span class="text-xs font-semibold">Ana Sayfa</span>
+</a>
+<a class="flex flex-col items-center text-text-secondary w-1/4" href="#">
+<i class="fas fa-search text-xl mb-1"></i>
+<span class="text-xs">Ara</span>
+</a>
+<a class="flex flex-col items-center text-text-secondary w-1/4" href="#">
+<i class="fas fa-bell text-xl mb-1"></i>
+<span class="text-xs">Bildirimler</span>
+</a>
+<a class="flex flex-col items-center text-text-secondary w-1/4" href="#">
+<i class="fas fa-user text-xl mb-1"></i>
+<span class="text-xs">Profil</span>
+</a>
+</nav>
+</footer>
+<!-- END: BottomNavigationBar -->
+</div>
+</body></html><!-- MISSING_IMAGES:
+- User avatar for bookworm_jane
+- User avatar for cinephile_mark
+- Movie poster for Inception
+- User avatar for music_fan_alex
+- Album art for Bohemian Rhapsody
+-->
