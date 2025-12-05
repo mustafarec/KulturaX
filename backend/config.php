@@ -43,4 +43,23 @@ define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
 
 define('GENIUS_ACCESS_TOKEN', $env['GENIUS_ACCESS_TOKEN'] ?? '');
 define('TICKETMASTER_API_KEY', $env['TICKETMASTER_API_KEY'] ?? '');
+
+/**
+ * Get Client IP Address
+ * Handles Cloudflare and Proxy headers
+ */
+function getClientIp() {
+    if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
+        $_SERVER['REMOTE_ADDR'] = $_SERVER["HTTP_CF_CONNECTING_IP"];
+        return $_SERVER["HTTP_CF_CONNECTING_IP"];
+    }
+    
+    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // Handle multiple IPs in X-Forwarded-For (take the first one)
+        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($ips[0]);
+    }
+    
+    return $_SERVER['REMOTE_ADDR'];
+}
 ?>

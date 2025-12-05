@@ -5,12 +5,30 @@ header("Access-Control-Allow-Methods: GET");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
 include_once '../config.php';
+include_once '../rate_limiter.php';
+include_once '../lib/cache_manager.php';
+
+// Rate Limiting: 300 requests per minute
+$ip = getClientIp();
+checkRateLimit($conn, $ip, 'spotify_track', 300, 60);
 
 $id = isset($_GET['id']) ? $_GET['id'] : '';
 
 if (empty($id)) {
     http_response_code(400);
     echo json_encode(array("error" => "Track ID is required"));
+    exit;
+}
+
+// Cache Check
+$cache = new CacheManager($conn);
+$cacheKey = "spotify_track_" . $id;
+$cacheTTL = 604800; // 1 week
+
+$cachedData = $cache->get('spotify', $cacheKey);
+if ($cachedData) {
+    header('X-Cache-Status: HIT');
+    echo json_encode($cachedData);
     exit;
 }
 
@@ -67,6 +85,10 @@ if ($httpCode === 200) {
         "preview_url" => $track['preview_url'],
         "external_url" => $track['external_urls']['spotify']
     );
+
+    // Save to Cache
+    $cache->set('spotify', $cacheKey, $result, $cacheTTL);
+    header('X-Cache-Status: MISS');
 
     echo json_encode($result);
 } else {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions, ImageBackground } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { postService, libraryService, API_URL } from '../../services/backendApi';
+import { postService, libraryService, userService, API_URL } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
 import { ReviewCard } from '../../components/ReviewCard';
@@ -25,6 +25,7 @@ export const ProfileScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [nowPlaying, setNowPlaying] = useState<any>(null);
+    const [profileStats, setProfileStats] = useState({ follower_count: 0, following_count: 0 });
 
     // Mock Header Image (Random Library/Aesthetic)
     const headerImage = user?.header_image_url || 'https://images.unsplash.com/photo-1507842217121-9e96e4430330?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
@@ -68,11 +69,25 @@ export const ProfileScreen = () => {
         }
     };
 
+    const fetchProfileStats = async () => {
+        if (!user) return;
+        try {
+            const data = await userService.getUserProfile(user.id);
+            setProfileStats({
+                follower_count: data.follower_count || 0,
+                following_count: data.following_count || 0
+            });
+        } catch (error) {
+            console.error('Stats fetch error:', error);
+        }
+    };
+
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         fetchUserPosts();
         fetchLibraryItems();
         fetchNowPlaying();
+        fetchProfileStats();
     }, []);
 
     useEffect(() => {
@@ -80,6 +95,7 @@ export const ProfileScreen = () => {
             fetchUserPosts();
             fetchLibraryItems();
             fetchNowPlaying();
+            fetchProfileStats();
             const interval = setInterval(fetchNowPlaying, 30000);
             return () => clearInterval(interval);
         }
@@ -159,11 +175,11 @@ export const ProfileScreen = () => {
     };
 
     // Helper Components
-    const StatItem = ({ number, label }: { number: number, label: string }) => (
-        <View style={styles.statItem}>
+    const StatItem = ({ number, label, onPress }: { number: number, label: string, onPress?: () => void }) => (
+        <TouchableOpacity style={styles.statItem} onPress={onPress} disabled={!onPress}>
             <Text style={styles.statNumber}>{number}</Text>
             <Text style={styles.statLabel}>{label}</Text>
-        </View>
+        </TouchableOpacity>
     );
 
     const TabButton = ({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
@@ -512,8 +528,16 @@ export const ProfileScreen = () => {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
                     <StatItem number={userPosts.length} label="Gönderi" />
                     <StatItem number={libraryItems.filter(i => i.status === 'read').length} label="Kitap" />
-                    <StatItem number={0} label="Takipçi" />
-                    <StatItem number={0} label="Takip" />
+                    <StatItem
+                        number={profileStats.follower_count}
+                        label="Takipçi"
+                        onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'followers' })}
+                    />
+                    <StatItem
+                        number={profileStats.following_count}
+                        label="Takip"
+                        onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'following' })}
+                    />
                     <StatItem number={0} label="İnceleme" />
                 </ScrollView>
 

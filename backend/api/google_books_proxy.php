@@ -1,39 +1,36 @@
 <?php
 /**
- * Google Books API Proxy
+ * Google Books API Proxy with Caching
  * Frontend'in API anahtarına erişmesini engeller
- * Auth opsiyonel - public API, sadece anahtarı koruyoruz
+ * Yüksek trafik için yanıtları önbelleğe alır
  */
 
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../config.php';
 include_once '../rate_limiter.php';
+include_once '../lib/cache_manager.php';
 
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
 // Rate Limiting: IP başına dakikada 60 istek
-$ip = $_SERVER['REMOTE_ADDR'];
+$ip = getClientIp();
 checkRateLimit($conn, $ip, 'google_books_api', 60, 60);
+
+// Cache Manager'ı başlat
+$cache = new CacheManager($conn);
 
 // .env dosyasından API anahtarını al (opsiyonel - Google Books public API)
 $envFile = __DIR__ . '/../.env';
 $googleApiKey = '';
-$debugInfo = array();
 
-$debugInfo['env_file_path'] = $envFile;
-$debugInfo['env_file_exists'] = file_exists($envFile);
-
-if (file_exists($envFile)) {
+if (file_exists($envFile) && is_readable($envFile)) {
     $env = parse_ini_file($envFile);
-    if ($env === false) {
-        $debugInfo['parse_error'] = 'parse_ini_file failed';
-    } else {
-        $googleApiKey = $env['GOOGLE_BOOKS_API_KEY'] ?? '';
-        $debugInfo['key_found'] = isset($env['GOOGLE_BOOKS_API_KEY']);
-    }
+    $googleApiKey = $env['GOOGLE_BOOKS_API_KEY'] ?? '';
 }
 
 $baseUrl = 'https://www.googleapis.com/books/v1';
+$cacheKey = '';
+$cacheTTL = 86400; // Varsayılan 1 gün
 
 try {
     switch ($action) {
@@ -56,6 +53,9 @@ try {
             if (!empty($googleApiKey)) {
                 $url .= "&key=$googleApiKey";
             }
+            
+            $cacheKey = "google_books_search_" . md5($query . $orderBy);
+            $cacheTTL = 86400; // 1 gün
             break;
             
         case 'details':
@@ -70,6 +70,9 @@ try {
             if (!empty($googleApiKey)) {
                 $url .= "?key=$googleApiKey";
             }
+            
+            $cacheKey = "google_books_details_" . $id;
+            $cacheTTL = 604800; // 1 hafta
             break;
             
         default:
@@ -78,7 +81,15 @@ try {
             exit;
     }
     
-    // Google Books API'ye istek gönder
+    // 1. Önbelleği kontrol et
+    $cachedData = $cache->get('google_books', $cacheKey);
+    if ($cachedData) {
+        header('X-Cache-Status: HIT');
+        echo json_encode($cachedData);
+        exit;
+    }
+    
+    // 2. Önbellekte yoksa API'ye git
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -89,14 +100,20 @@ try {
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
+    if ($httpCode == 200) {
+        $data = json_decode($response, true);
+        if ($data) {
+            // 3. Yanıtı önbelleğe kaydet
+            $cache->set('google_books', $cacheKey, $data, $cacheTTL);
+            header('X-Cache-Status: MISS');
+        }
+    }
+    
     http_response_code($httpCode);
     echo $response;
     
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(array(
-        "message" => "API hatası: " . $e->getMessage(),
-        "debug" => $debugInfo
-    ));
+    echo json_encode(array("message" => "API hatası: " . $e->getMessage()));
 }
 ?>

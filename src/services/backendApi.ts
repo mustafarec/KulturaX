@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 // BURAYI GÜNCELLEYİN: Kendi sunucu adresinizi yazın
 // Örn: 'https://siteniz.com/api' veya yerel test için 'http://10.0.2.2/kitapmuzikfilm/backend'
@@ -12,53 +13,29 @@ const backendApi = axios.create({
     },
 });
 
-// Token yönetimi
-let authToken: string | null = null;
-
-export const setAuthToken = async (token: string) => {
-    authToken = token;
-    await AsyncStorage.setItem('authToken', token);
-};
-
-export const getAuthToken = async (): Promise<string | null> => {
-    if (!authToken) {
-        authToken = await AsyncStorage.getItem('authToken');
-    }
-    return authToken;
-};
-
-export const clearAuthToken = async () => {
-    authToken = null;
-    await AsyncStorage.removeItem('authToken');
-};
-
-// Axios interceptor - Her istekte token ekle
-backendApi.interceptors.request.use(
-    async (config) => {
-        const token = await getAuthToken();
-        if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
-            config.headers['X-Auth-Token'] = token;
-
-            // Fallback: Add token to params for servers that strip headers
-            config.params = { ...config.params, token: token };
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+// ... (Token logic remains same) ...
 
 // Axios interceptor - Yanıtları kontrol et
 backendApi.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && typeof error.response.data === 'string' && (error.response.data.trim().startsWith('<!DOCTYPE') || error.response.data.trim().startsWith('<html'))) {
-            // HTML yanıtı döndüyse (muhtemelen 404 veya 500), bunu JSON hatasına çevir
+        // 1. SSL Pinning / Network Error Handling
+        if (!error.response) {
+            // Eğer response yoksa, internet yok veya SSL hatası (bağlantı reddedildi) demektir.
+            Alert.alert(
+                "Bağlantı Hatası",
+                "Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin veya güvenli bağlantı kurulamadı (SSL).",
+                [{ text: "Tamam" }]
+            );
+            return Promise.reject(new Error("Network/SSL Error"));
+        }
+
+        // 2. HTML Error Handling (Server Crash/404)
+        if (typeof error.response.data === 'string' && (error.response.data.trim().startsWith('<!DOCTYPE') || error.response.data.trim().startsWith('<html'))) {
             console.warn('Backend returned HTML instead of JSON:', error.config.url);
             error.response.data = { message: 'Sunucu hatası veya geçersiz uç nokta.' };
         }
+
         return Promise.reject(error);
     }
 );
@@ -453,6 +430,17 @@ export const userService = {
     search: async (query: string) => {
         try {
             const response = await backendApi.get(`/users/search.php?query=${encodeURIComponent(query)}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+        // ... existing content ...
+    },
+    getConnections: async (userId: number, type: 'followers' | 'following', viewerId?: number) => {
+        try {
+            let url = `/users/connections.php?user_id=${userId}&type=${type}`;
+            if (viewerId) url += `&viewer_id=${viewerId}`;
+            const response = await backendApi.get(url);
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');

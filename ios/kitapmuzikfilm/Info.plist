@@ -33,6 +33,23 @@
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
+		<key>NSPinnedDomains</key>
+		<dict>
+			<key>mmreeo.online</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSPublicKeys</key>
+				<array>
+					<dict>
+						<key>spki-sha256</key>
+						<string>78ggMZbnTmIU5f47O1O7m9bRSEYYQ3WQqDUefplvYNU=</string>
+					</dict>
+				</array>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+		</dict>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>

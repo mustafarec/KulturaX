@@ -6,6 +6,7 @@ import { TabNavigator } from './TabNavigator';
 import { useAuth } from '../context/AuthContext';
 import { CreateQuoteScreen } from '../screens/social/CreateQuoteScreen';
 import { ChatScreen } from '../screens/social/ChatScreen';
+import { FollowListScreen } from '../screens/social/FollowListScreen';
 import { BookDetailScreen } from '../screens/content/BookDetailScreen';
 import { MovieDetailScreen } from '../screens/content/MovieDetailScreen';
 import { ContentDetailScreen } from '../screens/content/ContentDetailScreen';
@@ -47,6 +48,7 @@ export const AppNavigator = () => {
                         <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
                         <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
                         <Stack.Screen name="Messages" component={MessageScreen} options={{ headerShown: false }} />
+                        <Stack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
 
                         <Stack.Screen name="OtherProfile" component={OtherProfileScreen} options={{ headerShown: false }} />
                         <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ headerShown: false }} />

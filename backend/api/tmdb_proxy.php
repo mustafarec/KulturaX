@@ -1,57 +1,42 @@
 <?php
 /**
- * TMDB API Proxy
+ * TMDB API Proxy with Caching
  * Frontend'in API anahtarına erişmesini engeller
- * Auth opsiyonel - public API, sadece anahtarı koruyoruz
+ * Yüksek trafik için yanıtları önbelleğe alır
  */
 
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../config.php';
 include_once '../rate_limiter.php';
+include_once '../lib/cache_manager.php';
 
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
 // Rate Limiting: IP başına dakikada 300 istek
-$ip = $_SERVER['REMOTE_ADDR'];
+$ip = getClientIp();
 checkRateLimit($conn, $ip, 'tmdb_api', 300, 60);
+
+// Cache Manager'ı başlat
+$cache = new CacheManager($conn);
 
 // .env dosyasından API anahtarını al
 $envFile = __DIR__ . '/../.env';
 $tmdbApiKey = '';
-$debugInfo = array();
 
-$debugInfo['env_file_path'] = $envFile;
-$debugInfo['env_file_exists'] = file_exists($envFile);
-$debugInfo['env_file_readable'] = is_readable($envFile);
-
-if (file_exists($envFile)) {
-    if (is_readable($envFile)) {
-        $env = parse_ini_file($envFile);
-        if ($env === false) {
-            $debugInfo['parse_error'] = 'parse_ini_file failed';
-        } else {
-            $debugInfo['env_keys'] = array_keys($env);
-            $tmdbApiKey = $env['TMDB_API_KEY'] ?? '';
-            $debugInfo['key_found'] = isset($env['TMDB_API_KEY']);
-            $debugInfo['key_empty'] = empty($tmdbApiKey);
-        }
-    } else {
-        $debugInfo['error'] = 'File not readable';
-    }
-} else {
-    $debugInfo['error'] = 'File does not exist';
+if (file_exists($envFile) && is_readable($envFile)) {
+    $env = parse_ini_file($envFile);
+    $tmdbApiKey = $env['TMDB_API_KEY'] ?? '';
 }
 
 if (empty($tmdbApiKey)) {
     http_response_code(500);
-    echo json_encode(array(
-        "message" => "API anahtarı yapılandırılmamış.",
-        "debug" => $debugInfo
-    ));
+    echo json_encode(array("message" => "API anahtarı yapılandırılmamış."));
     exit;
 }
 
 $baseUrl = 'https://api.themoviedb.org/3';
+$cacheKey = '';
+$cacheTTL = 86400; // Varsayılan 1 gün
 
 try {
     switch ($action) {
@@ -63,6 +48,8 @@ try {
                 exit;
             }
             $url = "$baseUrl/search/movie?api_key=$tmdbApiKey&query=$query&language=tr-TR";
+            $cacheKey = "tmdb_search_" . md5($query);
+            $cacheTTL = 86400; // 1 gün
             break;
             
         case 'details':
@@ -73,14 +60,20 @@ try {
                 exit;
             }
             $url = "$baseUrl/movie/$id?api_key=$tmdbApiKey&language=tr-TR&append_to_response=credits";
+            $cacheKey = "tmdb_details_" . $id;
+            $cacheTTL = 604800; // 1 hafta (film detayları nadiren değişir)
             break;
             
         case 'trending':
             $url = "$baseUrl/trending/movie/week?api_key=$tmdbApiKey&language=tr-TR";
+            $cacheKey = "tmdb_trending_week";
+            $cacheTTL = 43200; // 12 saat
             break;
 
         case 'popular':
             $url = "$baseUrl/movie/popular?api_key=$tmdbApiKey&language=tr-TR&page=1";
+            $cacheKey = "tmdb_popular";
+            $cacheTTL = 43200; // 12 saat
             break;
 
         case 'person_search':
@@ -91,6 +84,7 @@ try {
                 exit;
             }
             $url = "$baseUrl/search/person?api_key=$tmdbApiKey&query=$query&language=tr-TR";
+            $cacheKey = "tmdb_person_search_" . md5($query);
             break;
 
         case 'person_credits':
@@ -101,6 +95,8 @@ try {
                 exit;
             }
             $url = "$baseUrl/person/$id/movie_credits?api_key=$tmdbApiKey&language=tr-TR";
+            $cacheKey = "tmdb_person_credits_" . $id;
+            $cacheTTL = 604800; // 1 hafta
             break;
 
         case 'person_details':
@@ -111,6 +107,8 @@ try {
                 exit;
             }
             $url = "$baseUrl/person/$id?api_key=$tmdbApiKey&language=tr-TR";
+            $cacheKey = "tmdb_person_details_" . $id;
+            $cacheTTL = 604800; // 1 hafta
             break;
 
         case 'movie_credits':
@@ -121,6 +119,8 @@ try {
                 exit;
             }
             $url = "$baseUrl/movie/$id/credits?api_key=$tmdbApiKey&language=tr-TR";
+            $cacheKey = "tmdb_movie_credits_" . $id;
+            $cacheTTL = 604800; // 1 hafta
             break;
             
         default:
@@ -129,7 +129,16 @@ try {
             exit;
     }
     
-    // TMDB API'ye istek gönder
+    // 1. Önbelleği kontrol et
+    $cachedData = $cache->get('tmdb', $cacheKey);
+    if ($cachedData) {
+        // Debug header ekle (geliştirme aşamasında faydalı)
+        header('X-Cache-Status: HIT');
+        echo json_encode($cachedData);
+        exit;
+    }
+
+    // 2. Önbellekte yoksa API'ye git
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -138,6 +147,15 @@ try {
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+    
+    if ($httpCode == 200) {
+        $data = json_decode($response, true);
+        if ($data) {
+            // 3. Yanıtı önbelleğe kaydet
+            $cache->set('tmdb', $cacheKey, $data, $cacheTTL);
+            header('X-Cache-Status: MISS');
+        }
+    }
     
     http_response_code($httpCode);
     echo $response;

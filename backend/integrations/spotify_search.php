@@ -5,11 +5,29 @@ header("Access-Control-Allow-Methods: GET");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
 include_once '../config.php';
+include_once '../rate_limiter.php';
+include_once '../lib/cache_manager.php';
+
+// Rate Limiting: 100 requests per minute
+$ip = getClientIp();
+checkRateLimit($conn, $ip, 'spotify_search', 100, 60);
 
 $query = isset($_GET['query']) ? $_GET['query'] : '';
 
 if (empty($query)) {
     echo json_encode(array("results" => []));
+    exit;
+}
+
+// Cache Check
+$cache = new CacheManager($conn);
+$cacheKey = "spotify_search_" . md5($query);
+$cacheTTL = 86400; // 1 day
+
+$cachedData = $cache->get('spotify', $cacheKey);
+if ($cachedData) {
+    header('X-Cache-Status: HIT');
+    echo json_encode($cachedData);
     exit;
 }
 
@@ -70,5 +88,11 @@ if (isset($searchData['tracks']['items'])) {
     }
 }
 
-echo json_encode(array("results" => $results));
+$finalResult = array("results" => $results);
+
+// Save to Cache
+$cache->set('spotify', $cacheKey, $finalResult, $cacheTTL);
+header('X-Cache-Status: MISS');
+
+echo json_encode($finalResult);
 ?>

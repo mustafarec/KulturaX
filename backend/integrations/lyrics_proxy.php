@@ -3,6 +3,12 @@ header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
 require_once '../config.php';
+require_once '../rate_limiter.php';
+require_once '../lib/cache_manager.php';
+
+// Rate Limiting: 60 requests per minute
+$ip = getClientIp();
+checkRateLimit($conn, $ip, 'lyrics_api', 60, 60);
 
 $artist = isset($_GET['artist']) ? $_GET['artist'] : '';
 $title = isset($_GET['title']) ? $_GET['title'] : '';
@@ -10,6 +16,19 @@ $title = isset($_GET['title']) ? $_GET['title'] : '';
 if (empty($artist) || empty($title)) {
     http_response_code(400);
     echo json_encode(["error" => "Artist and title are required."]);
+    exit;
+}
+
+// Cache Check
+$cache = new CacheManager($conn);
+// Normalize cache key
+$cacheKey = "lyrics_" . md5(strtolower(trim($artist)) . "_" . strtolower(trim($title)));
+$cacheTTL = 604800; // 1 week (lyrics rarely change)
+
+$cachedData = $cache->get('lyrics', $cacheKey);
+if ($cachedData) {
+    header('X-Cache-Status: HIT');
+    echo json_encode($cachedData);
     exit;
 }
 
@@ -131,10 +150,19 @@ if ($nodes->length > 0) {
 
 $lyrics = trim($lyrics);
 
+$result = [];
 if (empty($lyrics)) {
     // Sometimes scraping fails due to layout changes or anti-scraping
-    echo json_encode(["lyrics" => "Lyrics found on Genius but could not be extracted. Link: $songUrl"]);
+    $result = ["lyrics" => "Lyrics found on Genius but could not be extracted. Link: $songUrl"];
 } else {
-    echo json_encode(["lyrics" => $lyrics]);
+    $result = ["lyrics" => $lyrics];
 }
+
+// Save to Cache (only if we found lyrics or at least a link)
+if (!empty($lyrics) || isset($result['lyrics'])) {
+    $cache->set('lyrics', $cacheKey, $result, $cacheTTL);
+    header('X-Cache-Status: MISS');
+}
+
+echo json_encode($result);
 ?>

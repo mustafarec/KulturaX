@@ -543,11 +543,11 @@ export const OtherProfileScreen = () => {
     };
 
     // Helper Components (Moved inside to access styles and theme)
-    const StatItem = ({ number, label }: { number: number, label: string }) => (
-        <View style={styles.statItem}>
+    const StatItem = ({ number, label, onPress }: { number: number, label: string, onPress?: () => void }) => (
+        <TouchableOpacity style={styles.statItem} onPress={onPress} disabled={!onPress}>
             <Text style={styles.statNumber}>{number}</Text>
             <Text style={styles.statLabel}>{label}</Text>
-        </View>
+        </TouchableOpacity>
     );
 
     const TabButton = ({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
@@ -731,8 +731,16 @@ export const OtherProfileScreen = () => {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
                     <StatItem number={userPosts.length} label="Gönderi" />
                     <StatItem number={libraryItems.filter(i => i.status === 'read').length} label="Kitap" />
-                    <StatItem number={profile?.follower_count || 0} label="Takipçi" />
-                    <StatItem number={profile?.following_count || 0} label="Takip" />
+                    <StatItem
+                        number={profile?.follower_count || 0}
+                        label="Takipçi"
+                        onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'followers' })}
+                    />
+                    <StatItem
+                        number={profile?.following_count || 0}
+                        label="Takip"
+                        onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'following' })}
+                    />
                     <StatItem number={0} label="İnceleme" />
                 </ScrollView>
 

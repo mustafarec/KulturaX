@@ -1,11 +1,22 @@
 <?php
 include_once '../config.php';
+include_once '../auth_middleware.php';
+
+// 1. Validate Token & Get User ID
+$auth_user_id = requireAuth();
 
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : null;
 
 if (!$user_id) {
     http_response_code(400);
     echo json_encode(["message" => "Missing user_id"]);
+    exit;
+}
+
+// 2. Authorization Check
+if ($auth_user_id != $user_id) {
+    http_response_code(403);
+    echo json_encode(["message" => "Unauthorized access to these notifications."]);
     exit;
 }
 
