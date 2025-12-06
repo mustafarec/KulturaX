@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 
@@ -43,13 +43,12 @@ export const QuoteCard = ({
             left: 20,
         },
         text: {
-            fontSize: 20,
+            fontSize: 16, // Slightly larger than body for the main card 
             color: '#ffffff',
             textAlign: 'center',
-            fontWeight: 'bold',
-            fontStyle: 'italic',
+            fontWeight: '600', // Thicker
             marginBottom: theme.spacing.l,
-            lineHeight: 28,
+            lineHeight: 24,
         },
         footer: {
             alignItems: 'center',
@@ -76,11 +75,11 @@ export const QuoteCard = ({
             flex: 1,
         },
         compactText: {
-            fontSize: 18, // Slightly larger for quote emphasis
+            fontSize: 15, // Same as normal body text
             color: theme.colors.text,
-            lineHeight: 26,
+            lineHeight: 22,
             marginBottom: 12,
-            fontFamily: 'serif', // Optional: for a more "bookish" feel
+            fontWeight: '600', // "Bir tık daha kalın"
         },
         statusText: {
             fontSize: 12,
@@ -94,7 +93,7 @@ export const QuoteCard = ({
             marginTop: 8,
             paddingTop: 12,
             borderTopWidth: 1,
-            borderTopColor: theme.colors.border, // Subtle separator
+            borderTopColor: theme.colors.primary, // Match outer border color
         },
         bookCover: {
             width: 30,

@@ -132,18 +132,18 @@ export const PostCard: React.FC<PostCardProps> = ({
         },
         actionCount: {
             fontSize: 12,
-            color: theme.colors.textSecondary,
+            color: theme.colors.primary,
             fontWeight: '500',
         },
         likedText: {
-            color: theme.colors.error,
+            color: theme.colors.primary,
         },
         repostedText: {
-            color: theme.colors.success,
+            color: theme.colors.primary,
         },
         socialQuoteContainer: {
-            borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderWidth: 2, // Thicker border
+            borderColor: theme.colors.primary, // Button color
             borderRadius: 12,
             padding: 12,
             marginTop: 4,
@@ -427,7 +427,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
                     <View style={styles.footer}>
                         <TouchableOpacity style={styles.actionButton} onPress={onComment}>
-                            <Icon name="bubble" size={16} color={theme.colors.textSecondary} style={styles.actionIcon} />
+                            <Icon name="bubble" size={16} color={theme.colors.primary} style={styles.actionIcon} />
                             <Text style={styles.actionCount}>{displayPost.comment_count || 0}</Text>
                         </TouchableOpacity>
 
@@ -435,7 +435,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                             <Icon
                                 name="loop"
                                 size={16}
-                                color={displayPost.is_reposted ? theme.colors.success : theme.colors.textSecondary}
+                                color={theme.colors.primary}
                                 style={styles.actionIcon}
                             />
                             <Text style={[styles.actionCount, displayPost.is_reposted && styles.repostedText]}>
@@ -447,7 +447,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                             <Icon
                                 name={displayPost.is_liked ? "heart" : "heart"}
                                 size={16}
-                                color={displayPost.is_liked ? theme.colors.error : theme.colors.textSecondary}
+                                color={theme.colors.primary}
                                 style={styles.actionIcon}
                             />
                             <Text style={[styles.actionCount, displayPost.is_liked && styles.likedText]}>
@@ -456,7 +456,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionButton}>
-                            <Icon name="share" size={16} color={theme.colors.textSecondary} style={styles.actionIcon} />
+                            <Icon name="share" size={16} color={theme.colors.primary} style={styles.actionIcon} />
                         </TouchableOpacity>
                     </View>
                 </View>

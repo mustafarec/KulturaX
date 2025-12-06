@@ -1,18 +1,29 @@
 import React from 'react';
-import { View, StyleSheet, Text, Image } from 'react-native';
+import { View, StyleSheet, Text, Image, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { FeedScreen } from '../screens/main/FeedScreen';
 import { DiscoveryScreen } from '../screens/main/DiscoveryScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
 import { NotificationScreen } from '../screens/main/NotificationScreen';
 import { useTheme } from '../context/ThemeContext'; // Import useTheme
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 
 const Tab = createBottomTabNavigator();
+const FeedStack = createNativeStackNavigator();
+
+const FeedStackScreen = () => {
+    return (
+        <FeedStack.Navigator screenOptions={{ headerShown: false }}>
+            <FeedStack.Screen name="FeedMain" component={FeedScreen} />
+            <FeedStack.Screen name="Notifications" component={NotificationScreen} />
+        </FeedStack.Navigator>
+    );
+};
 
 export const TabNavigator = () => {
     const { theme } = useTheme(); // Use dynamic theme
@@ -23,42 +34,27 @@ export const TabNavigator = () => {
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: {
-                    backgroundColor: 'transparent',
-                    borderTopWidth: 0,
-                    borderWidth: 0,
+                    backgroundColor: theme.colors.surface, // Solid opaque background
+                    borderTopWidth: 1,
+                    borderTopColor: theme.colors.border,
                     position: 'absolute',
                     bottom: 0,
                     left: 0,
                     right: 0,
                     height: 75,
-                    elevation: 0, // Remove default elevation to handle shadow manually if needed
+                    elevation: 8, // Add shadow
                     paddingBottom: 15,
                     paddingTop: 10,
-                    // paddingHorizontal: 10, // Kaldırıldı
                     alignItems: 'center',
                     justifyContent: 'center',
+                    shadowColor: theme.shadows.default.shadowColor,
+                    shadowOffset: { width: 0, height: -2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
                 },
-                tabBarBackground: () => (
-                    <View style={{ flex: 1 }}>
-                        <LinearGradient
-                            colors={[theme.colors.glass, theme.colors.glass]} // Use theme glass color which has opacity
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                borderTopWidth: 1,
-                                borderTopColor: theme.colors.glassBorder,
-                            }}
-                        />
-                    </View>
-                ),
                 tabBarShowLabel: false,
                 tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: theme.colors.textSecondary,
+                tabBarInactiveTintColor: theme.colors.primary,
                 tabBarItemStyle: {
                     height: 60,
                     flex: 1,
@@ -73,17 +69,17 @@ export const TabNavigator = () => {
                     alignSelf: 'center',
                     width: 30,
                     height: 30,
-                    marginTop: 5, // Push down to center vertically
+                    marginTop: 5,
                     marginBottom: 0,
                 }
             }}
         >
             <Tab.Screen
                 name="Feed"
-                component={FeedScreen}
+                component={FeedStackScreen}
                 options={{
-                    tabBarIcon: ({ color }) => (
-                        <Icon name="home" size={24} color={color} />
+                    tabBarIcon: ({ color, focused }) => (
+                        <Icon name={focused ? "home" : "home-outline"} size={26} color={color} />
                     ),
                 }}
             />
@@ -91,49 +87,87 @@ export const TabNavigator = () => {
                 name="Discovery"
                 component={DiscoveryScreen}
                 options={{
-                    tabBarIcon: ({ color }) => (
-                        <Icon name="magnifier" size={24} color={color} />
+                    tabBarIcon: ({ color, focused }) => (
+                        <Icon name={focused ? "search" : "search-outline"} size={26} color={color} />
                     ),
                 }}
             />
+
             <Tab.Screen
-                name="Notifications"
-                component={NotificationScreen}
+                name="NewPost"
+                component={View} // Placeholder
+                listeners={({ navigation }) => ({
+                    tabPress: (e) => {
+                        e.preventDefault();
+                        navigation.navigate('PostSelection');
+                    },
+                })}
                 options={{
-                    tabBarIcon: ({ color }) => {
-                        const { unreadCount } = useNotification();
+                    tabBarButton: (props) => {
+                        // Sanitize props to handle type mismatch (null vs undefined)
+                        const { delayLongPress, disabled, onBlur, onFocus, onLongPress, onPress, onPressIn, onPressOut, ...rest } = props;
+                        const safeDelayLongPress = delayLongPress === null ? undefined : delayLongPress;
+                        const safeDisabled = disabled === null ? undefined : disabled;
+                        const safeOnBlur = onBlur === null ? undefined : onBlur;
+                        const safeOnFocus = onFocus === null ? undefined : onFocus;
+                        const safeOnLongPress = onLongPress === null ? undefined : onLongPress;
+                        const safeOnPressIn = onPressIn === null ? undefined : onPressIn;
+                        const safeOnPressOut = onPressOut === null ? undefined : onPressOut;
+
                         return (
-                            <View>
-                                <Icon name="bell" size={24} color={color} />
-                                {unreadCount > 0 && (
-                                    <View style={{
-                                        position: 'absolute',
-                                        right: -6,
-                                        top: -4,
-                                        backgroundColor: theme.colors.error,
-                                        borderRadius: 10,
-                                        minWidth: 18,
-                                        height: 18,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        borderWidth: 2,
-                                        borderColor: theme.colors.surface,
-                                    }}>
-                                        <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>
-                                            {unreadCount > 99 ? '99+' : unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
+                            <TouchableOpacity
+                                {...(rest as any)}
+                                disabled={safeDisabled}
+                                onBlur={safeOnBlur}
+                                onFocus={safeOnFocus}
+                                onLongPress={safeOnLongPress}
+                                onPressIn={safeOnPressIn}
+                                onPressOut={safeOnPressOut}
+                                delayLongPress={safeDelayLongPress}
+                                style={{
+                                    top: -20, // Float the button
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                }}
+                                onPress={(e) => props.onPress?.(e)}
+                            >
+                                <View style={{
+                                    width: 64,
+                                    height: 64,
+                                    borderRadius: 32,
+                                    backgroundColor: theme.colors.primary,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    shadowColor: theme.colors.primary,
+                                    shadowOffset: { width: 0, height: 8 },
+                                    shadowOpacity: 0.4,
+                                    shadowRadius: 12,
+                                    elevation: 8,
+                                    borderWidth: 4,
+                                    borderColor: theme.colors.surface,
+                                }}>
+                                    <Icon name="add" size={36} color="#FFF" />
+                                </View>
+                            </TouchableOpacity>
                         );
                     },
+                }}
+            />
+
+            <Tab.Screen
+                name="Messages"
+                component={MessageScreen}
+                options={{
+                    tabBarIcon: ({ color, focused }) => (
+                        <Icon name={focused ? "mail" : "mail-outline"} size={26} color={color} />
+                    ),
                 }}
             />
             <Tab.Screen
                 name="Profile"
                 component={ProfileScreen}
                 options={{
-                    tabBarIcon: ({ color }) => {
+                    tabBarIcon: ({ color, focused }) => {
                         const { user } = useAuth();
                         const showBadge = user && user.is_email_verified == 0;
 
@@ -145,7 +179,7 @@ export const TabNavigator = () => {
                                         style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: color }}
                                     />
                                 ) : (
-                                    <Icon name="user" size={24} color={color} />
+                                    <Icon name={focused ? "person" : "person-outline"} size={26} color={color} />
                                 )}
                                 {showBadge && (
                                     <View style={{

@@ -1,22 +1,28 @@
+import { View, StyleSheet, Text, Image, Platform } from 'react-native';
+
 export const lightTheme = {
+    fonts: {
+        main: Platform.select({ ios: 'System', android: 'Roboto' }),
+        quote: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    },
     colors: {
-        primary: '#14B8A6', // Teal
-        secondary: '#0EA5E9', // Sky Blue
-        accent: '#10B981', // Emerald
-        background: '#F0F3F8', // Very light cool gray/blue
-        surface: '#FFFFFF',
-        text: '#2D3436',
-        textSecondary: '#636E72',
-        border: 'rgba(255, 255, 255, 0.5)',
+        primary: '#5A3E2B', // Custom Brown
+        secondary: '#5A3E2B', // Custom Brown
+        accent: '#5A3E2B', // Custom Brown
+        background: '#f3efe7', // Light Warm Beige/Pink
+        surface: '#f3efe7',
+        text: '#381808', // Very Dark Brown
+        textSecondary: '#583828', // Medium Brown
+        border: 'rgba(120, 56, 8, 0.2)', // Brownish border
         error: '#EF4444',
         success: '#10B981',
         warning: '#F59E0B',
         glass: 'rgba(255, 255, 255, 0.75)',
-        glassBorder: 'rgba(255, 255, 255, 0.8)',
-        glassShadow: 'rgba(20, 184, 166, 0.15)',
-        gradientStart: '#14B8A6',
-        gradientEnd: '#0EA5E9',
-        icon: '#2D3436',
+        glassBorder: 'rgba(248, 232, 232, 0.8)',
+        glassShadow: 'rgba(184, 120, 56, 0.15)', // Brownish shadow
+        gradientStart: '#5A3E2B',
+        gradientEnd: '#5A3E2B',
+        icon: '#381808',
     },
     spacing: {
         xs: 4, s: 8, m: 16, l: 24, xl: 32, liquid: 20,
@@ -26,21 +32,21 @@ export const lightTheme = {
     },
     shadows: {
         default: {
-            shadowColor: "#000",
+            shadowColor: "#381808",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.1,
             shadowRadius: 4,
             elevation: 3,
         },
         soft: {
-            shadowColor: "#14B8A6",
+            shadowColor: "#5A3E2B",
             shadowOffset: { width: 0, height: 10 },
             shadowOpacity: 0.1,
             shadowRadius: 20,
             elevation: 10,
         },
         glass: {
-            shadowColor: "#000",
+            shadowColor: "#381808",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.05,
             shadowRadius: 10,
@@ -52,7 +58,7 @@ export const lightTheme = {
         h2: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5 } as const,
         h3: { fontSize: 20, fontWeight: '600' } as const,
         body: { fontSize: 16, lineHeight: 24 } as const,
-        caption: { fontSize: 12, color: '#636E72' } as const,
+        caption: { fontSize: 12, color: '#583828' } as const,
     },
     dark: false,
 };

@@ -11,9 +11,11 @@ import { BookDetailScreen } from '../screens/content/BookDetailScreen';
 import { MovieDetailScreen } from '../screens/content/MovieDetailScreen';
 import { ContentDetailScreen } from '../screens/content/ContentDetailScreen';
 import { ConcertScreen } from '../screens/content/ConcertScreen';
+import { PostSelectionScreen } from '../screens/social/PostSelectionScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
 import { ChatDetailScreen } from '../screens/main/ChatDetailScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
+
 import { OtherProfileScreen } from '../screens/main/OtherProfileScreen';
 import { PostDetailScreen } from '../screens/main/PostDetailScreen';
 import { CreatorDetailScreen } from '../screens/content/CreatorDetailScreen';
@@ -48,6 +50,7 @@ export const AppNavigator = () => {
                         <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
                         <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
                         <Stack.Screen name="Messages" component={MessageScreen} options={{ headerShown: false }} />
+
                         <Stack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
 
                         <Stack.Screen name="OtherProfile" component={OtherProfileScreen} options={{ headerShown: false }} />
@@ -105,6 +108,15 @@ export const AppNavigator = () => {
                             options={{
                                 presentation: 'modal',
                                 animation: 'slide_from_bottom',
+                                headerShown: false,
+                            }}
+                        />
+                        <Stack.Screen
+                            name="PostSelection"
+                            component={PostSelectionScreen}
+                            options={{
+                                presentation: 'transparentModal',
+                                animation: 'fade',
                                 headerShown: false,
                             }}
                         />

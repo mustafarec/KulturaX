@@ -12,6 +12,7 @@ import { UserCard } from '../../components/UserCard';
 // SideMenu is now global, we use context to control it
 import { useSideMenu } from '../../context/SideMenuContext';
 import { useMessage } from '../../context/MessageContext';
+import { useNotification } from '../../context/NotificationContext';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import ThemeIcon from 'react-native-vector-icons/Ionicons';
@@ -43,12 +44,39 @@ const UnreadBadge = () => {
     );
 };
 
+const NotificationBadge = () => {
+    const { unreadCount } = useNotification();
+    const { theme } = useTheme();
+
+    if (unreadCount === 0) return null;
+
+    return (
+        <View style={{
+            position: 'absolute',
+            right: -6,
+            top: -4,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 10,
+            minWidth: 18,
+            height: 18,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.surface,
+        }}>
+            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+            </Text>
+        </View>
+    );
+};
+
 export const FeedScreen = () => {
     const [feed, setFeed] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-    const [newPostMenuVisible, setNewPostMenuVisible] = useState(false);
+
     // const [sideMenuVisible, setSideMenuVisible] = useState(false); // Removed local state
     const { user } = useAuth();
     const navigation = useNavigation();
@@ -139,8 +167,8 @@ export const FeedScreen = () => {
             width: 40,
         },
         headerRight: {
-            width: 40,
-            alignItems: 'flex-end',
+            flexDirection: 'row',
+            alignItems: 'center',
         },
         headerAvatar: {
             width: 32,
@@ -507,12 +535,20 @@ export const FeedScreen = () => {
                         style={styles.headerLogo}
                     />
                 </View>
-                <View style={styles.headerRight}>
+                <View style={[styles.headerRight, { flexDirection: 'row', alignItems: 'center', paddingRight: 16 }]}>
                     <TouchableOpacity
                         onPress={() => setIsSearchVisible(!isSearchVisible)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        style={{ marginRight: 16 }}
                     >
                         <ThemeIcon name="search" size={24} color={theme.colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => (navigation as any).navigate('Notifications')}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <ThemeIcon name="notifications-outline" size={24} color={theme.colors.text} />
+                        <NotificationBadge />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -573,15 +609,7 @@ export const FeedScreen = () => {
                         <Text style={[styles.tabText, activeTab === 'music' && styles.activeTabText]}>Müzik</Text>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                    onPress={() => (navigation as any).navigate('Inbox')}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <View>
-                        <Icon name="bubble" size={24} color={theme.colors.text} />
-                        <UnreadBadge />
-                    </View>
-                </TouchableOpacity>
+
             </View>
 
             {isLoading ? (
@@ -606,46 +634,7 @@ export const FeedScreen = () => {
                 />
             )}
 
-            {/* Floating Action Button */}
-            <TouchableOpacity
-                style={styles.fab}
-                onPress={() => setNewPostMenuVisible(true)}
-                activeOpacity={0.8}
-            >
-                <Icon name="pencil" size={24} color="#FFF" />
-            </TouchableOpacity>
 
-            {/* Modals */}
-            {/* New Post Menu */}
-            {newPostMenuVisible && (
-                <TouchableWithoutFeedback onPress={() => setNewPostMenuVisible(false)}>
-                    <View style={styles.menuOverlay}>
-                        <View style={styles.newPostMenu}>
-                            <TouchableOpacity
-                                style={styles.newPostMenuItem}
-                                onPress={() => {
-                                    setNewPostMenuVisible(false);
-                                    (navigation as any).navigate('CreateQuote', { mode: 'thought' });
-                                }}
-                            >
-                                <Icon name="bubble" size={20} color={theme.colors.text} style={{ marginRight: 12 }} />
-                                <Text style={styles.newPostMenuText}>Düşünceni paylaş</Text>
-                            </TouchableOpacity>
-                            <View style={styles.menuDivider} />
-                            <TouchableOpacity
-                                style={styles.newPostMenuItem}
-                                onPress={() => {
-                                    setNewPostMenuVisible(false);
-                                    (navigation as any).navigate('CreateQuote', { mode: 'quote' });
-                                }}
-                            >
-                                <Icon name="book-open" size={20} color={theme.colors.text} style={{ marginRight: 12 }} />
-                                <Text style={styles.newPostMenuText}>Alıntı/İnceleme yap</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </TouchableWithoutFeedback>
-            )}
 
             {/* SideMenu is now handled globally, so we don't render it here */}
 
