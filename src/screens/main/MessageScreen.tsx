@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, StatusBar, Alert } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
@@ -160,6 +161,22 @@ export const MessageScreen = () => {
             fontSize: 15,
             color: theme.colors.textSecondary,
         },
+        deleteAction: {
+            backgroundColor: theme.colors.error,
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: 80,
+            height: '80%', // Match item box height visually roughly, or use flex but parent height is dynamic. Using explicit height matching item margin adjustments.
+            // Better: make it fill parent height
+            marginTop: 0,
+            marginBottom: 12,
+            marginRight: 16,
+            borderRadius: 16,
+        },
+        deleteActionText: {
+            color: 'white',
+            fontWeight: 'bold',
+        },
     }), [theme]);
 
     const [activeTab, setActiveTab] = useState<'inbox' | 'requests'>('inbox');
@@ -205,35 +222,82 @@ export const MessageScreen = () => {
         return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
     };
 
+    const handleDelete = (partnerId: number) => {
+        Alert.alert(
+            "Sohbeti Sil",
+            "Bu sohbeti ve tüm mesajlarını silmek istediğine emin misin?",
+            [
+                { text: "Vazgeç", style: "cancel" },
+                {
+                    text: "Sil",
+                    style: "destructive",
+                    onPress: async () => {
+                        // Optimistic update
+                        const previousConversations = [...conversations];
+                        setConversations(prev => prev.filter(c => c.chat_partner_id !== partnerId));
+
+                        try {
+                            if (user) {
+                                await messageService.deleteConversation(user.id, partnerId);
+                            }
+                        } catch (error) {
+                            console.error('Failed to delete conversation:', error);
+                            // Revert on error
+                            setConversations(previousConversations);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const renderRightActions = (progress: any, dragX: any, partnerId: number) => {
+        return (
+            <TouchableOpacity
+                style={styles.deleteAction}
+                onPress={() => handleDelete(partnerId)}
+            >
+                <Text style={styles.deleteActionText}>Sil</Text>
+            </TouchableOpacity>
+        );
+    };
+
     const renderItem = ({ item }: { item: Conversation }) => (
-        <TouchableOpacity
-            style={styles.item}
-            onPress={() => (navigation as any).navigate('ChatDetail', {
-                otherUserId: item.chat_partner_id,
-                username: item.username,
-                avatarUrl: item.avatar_url,
-                isRequest: activeTab === 'requests' // Pass flag to ChatDetail
-            })}
+        <Swipeable
+            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.chat_partner_id)}
+            overshootRight={false}
         >
-            <View style={styles.avatarContainer}>
-                {item.avatar_url ? (
-                    <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
-                ) : (
-                    <View style={[styles.avatar, styles.placeholderAvatar]}>
-                        <Text style={styles.placeholderText}>{item.username.charAt(0).toUpperCase()}</Text>
-                    </View>
-                )}
-            </View>
-            <View style={styles.contentContainer}>
-                <View style={styles.headerRow}>
-                    <Text style={styles.username}>{item.username}</Text>
-                    <Text style={styles.time}>{formatTime(item.last_message_time)}</Text>
+            <TouchableOpacity
+                style={styles.item}
+                activeOpacity={0.7}
+                delayPressIn={150} // Prevent accidental opacity change during swipe
+                onPress={() => (navigation as any).navigate('ChatDetail', {
+                    otherUserId: item.chat_partner_id,
+                    username: item.username,
+                    avatarUrl: item.avatar_url,
+                    isRequest: activeTab === 'requests' // Pass flag to ChatDetail
+                })}
+            >
+                <View style={styles.avatarContainer}>
+                    {item.avatar_url ? (
+                        <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, styles.placeholderAvatar]}>
+                            <Text style={styles.placeholderText}>{item.username.charAt(0).toUpperCase()}</Text>
+                        </View>
+                    )}
                 </View>
-                <Text style={styles.message} numberOfLines={1}>
-                    {item.last_message_sender_id === user?.id ? 'Siz: ' : ''}{item.last_message}
-                </Text>
-            </View>
-        </TouchableOpacity>
+                <View style={styles.contentContainer}>
+                    <View style={styles.headerRow}>
+                        <Text style={styles.username}>{item.username}</Text>
+                        <Text style={styles.time}>{formatTime(item.last_message_time)}</Text>
+                    </View>
+                    <Text style={styles.message} numberOfLines={1}>
+                        {item.last_message_sender_id === user?.id ? 'Siz: ' : ''}{item.last_message}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        </Swipeable>
     );
 
     const renderHeader = () => (

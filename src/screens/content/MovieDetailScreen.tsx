@@ -42,11 +42,9 @@ export const MovieDetailScreen = () => {
 
     const fetchPosts = async () => {
         try {
-            // Alıntıları çek
             const quotesResponse = await postService.getQuotesByContent('movie', movieId);
             setQuotes(quotesResponse.filter((p: any) => p.type === 'quote'));
 
-            // Yorumları çek
             const reviewsResponse = await reviewService.getReviews('movie', movieId);
             setReviews(reviewsResponse);
         } catch (error) {
@@ -525,6 +523,7 @@ export const MovieDetailScreen = () => {
     const posterUrl = movie.poster_path
         ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
         : (movie.image || 'https://via.placeholder.com/150');
+    console.log('MovieDetailScreen Render. Movie:', movie?.title, 'PosterPath:', movie?.poster_path, 'PosterUrl:', posterUrl); // Detailed debug
 
     return (
         <ScrollView style={styles.container}>
@@ -542,6 +541,12 @@ export const MovieDetailScreen = () => {
                     <Text style={styles.directorText}>
                         {movie.release_date ? new Date(movie.release_date).toLocaleDateString('tr-TR') : ''} • {movie.runtime} dk
                     </Text>
+                    <View style={{ marginTop: 8 }}>
+                        <LibraryStatusButton
+                            contentType="movie"
+                            contentId={String(movieId)}
+                        />
+                    </View>
                 </View>
             </View>
 
@@ -576,8 +581,9 @@ export const MovieDetailScreen = () => {
                 visible={showReviewModal}
                 onClose={() => setShowReviewModal(false)}
                 contentType="movie"
-                contentId={movie.id}
+                contentId={String(movie.id)}
                 contentTitle={movie.title}
+                imageUrl={posterUrl}
                 userId={user?.id || 0}
                 onReviewAdded={fetchData}
             />

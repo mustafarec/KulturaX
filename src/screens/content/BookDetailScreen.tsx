@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIn
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
-import { postService } from '../../services/backendApi';
+import { postService, reviewService } from '../../services/backendApi';
 import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
@@ -41,12 +41,15 @@ export const BookDetailScreen = () => {
 
     const fetchPosts = async () => {
         try {
-            const response = await postService.getQuotesByContent('book', bookId);
-            const allPosts = response;
-            setQuotes(allPosts.filter((p: any) => p.type === 'quote'));
-            setReviews(allPosts.filter((p: any) => p.type === 'review'));
+            // Fetch quotes (from posts table)
+            const quotesResponse = await postService.getQuotesByContent('book', bookId);
+            setQuotes(quotesResponse.filter((p: any) => p.type === 'quote'));
+
+            // Fetch reviews (from reviews table)
+            const reviewsResponse = await reviewService.getReviews('book', bookId);
+            setReviews(reviewsResponse);
         } catch (error) {
-            console.error('Error fetching posts:', error);
+            console.error('Error fetching content:', error);
         }
     };
 
@@ -300,6 +303,30 @@ export const BookDetailScreen = () => {
             fontSize: 12,
             color: theme.colors.textSecondary,
         },
+        userInfoContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        userAvatar: {
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            marginRight: 8,
+        },
+        userAvatarPlaceholder: {
+            backgroundColor: theme.colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            marginRight: 8,
+        },
+        userAvatarText: {
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 'bold',
+        },
         emptyContainer: {
             alignItems: 'center',
             padding: 40,
@@ -377,10 +404,27 @@ export const BookDetailScreen = () => {
                             reviews.map((review) => (
                                 <View key={review.id} style={styles.reviewCard}>
                                     <View style={styles.reviewHeader}>
-                                        <Text style={styles.reviewUsername}>@{review.user.username}</Text>
+                                        <TouchableOpacity
+                                            style={styles.userInfoContainer}
+                                            onPress={() => {
+                                                const targetUserId = review.user_id || review.user?.id;
+                                                if (targetUserId) {
+                                                    (navigation as any).navigate('OtherProfile', { userId: targetUserId });
+                                                }
+                                            }}
+                                        >
+                                            {review.user.avatar_url ? (
+                                                <Image source={{ uri: review.user.avatar_url }} style={styles.userAvatar} />
+                                            ) : (
+                                                <View style={[styles.userAvatar, styles.userAvatarPlaceholder]}>
+                                                    <Text style={styles.userAvatarText}>{review.user.username.charAt(0).toUpperCase()}</Text>
+                                                </View>
+                                            )}
+                                            <Text style={styles.reviewUsername}>@{review.user.username}</Text>
+                                        </TouchableOpacity>
                                         <Text style={styles.reviewDate}>{new Date(review.created_at).toLocaleDateString()}</Text>
                                     </View>
-                                    <Text style={styles.reviewText}>{review.content}</Text>
+                                    <Text style={styles.reviewText}>{review.review_text || review.content}</Text>
                                 </View>
                             ))
                         ) : (
@@ -433,6 +477,12 @@ export const BookDetailScreen = () => {
                     <Text style={styles.dateText}>
                         {book.volumeInfo?.publishedDate || book.publishedDate || ''}
                     </Text>
+                    <View style={{ marginTop: 8 }}>
+                        <LibraryStatusButton
+                            contentType="book"
+                            contentId={bookId}
+                        />
+                    </View>
                 </View>
             </View>
 
@@ -469,8 +519,9 @@ export const BookDetailScreen = () => {
                 visible={showReviewModal}
                 onClose={() => setShowReviewModal(false)}
                 contentType="book"
-                contentId={book.id}
+                contentId={bookId}
                 contentTitle={book.title}
+                imageUrl={coverUrl}
                 userId={user?.id || 0}
                 onReviewAdded={fetchData}
             />

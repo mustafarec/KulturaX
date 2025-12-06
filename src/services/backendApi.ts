@@ -304,6 +304,14 @@ export const messageService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    deleteConversation: async (userId: number, partnerId: number) => {
+        try {
+            const response = await backendApi.post('/messages/delete_thread.php', { user_id: userId, partner_id: partnerId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 
@@ -348,6 +356,14 @@ export const notificationService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    deleteNotification: async (userId: number, notificationId: number) => {
+        try {
+            const response = await backendApi.post('/notifications/delete.php', { user_id: userId, notification_id: notificationId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 
@@ -387,14 +403,17 @@ export const interactionService = {
 };
 
 export const reviewService = {
-    addReview: async (userId: number, contentType: 'movie' | 'book' | 'music', contentId: string, rating: number, reviewText: string) => {
+    addReview: async (userId: number, contentType: 'movie' | 'book' | 'music', contentId: string, rating: number, reviewText: string, contentTitle?: string, imageUrl?: string) => {
+        console.log('BackendApi addReview Payload:', { user_id: userId, content_type: contentType, content_id: contentId, rating, review_text: reviewText, content_title: contentTitle, image_url: imageUrl }); // Debug log
         try {
             const response = await backendApi.post('/interactions/add_review.php', {
                 user_id: userId,
                 content_type: contentType,
                 content_id: contentId,
                 rating,
-                review_text: reviewText
+                review_text: reviewText,
+                content_title: contentTitle,
+                image_url: imageUrl
             });
             return response.data;
         } catch (error: any) {

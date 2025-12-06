@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter, Animated } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { notificationService } from '../../services/backendApi';
@@ -275,7 +276,60 @@ export const NotificationScreen = () => {
             height: 50,
             borderRadius: 25,
         },
+        deleteButtonContainer: {
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: 80,
+            marginBottom: 12,
+            marginRight: 16, // Match list padding/margin
+            borderRadius: 16,
+            overflow: 'hidden',
+        },
+        deleteButton: {
+            backgroundColor: theme.colors.error,
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '100%',
+            height: '100%',
+            borderRadius: 16,
+        },
+        deleteButtonText: {
+            color: 'white',
+            fontWeight: 'bold',
+        },
     }), [theme]);
+
+    const handleDelete = async (id: number) => {
+        // Optimistic update
+        const previousNotifications = [...notifications];
+        setNotifications(prev => prev.filter(n => n.id !== id));
+
+        try {
+            if (user) {
+                await notificationService.deleteNotification(user.id, id);
+            }
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+            // Revert on error
+            setNotifications(previousNotifications);
+        }
+    };
+
+    const renderRightActions = (progress: any, dragX: any, id: number) => {
+        const trans = dragX.interpolate({
+            inputRange: [-100, 0],
+            outputRange: [0, 100],
+            extrapolate: 'clamp',
+        });
+
+        return (
+            <TouchableOpacity onPress={() => handleDelete(id)} style={styles.deleteButtonContainer}>
+                <View style={styles.deleteButton}>
+                    <Text style={styles.deleteButtonText}>Sil</Text>
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     const renderItem = ({ item }: { item: Notification }) => {
         let icon = '🔔';
@@ -305,41 +359,47 @@ export const NotificationScreen = () => {
         }
 
         return (
-            <TouchableOpacity
-                style={[
-                    styles.item,
-                    !item.is_read && styles.unreadItem,
-                    Platform.OS === 'ios' ? styles.shadowIOS : styles.shadowAndroid
-                ]}
-                activeOpacity={0.7}
-                onPress={() => handleNotificationPress(item)}
+            <Swipeable
+                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+                overshootRight={false}
             >
-                <View style={[styles.iconContainer, { backgroundColor: item.is_read ? '#f0f0f0' : bgColor + '20' }]}>
-                    {item.sender_avatar ? (
-                        <Image source={{ uri: item.sender_avatar }} style={styles.avatar} />
-                    ) : (
-                        <Text style={{ fontSize: 24 }}>{icon}</Text>
-                    )}
-                </View>
-
-                <View style={styles.contentContainer}>
-                    <View style={styles.headerRow}>
-                        <Text style={[styles.title, !item.is_read && styles.unreadText]}>
-                            {item.sender_username ? (
-                                <Text style={{ fontWeight: 'bold' }}>{item.sender_username} </Text>
-                            ) : null}
-                            {item.title}
-                        </Text>
-                        <Text style={styles.time}>{formatTimeAgo(item.created_at)}</Text>
+                <TouchableOpacity
+                    style={[
+                        styles.item,
+                        !item.is_read && styles.unreadItem,
+                        Platform.OS === 'ios' ? styles.shadowIOS : styles.shadowAndroid
+                    ]}
+                    activeOpacity={0.7}
+                    delayPressIn={150} // Prevent accidental opacity change during swipe
+                    onPress={() => handleNotificationPress(item)}
+                >
+                    <View style={[styles.iconContainer, { backgroundColor: item.is_read ? '#f0f0f0' : bgColor + '20' }]}>
+                        {item.sender_avatar ? (
+                            <Image source={{ uri: item.sender_avatar }} style={styles.avatar} />
+                        ) : (
+                            <Text style={{ fontSize: 24 }}>{icon}</Text>
+                        )}
                     </View>
 
-                    <Text style={[styles.message, !item.is_read && styles.unreadMessage]} numberOfLines={2}>
-                        {item.message}
-                    </Text>
-                </View>
+                    <View style={styles.contentContainer}>
+                        <View style={styles.headerRow}>
+                            <Text style={[styles.title, !item.is_read && styles.unreadText]}>
+                                {item.sender_username ? (
+                                    <Text style={{ fontWeight: 'bold' }}>{item.sender_username} </Text>
+                                ) : null}
+                                {item.title}
+                            </Text>
+                            <Text style={styles.time}>{formatTimeAgo(item.created_at)}</Text>
+                        </View>
 
-                {!item.is_read && <View style={styles.dot} />}
-            </TouchableOpacity>
+                        <Text style={[styles.message, !item.is_read && styles.unreadMessage]} numberOfLines={2}>
+                            {item.message}
+                        </Text>
+                    </View>
+
+                    {!item.is_read && <View style={styles.dot} />}
+                </TouchableOpacity>
+            </Swipeable>
         );
     };
 

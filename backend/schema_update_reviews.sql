@@ -1,0 +1,2 @@
+ALTER TABLE reviews ADD COLUMN content_title VARCHAR(255) NULL;
+ALTER TABLE reviews ADD COLUMN image_url VARCHAR(500) NULL;

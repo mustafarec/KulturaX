@@ -9,24 +9,28 @@ import Toast from 'react-native-toast-message';
 
 import { NotificationProvider } from './src/context/NotificationContext';
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 function App(): React.JSX.Element {
   useEffect(() => {
     initOneSignal();
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <MessageProvider>
-            <NotificationProvider>
-              <AppNavigator />
-            </NotificationProvider>
-          </MessageProvider>
-        </ThemeProvider>
-      </AuthProvider>
-      <Toast />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <MessageProvider>
+              <NotificationProvider>
+                <AppNavigator />
+              </NotificationProvider>
+            </MessageProvider>
+          </ThemeProvider>
+        </AuthProvider>
+        <Toast />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

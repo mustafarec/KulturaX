@@ -66,6 +66,74 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
         return option ? option.icon : 'plus';
     };
 
+    const styles = React.useMemo(() => StyleSheet.create({
+        button: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface,
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.primary,
+            alignSelf: 'flex-start', // İçeriği kadar yer kaplaması için
+            ...theme.shadows.soft,
+        },
+        activeButton: {
+            backgroundColor: theme.colors.primary,
+        },
+        buttonText: {
+            fontSize: 11,
+            fontWeight: '600',
+            color: theme.colors.primary,
+        },
+        activeButtonText: {
+            color: '#fff',
+        },
+        // ... (diğer stiller aynı kalacak)
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalContent: {
+            width: '80%',
+            backgroundColor: theme.colors.surface,
+            borderRadius: 20,
+            padding: 20,
+            ...theme.shadows.default,
+        },
+        modalTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginBottom: 20,
+            textAlign: 'center',
+        },
+        optionButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between', // For loading indicator
+            paddingVertical: 15,
+            paddingHorizontal: 15,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            borderRadius: 12, // Rounded options
+        },
+        selectedOption: {
+            backgroundColor: theme.colors.primary,
+        },
+        optionText: {
+            fontSize: 16,
+            color: theme.colors.text,
+        },
+        selectedOptionText: {
+            color: '#fff',
+            fontWeight: 'bold',
+        }
+    }), [theme]);
+
     return (
         <View>
             <TouchableOpacity

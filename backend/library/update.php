@@ -14,6 +14,9 @@ $content_type = $data->content_type;
 $content_id = $data->content_id;
 $status = $data->status;
 $progress = isset($data->progress) ? $data->progress : 0;
+$content_title = isset($data->content_title) ? $data->content_title : null;
+$image_url = isset($data->image_url) ? $data->image_url : null;
+$author = isset($data->author) ? $data->author : null;
 
 // Geçerli durumları kontrol et
 $valid_statuses = ['read', 'reading', 'want_to_read', 'dropped'];
@@ -33,10 +36,11 @@ $check_stmt->execute();
 
 if ($check_stmt->rowCount() > 0) {
     // Güncelle
-    $query = "UPDATE user_library SET status = :status, progress = :progress WHERE user_id = :user_id AND content_type = :content_type AND content_id = :content_id";
+    // Başlık vb. bilgiler değişmiş olabilir, onları da güncelleyelim
+    $query = "UPDATE user_library SET status = :status, progress = :progress, content_title = :content_title, image_url = :image_url, author = :author WHERE user_id = :user_id AND content_type = :content_type AND content_id = :content_id";
 } else {
     // Ekle
-    $query = "INSERT INTO user_library (user_id, content_type, content_id, status, progress) VALUES (:user_id, :content_type, :content_id, :status, :progress)";
+    $query = "INSERT INTO user_library (user_id, content_type, content_id, status, progress, content_title, image_url, author) VALUES (:user_id, :content_type, :content_id, :status, :progress, :content_title, :image_url, :author)";
 }
 
 $stmt = $conn->prepare($query);
@@ -45,6 +49,9 @@ $stmt->bindParam(':content_type', $content_type);
 $stmt->bindParam(':content_id', $content_id);
 $stmt->bindParam(':status', $status);
 $stmt->bindParam(':progress', $progress);
+$stmt->bindParam(':content_title', $content_title);
+$stmt->bindParam(':image_url', $image_url);
+$stmt->bindParam(':author', $author);
 
 if ($stmt->execute()) {
     // Eğer durum 'read' (okundu/izlendi) ise ve content_type 'book' ise, yıllık hedefi güncelle

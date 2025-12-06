@@ -10,7 +10,8 @@ interface ReviewModalProps {
     onClose: () => void;
     contentType: 'movie' | 'book' | 'music';
     contentId: string;
-    contentTitle: string;
+    contentTitle?: string;
+    imageUrl?: string;
     userId: number;
     onReviewAdded?: () => void;
 }
@@ -21,9 +22,16 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     contentType,
     contentId,
     contentTitle,
+    imageUrl,
     userId,
     onReviewAdded
 }) => {
+    // Debugging passed props
+    React.useEffect(() => {
+        if (visible) {
+            console.log('ReviewModal Visible. Validating Props:', { contentTitle, imageUrl });
+        }
+    }, [visible, contentTitle, imageUrl]);
     const { theme } = useTheme();
     const [rating, setRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
@@ -96,6 +104,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     }), [theme]);
 
     const handleSubmit = async () => {
+        console.log('ReviewModal Submitting:', { userId, contentType, contentId, rating, reviewText, contentTitle, imageUrl }); // Debug log
         if (rating === 0) {
             Toast.show({
                 type: 'info',
@@ -107,7 +116,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
         setIsSubmitting(true);
         try {
-            await reviewService.addReview(userId, contentType, contentId, rating, reviewText);
+            await reviewService.addReview(userId, contentType, contentId, rating, reviewText, contentTitle, imageUrl);
             Toast.show({
                 type: 'success',
                 text1: 'Başarılı',

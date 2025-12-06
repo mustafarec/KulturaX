@@ -8,8 +8,8 @@ include_once '../rate_limiter.php';
 // Auth kontrolü
 $userId = requireAuth();
 
-// Rate limiting - 5 inceleme/saat
-checkRateLimit($conn, $userId, 'add_review', 5, 3600);
+// Rate limiting - 50 inceleme/saat
+checkRateLimit($conn, $userId, 'add_review', 50, 3600);
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -62,6 +62,36 @@ try {
     $check_stmt->bindParam(':content_id', $data->content_id);
     $check_stmt->execute();
 
+    // 1. Update/Insert into user_library (Cache content details)
+    // Varsayılan durum 'read' (okundu/izlendi) olsun ki listelerde görünsün.
+    // Eğer kullanıcı daha önce eklediyse statüsünü değiştirmeyelim, sadece metadatasını güncelleyelim.
+    $check_lib_query = "SELECT id, status FROM user_library WHERE user_id = :user_id AND content_type = :content_type AND content_id = :content_id";
+    $check_lib_stmt = $conn->prepare($check_lib_query);
+    $check_lib_stmt->bindParam(':user_id', $userId);
+    $check_lib_stmt->bindParam(':content_type', $data->content_type);
+    $check_lib_stmt->bindParam(':content_id', $data->content_id);
+    $check_lib_stmt->execute();
+
+    if ($check_lib_stmt->rowCount() > 0) {
+        // Zaten kütüphanede var, sadece resim ve başlık eksikse güncelle
+        $lib_query = "UPDATE user_library SET content_title = :content_title, image_url = :image_url, author = :author, updated_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND content_type = :content_type AND content_id = :content_id";
+    } else {
+        // Kütüphaneye yeni ekle, status='read' olarak varsayalım (inceleme yaptığına göre bitirmiştir)
+        $lib_query = "INSERT INTO user_library (user_id, content_type, content_id, status, content_title, image_url, author) VALUES (:user_id, :content_type, :content_id, 'read', :content_title, :image_url, :author)";
+    }
+    
+    $lib_stmt = $conn->prepare($lib_query);
+    $lib_stmt->bindParam(':user_id', $userId);
+    $lib_stmt->bindParam(':content_type', $data->content_type);
+    $lib_stmt->bindParam(':content_id', $data->content_id);
+    $lib_stmt->bindParam(':content_title', $data->content_title);
+    $lib_stmt->bindParam(':image_url', $data->image_url);
+    // author frontend'den gelmiyor olabilir, null geçelim şimdilik veya varsa
+    $author = isset($data->author) ? $data->author : null; 
+    $lib_stmt->bindParam(':author', $author);
+    $lib_stmt->execute();
+
+    // 2. Insert/Update Review
     if($check_stmt->rowCount() > 0){
         // Update existing review
         $query = "UPDATE reviews SET rating = :rating, review_text = :review_text, created_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND content_type = :content_type AND content_id = :content_id";
@@ -77,6 +107,7 @@ try {
     $stmt->bindParam(':content_id', $data->content_id);
     $stmt->bindParam(':rating', $data->rating);
     $stmt->bindParam(':review_text', $review_text);
+    // content_title and image_url removed from reviews table operations
 
     if($stmt->execute()){
         http_response_code(200);
