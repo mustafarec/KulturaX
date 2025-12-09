@@ -9,7 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 export const SignupScreen = () => {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
-    const { signup, isLoading } = useAuth();
+    const { signup } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     const styles = React.useMemo(() => StyleSheet.create({
         scrollContainer: {
@@ -121,6 +122,7 @@ export const SignupScreen = () => {
 
         // birthDate is already formatted YYYY-MM-DD from DatePicker onConfirm
 
+        setLoading(true);
         try {
             const response = await signup(email, password, name, surname, username, birthDate, gender);
 
@@ -139,8 +141,14 @@ export const SignupScreen = () => {
                 });
                 // Navigation to Main is handled by AuthContext state change or AppNavigator
             }
-        } catch (error) {
-            // Error is handled in context
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Kayıt Hatası',
+                text2: error.message || 'Kayıt işlemi başarısız oldu.',
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -264,8 +272,8 @@ export const SignupScreen = () => {
                     />
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={isLoading}>
-                    {isLoading ? (
+                <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
+                    {loading ? (
                         <ActivityIndicator color="#ffffff" />
                     ) : (
                         <Text style={styles.buttonText}>Kayıt Ol</Text>

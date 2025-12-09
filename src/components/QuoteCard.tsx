@@ -87,20 +87,34 @@ export const QuoteCard = ({
             marginBottom: 8,
             fontStyle: 'italic',
         },
-        bookInfoContainer: {
+        embossedContainer: {
+            marginTop: 12,
+            paddingTop: 16, // Increased from 12
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+            borderWidth: 1,
+            borderColor: (theme as any).id === 'black' ? '#333333' : 'rgba(255, 255, 255, 0.05)', // Specific border for black mode
+            backgroundColor: (theme as any).id === 'light' ? '#FFFCF5' : theme.colors.surface, // Very Light Cream for Light Mode
+            paddingHorizontal: 16, // Increased from 12
+            paddingBottom: 16, // Increased from 12
+            borderRadius: 8,
+            shadowColor: theme.dark ? "#000" : "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: theme.dark ? 0.3 : 0.05,
+            shadowRadius: 3,
+            elevation: 2,
+        },
+        bookInfoContainer: { // Keeping name for compatibility but it's just a row now
             flexDirection: 'row',
             alignItems: 'center',
-            marginTop: 8,
-            paddingTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.primary, // Match outer border color
+            marginBottom: 8,
         },
         bookCover: {
             width: 30,
             height: 45,
             borderRadius: 4,
-            marginRight: 10,
-            backgroundColor: theme.colors.secondary, // Placeholder color
+            marginRight: 15, // Increased from 10
+            backgroundColor: theme.colors.secondary,
         },
         bookDetails: {
             flex: 1,
@@ -125,32 +139,34 @@ export const QuoteCard = ({
                         <Text style={styles.statusText}>{status}</Text>
                     )}
 
-                    {(imageUrl || source) && (
-                        <View style={styles.bookInfoContainer}>
-                            {imageUrl ? (
-                                <Image
-                                    source={{
-                                        uri: imageUrl.replace(/^http:/, 'https:').replace(/&amp;/g, '&')
-                                    }}
-                                    style={styles.bookCover}
-                                />
-                            ) : (
-                                <View style={[styles.bookCover, { justifyContent: 'center', alignItems: 'center' }]}>
-                                    <Icon name="book-open" size={16} color="#fff" />
+                    <View style={styles.embossedContainer}>
+                        {(imageUrl || source) && (
+                            <View style={styles.bookInfoContainer}>
+                                {imageUrl ? (
+                                    <Image
+                                        source={{
+                                            uri: imageUrl.replace(/^http:/, 'https:').replace(/&amp;/g, '&')
+                                        }}
+                                        style={styles.bookCover}
+                                    />
+                                ) : (
+                                    <View style={[styles.bookCover, { justifyContent: 'center', alignItems: 'center' }]}>
+                                        <Icon name="book-open" size={16} color="#fff" />
+                                    </View>
+                                )}
+                                <View style={styles.bookDetails}>
+                                    <Text style={styles.bookTitle} numberOfLines={1}>{source}</Text>
+                                    {author && <Text style={styles.bookAuthor} numberOfLines={1}>{author}</Text>}
                                 </View>
-                            )}
-                            <View style={styles.bookDetails}>
-                                <Text style={styles.bookTitle} numberOfLines={1}>{source}</Text>
-                                {author && <Text style={styles.bookAuthor} numberOfLines={1}>{author}</Text>}
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {text ? (
-                        <Text style={[styles.compactText, { marginTop: 12 }]}>
-                            {text.replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
-                        </Text>
-                    ) : null}
+                        {text ? (
+                            <Text style={styles.compactText}>
+                                {text.replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
+                            </Text>
+                        ) : null}
+                    </View>
                 </View>
             </View>
         );

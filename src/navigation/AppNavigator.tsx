@@ -23,6 +23,7 @@ import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { VerificationScreen } from '../screens/auth/VerificationScreen';
 import { useTheme } from '../context/ThemeContext';
 import { navigationRef } from '../services/NavigationService';
+import { View, Image } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
@@ -38,8 +39,19 @@ const MainWithDrawer = () => (
 );
 
 export const AppNavigator = () => {
-    const { user } = useAuth();
+    const { user, isLoading } = useAuth();
     const { theme } = useTheme();
+
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                <Image
+                    source={require('../assets/images/header_logo.png')}
+                    style={{ width: 150, height: 150, resizeMode: 'contain' }}
+                />
+            </View>
+        );
+    }
 
     return (
         <NavigationContainer ref={navigationRef}>

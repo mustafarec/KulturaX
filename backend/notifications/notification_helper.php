@@ -13,7 +13,8 @@ function sendRepostNotification($conn, $senderId, $newPostId, $originalPostId, $
         if ($postOwner) {
             $ownerId = (int)$postOwner['user_id'];
 
-            if ($ownerId !== (int)$senderId) {
+            // Kendine bildirim gelmesini engelle
+            if ($ownerId != $senderId) {
                 // Gönderen kullanıcı adını al
                 $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
                 $senderStmt = $conn->prepare($senderQuery);

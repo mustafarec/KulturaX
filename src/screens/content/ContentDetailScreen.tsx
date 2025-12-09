@@ -114,11 +114,11 @@ export const ContentDetailScreen = () => {
             borderBottomLeftRadius: theme.borderRadius.xl,
             borderBottomRightRadius: theme.borderRadius.xl,
             ...theme.shadows.soft,
-            paddingTop: 60,
+            paddingTop: 110,
         },
         backButton: {
             position: 'absolute',
-            top: 20,
+            top: 50,
             left: 20,
             zIndex: 10,
             padding: 8,

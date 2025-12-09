@@ -119,7 +119,8 @@ try {
                     
                     file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Comment: Owner $ownerId, Sender $senderId\n", FILE_APPEND);
 
-                    if ($ownerId !== $senderId) {
+                    // Kendine bildirim gelmesini engelle
+                    if ($ownerId != $senderId) {
                         $title = "Yeni Yorum";
                         $message = "@$senderName gönderine yorum yaptı.";
                         $notifData = json_encode(array("sender_id" => $senderId, "post_id" => $data->post_id));

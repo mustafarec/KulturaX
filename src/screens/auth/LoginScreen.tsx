@@ -8,7 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 export const LoginScreen = () => {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
-    const { login, isLoading } = useAuth();
+    const { login } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -67,6 +68,7 @@ export const LoginScreen = () => {
             return;
         }
 
+        setLoading(true);
         try {
             await login(email, password);
         } catch (error: any) {
@@ -92,6 +94,8 @@ export const LoginScreen = () => {
                 text1: errorTitle,
                 text2: errorMessage,
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -119,8 +123,8 @@ export const LoginScreen = () => {
                 />
             </View>
 
-            <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
-                {isLoading ? (
+            <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+                {loading ? (
                     <ActivityIndicator color="#ffffff" />
                 ) : (
                     <Text style={styles.buttonText}>Giriş Yap</Text>

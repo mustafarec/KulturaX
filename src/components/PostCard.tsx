@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { QuoteCard } from './QuoteCard';
 
 interface PostCardProps {
@@ -9,7 +10,7 @@ interface PostCardProps {
     onPress?: () => void;
     onLike?: () => void;
     onComment?: () => void;
-    onDelete?: () => void;
+    onOptions?: (position: { x: number, y: number, width: number, height: number }) => void;
     onRepost?: () => void;
     onUserPress?: (userId?: number) => void;
     onReposterPress?: () => void;
@@ -22,7 +23,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     onPress,
     onLike,
     onComment,
-    onDelete,
+    onOptions,
     onRepost,
     onUserPress,
     onReposterPress,
@@ -31,9 +32,21 @@ export const PostCard: React.FC<PostCardProps> = ({
 }) => {
     const { theme } = useTheme();
 
+
+
+    const optionsButtonRef = React.useRef<any>(null);
+
+    const handleOptionsPress = () => {
+        if (onOptions && optionsButtonRef.current) {
+            optionsButtonRef.current.measure((fx: number, fy: number, width: number, height: number, px: number, py: number) => {
+                onOptions({ x: px, y: py, width, height });
+            });
+        }
+    };
+
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
-            backgroundColor: theme.colors.surface, // Changed from transparent to surface for better layering
+            backgroundColor: theme.colors.surface,
             paddingVertical: 12,
             paddingHorizontal: 16,
             borderBottomWidth: 1,
@@ -97,7 +110,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             marginRight: 4,
         },
         username: {
-            color: theme.colors.textSecondary,
+            color: (theme as any).id === 'dim' ? '#D6D3D1' : theme.colors.textSecondary,
             fontSize: 14,
             marginRight: 4,
         },
@@ -142,8 +155,8 @@ export const PostCard: React.FC<PostCardProps> = ({
             color: theme.colors.primary,
         },
         socialQuoteContainer: {
-            borderWidth: 2, // Thicker border
-            borderColor: theme.colors.primary, // Button color
+            borderWidth: 2,
+            borderColor: theme.colors.primary,
             borderRadius: 12,
             padding: 12,
             marginTop: 4,
@@ -207,64 +220,46 @@ export const PostCard: React.FC<PostCardProps> = ({
     }), [theme]);
     const isRepost = !!post.original_post_id;
 
-    // Alıntı kontrolü:
-    // 1. Repost olmalı
-    // 2. Orijinal post verisi olmalı
-    // 3. İçerik 'Yeniden paylaşım' (varsayılan) olmamalı VE orijinal içerikle aynı olmamalı
-    // (Eğer içerik orijinalle aynıysa, eski mantıkla oluşturulmuş bir 'Direct Repost' kabul ediyoruz)
     const isQuoteRepost = isRepost && post.original_post &&
         post.content !== 'Yeniden paylaşım' &&
         post.content !== post.original_post.content;
 
-    // İçerik Ayrıştırma (JSON vs Plain Text vs New Columns)
+    const displayPost = isQuoteRepost ? post : (isRepost && post.original_post ? post.original_post : post);
+
     let displayComment = '';
     let displayQuote = '';
 
-    // 1. Yeni Sütunlar (Varsa öncelikli)
-    if (post.quote_text != null || post.comment_text != null) {
-        displayQuote = post.quote_text || '';
-        displayComment = post.comment_text || '';
+    if (displayPost.quote_text != null || displayPost.comment_text != null) {
+        displayQuote = displayPost.quote_text || '';
+        displayComment = displayPost.comment_text || '';
     }
 
-    // 2. Fallback: Content Parsing (Eğer yeni sütunlar boşsa veya null ise)
-    if (!displayQuote && !displayComment && post.content) {
+    if (!displayQuote && !displayComment && displayPost.content) {
         try {
-            // Try to parse content as JSON (new format)
-            if (post.content.startsWith('{')) {
-                const parsed = JSON.parse(post.content);
+            if (displayPost.content.startsWith('{')) {
+                const parsed = JSON.parse(displayPost.content);
                 if (parsed.quote !== undefined) {
                     displayComment = parsed.comment;
                     displayQuote = parsed.quote;
                 } else {
-                    // Fallback for non-standard JSON
-                    displayQuote = post.content;
+                    displayQuote = displayPost.content;
                 }
             } else {
-                // Legacy format (Plain text)
-                // If it's a content post (book/movie/music) OR has a specific source, the content was the quote
-                if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
-                    displayQuote = post.content;
+                if (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music' || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce')) {
+                    displayQuote = displayPost.content;
                 } else {
-                    // For thoughts or other types, it's the main content
-                    displayComment = post.content;
+                    displayComment = displayPost.content;
                 }
             }
         } catch (e) {
-            // Not JSON, treat as plain text
-            if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
-                displayQuote = post.content;
+            if (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music' || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce')) {
+                displayQuote = displayPost.content;
             } else {
-                displayComment = post.content;
+                displayComment = displayPost.content;
             }
         }
     }
 
-    // Görüntülenecek Post (İçerik için)
-    // Quote Repost ise: Post'un kendisi (çünkü yorumu var)
-    // Direct Repost ise: Orijinal post (çünkü sadece onu gösteriyoruz)
-    const displayPost = isQuoteRepost ? post : (isRepost && post.original_post ? post.original_post : post);
-
-    // Repost durumunda orijinal içeriği de ayrıştır
     let originalQuote = '';
     if (isRepost && post.original_post) {
         if (post.original_post.quote_text != null) {
@@ -283,9 +278,6 @@ export const PostCard: React.FC<PostCardProps> = ({
         }
     }
 
-    // Görüntülenecek Yazar
-    // Quote Repost ise: Post sahibi (Reposter)
-    // Direct Repost ise: Orijinal post sahibi
     let displayUser = post.user;
     if (isRepost && !isQuoteRepost) {
         if (post.original_post) {
@@ -299,10 +291,23 @@ export const PostCard: React.FC<PostCardProps> = ({
         }
     }
 
-    // Alıntı Kartı Gösterimi (İçerik içindeki kutu)
-    // Quote Repost ise: Orijinal postu kutu içinde göster
-    // Normal Post ise ve source varsa: Kaynağı kutu içinde göster
     const showQuoteCard = isQuoteRepost || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce');
+
+    // Custom Interaction Colors
+    // Lights Out (Black) mode gets the special Cool Gray inactive color.
+    // Light/Dim modes keep their textSecondary color to match the warm theme.
+    // Active colors (Like/Repost) remain the new global defaults.
+    const isBlackTheme = (theme as any).id === 'black';
+    const interactionColors = {
+        inactive: isBlackTheme ? '#9ca3af' : theme.colors.textSecondary,
+        like: '#f91880',
+        repost: '#22c55e',
+        comment: '#EA9A65',
+    };
+
+    const likeColor = displayPost.is_liked ? interactionColors.like : interactionColors.inactive;
+    const repostColor = displayPost.is_reposted ? interactionColors.repost : interactionColors.inactive;
+    const commentColor = interactionColors.inactive; // Keeping inactive color (theme dependent)
 
     return (
         <View style={styles.container}>
@@ -343,9 +348,13 @@ export const PostCard: React.FC<PostCardProps> = ({
                             </Text>
                         </TouchableOpacity>
 
-                        {currentUserId && post.user && currentUserId === post.user.id && onDelete && (
-                            <TouchableOpacity onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Icon name="trash" size={14} color={theme.colors.textSecondary} />
+                        {currentUserId && post.user && currentUserId === post.user.id && onOptions && (
+                            <TouchableOpacity
+                                ref={optionsButtonRef}
+                                onPress={handleOptionsPress}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.textSecondary} />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -362,27 +371,32 @@ export const PostCard: React.FC<PostCardProps> = ({
                                 <View style={styles.socialQuoteContainer}>
                                     <TouchableOpacity onPress={() => onContentPress && post.original_post.content_id ? null : (onPress && onPress())} activeOpacity={0.9}>
                                         <View style={styles.socialQuoteHeader}>
-                                            {post.original_post.user.avatar_url ? (
-                                                <Image source={{ uri: post.original_post.user.avatar_url }} style={styles.socialQuoteAvatar} />
-                                            ) : (
-                                                <View style={styles.socialQuoteAvatarPlaceholder}>
-                                                    <Text style={styles.socialQuoteAvatarText}>
-                                                        {post.original_post.user.username ? post.original_post.user.username.charAt(0).toUpperCase() : '?'}
+                                            <TouchableOpacity
+                                                style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                                                onPress={() => onUserPress && onUserPress(post.original_post.user.id)}
+                                            >
+                                                {post.original_post.user.avatar_url ? (
+                                                    <Image source={{ uri: post.original_post.user.avatar_url }} style={styles.socialQuoteAvatar} />
+                                                ) : (
+                                                    <View style={styles.socialQuoteAvatarPlaceholder}>
+                                                        <Text style={styles.socialQuoteAvatarText}>
+                                                            {post.original_post.user.username ? post.original_post.user.username.charAt(0).toUpperCase() : '?'}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                <View style={styles.socialQuoteUserInfo}>
+                                                    <Text style={styles.socialQuoteName} numberOfLines={1}>
+                                                        {post.original_post.user.full_name || post.original_post.user.username}
+                                                    </Text>
+                                                    <Text style={styles.socialQuoteUsername} numberOfLines={1}>
+                                                        @{post.original_post.user.username}
+                                                    </Text>
+                                                    <Text style={styles.socialQuoteDot}>·</Text>
+                                                    <Text style={styles.socialQuoteTime}>
+                                                        {new Date(post.original_post.created_at || Date.now()).toLocaleDateString()}
                                                     </Text>
                                                 </View>
-                                            )}
-                                            <View style={styles.socialQuoteUserInfo}>
-                                                <Text style={styles.socialQuoteName} numberOfLines={1}>
-                                                    {post.original_post.user.full_name || post.original_post.user.username}
-                                                </Text>
-                                                <Text style={styles.socialQuoteUsername} numberOfLines={1}>
-                                                    @{post.original_post.user.username}
-                                                </Text>
-                                                <Text style={styles.socialQuoteDot}>·</Text>
-                                                <Text style={styles.socialQuoteTime}>
-                                                    {new Date(post.original_post.created_at || Date.now()).toLocaleDateString()}
-                                                </Text>
-                                            </View>
+                                            </TouchableOpacity>
                                         </View>
 
                                         {post.original_post.content ? (
@@ -425,20 +439,22 @@ export const PostCard: React.FC<PostCardProps> = ({
                         </View>
                     )}
 
+
+
                     <View style={styles.footer}>
                         <TouchableOpacity style={styles.actionButton} onPress={onComment}>
-                            <Icon name="bubble" size={16} color={theme.colors.primary} style={styles.actionIcon} />
-                            <Text style={styles.actionCount}>{displayPost.comment_count || 0}</Text>
+                            <Icon name="bubble" size={16} color={commentColor} style={styles.actionIcon} />
+                            <Text style={[styles.actionCount, { color: interactionColors.inactive }]}>{displayPost.comment_count || 0}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionButton} onPress={onRepost}>
                             <Icon
                                 name="loop"
                                 size={16}
-                                color={theme.colors.primary}
+                                color={repostColor}
                                 style={styles.actionIcon}
                             />
-                            <Text style={[styles.actionCount, displayPost.is_reposted && styles.repostedText]}>
+                            <Text style={[styles.actionCount, { color: displayPost.is_reposted ? repostColor : interactionColors.inactive }]}>
                                 {displayPost.repost_count || 0}
                             </Text>
                         </TouchableOpacity>
@@ -447,16 +463,16 @@ export const PostCard: React.FC<PostCardProps> = ({
                             <Icon
                                 name={displayPost.is_liked ? "heart" : "heart"}
                                 size={16}
-                                color={theme.colors.primary}
+                                color={likeColor}
                                 style={styles.actionIcon}
                             />
-                            <Text style={[styles.actionCount, displayPost.is_liked && styles.likedText]}>
+                            <Text style={[styles.actionCount, { color: displayPost.is_liked ? likeColor : interactionColors.inactive }]}>
                                 {displayPost.like_count || 0}
                             </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionButton}>
-                            <Icon name="share" size={16} color={theme.colors.primary} style={styles.actionIcon} />
+                            <Icon name="share" size={16} color={interactionColors.inactive} style={styles.actionIcon} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -464,5 +480,3 @@ export const PostCard: React.FC<PostCardProps> = ({
         </View>
     );
 };
-
-

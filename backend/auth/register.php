@@ -5,14 +5,31 @@ include_once '../validation.php';
 include_once '../rate_limiter.php';
 include_once '../auth_middleware.php';
 
+
+
+// DEBUG LOGGING START
+function debugLog($message) {
+    file_put_contents('../debug_register.log', date('Y-m-d H:i:s') . " - " . $message . "\n", FILE_APPEND);
+}
+debugLog("Register script started. IP: " . $_SERVER['REMOTE_ADDR']);
+
 // Rate limiting - IP bazlı, 3 kayıt/saat
 $ip = $_SERVER['REMOTE_ADDR'];
 checkRateLimit($conn, $ip, 'register_attempt', 3, 3600);
 
+// $data = json_decode(file_get_contents("php://input")); DELETED - moved down
+
+
 $data = json_decode(file_get_contents("php://input"));
+if ($data) {
+    debugLog("Input data received: " . json_encode($data));
+} else {
+    debugLog("No input data received or JSON decode failed.");
+}
 
 // Girdi validasyonu
 if(!isset($data->email) || !isset($data->password) || !isset($data->name) || !isset($data->surname) || !isset($data->username)){
+    debugLog("Validation failed: Missing fields.");
     http_response_code(400);
     echo json_encode(array("message" => "Lütfen zorunlu alanları doldurunuz (Email, Şifre, İsim, Soyisim, Kullanıcı Adı)."));
     exit;
@@ -20,6 +37,7 @@ if(!isset($data->email) || !isset($data->password) || !isset($data->name) || !is
 
 // Email validasyonu
 if (!Validator::validateEmail($data->email)) {
+    debugLog("Validation failed: Invalid email format - " . $data->email);
     http_response_code(400);
     echo json_encode(array("message" => "Geçersiz email formatı."));
     exit;
@@ -27,12 +45,14 @@ if (!Validator::validateEmail($data->email)) {
 
 // Şifre gücü kontrolü
 if (!Validator::validatePasswordStrength($data->password)) {
+    debugLog("Validation failed: Weak password.");
     http_response_code(400);
     echo json_encode(array("message" => "Şifre en az 8 karakter, 1 büyük harf, 1 küçük harf ve 1 rakam içermelidir."));
     exit;
 }
 
 try {
+    debugLog("Checking existing user...");
     // Email kontrolü
     $check_query = "SELECT id FROM users WHERE email = :email OR username = :username";
     $check_stmt = $conn->prepare($check_query);
@@ -45,75 +65,11 @@ try {
     $check_stmt->execute();
 
     if($check_stmt->rowCount() > 0){
+        debugLog("User registration failed: User already exists (Email: $email, Username: $username)");
         http_response_code(400);
         echo json_encode(array("message" => "Bu email veya kullanıcı adı zaten kayıtlı."));
         exit;
     }
-
-    // Kullanıcı oluştur
-    $query = "INSERT INTO users (email, password, username, name, surname, birth_date, age, gender) VALUES (:email, :password, :username, :name, :surname, :birth_date, :age, :gender)";
-    $stmt = $conn->prepare($query);
-
-    $password_hash = password_hash($data->password, PASSWORD_BCRYPT);
-    $name = Validator::sanitizeInput($data->name);
-    $surname = Validator::sanitizeInput($data->surname);
-    $birth_date = isset($data->birth_date) ? Validator::sanitizeInput($data->birth_date) : null;
-    $gender = isset($data->gender) ? Validator::sanitizeInput($data->gender) : null;
-<?php
-header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../validation.php';
-include_once '../rate_limiter.php';
-include_once '../auth_middleware.php';
-
-// Rate limiting - IP bazlı, 3 kayıt/saat
-$ip = $_SERVER['REMOTE_ADDR'];
-checkRateLimit($conn, $ip, 'register_attempt', 3, 3600);
-
-$data = json_decode(file_get_contents("php://input"));
-
-// Girdi validasyonu
-if(!isset($data->email) || !isset($data->password) || !isset($data->name) || !isset($data->surname) || !isset($data->username)){
-    http_response_code(400);
-    echo json_encode(array("message" => "Lütfen zorunlu alanları doldurunuz (Email, Şifre, İsim, Soyisim, Kullanıcı Adı)."));
-    exit;
-}
-
-// Email validasyonu
-if (!Validator::validateEmail($data->email)) {
-    http_response_code(400);
-    echo json_encode(array("message" => "Geçersiz email formatı."));
-    exit;
-}
-
-// Şifre gücü kontrolü
-if (!Validator::validatePasswordStrength($data->password)) {
-    http_response_code(400);
-    echo json_encode(array("message" => "Şifre en az 8 karakter, 1 büyük harf, 1 küçük harf ve 1 rakam içermelidir."));
-    exit;
-}
-
-try {
-    // Email kontrolü
-    $check_query = "SELECT id FROM users WHERE email = :email OR username = :username";
-    $check_stmt = $conn->prepare($check_query);
-    
-    $email = Validator::sanitizeInput($data->email);
-    $username = Validator::sanitizeInput($data->username);
-    
-    $check_stmt->bindParam(':email', $email);
-    $check_stmt->bindParam(':username', $username);
-    $check_stmt->execute();
-
-    if($check_stmt->rowCount() > 0){
-        http_response_code(400);
-        echo json_encode(array("message" => "Bu email veya kullanıcı adı zaten kayıtlı."));
-        exit;
-    }
-
-    // Kullanıcı oluştur
-    // $query = "INSERT INTO users (email, password, username, name, surname, birth_date, age, gender) VALUES (:email, :password, :username, :name, :surname, :birth_date, :age, :gender)";
-    // $stmt = $conn->prepare($query);
 
     $password_hash = password_hash($data->password, PASSWORD_BCRYPT);
     $name = Validator::sanitizeInput($data->name);
@@ -129,25 +85,19 @@ try {
         $interval = $now->diff($dob);
         $age = $interval->y;
     }
-      // Check if email or username already exists
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
-    $stmt->execute([$email, $username]);
-    if ($stmt->fetch()) {
-        http_response_code(409);
-        echo json_encode(['message' => 'Email veya kullanıcı adı zaten kullanımda.']);
-        exit;
-    }
 
     // Generate Verification Code
     $verificationCode = rand(100000, 999999);
     $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
+    debugLog("Attempting to insert new user...");
     // Insert new user
     $sql = "INSERT INTO users (email, password, name, surname, username, birth_date, gender, is_email_verified, email_verification_code, verification_expires_at, age) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     
     if ($stmt->execute([$email, $password_hash, $name, $surname, $username, $birth_date, $gender, $verificationCode, $expiresAt, $age])) {
         $userId = $conn->lastInsertId();
+        debugLog("User inserted successfully. ID: $userId");
 
         // Send Verification Email
         $subject = "Hesap Doğrulama Kodu";
@@ -155,8 +105,7 @@ try {
         $headers = "From: no-reply@mmreeo.online";
 
         // Attempt to send email
-        // Note: This requires a working mail server configuration on the backend
-        // Send Verification Email using SimpleSMTP
+        debugLog("Attempting to send verification email...");
         try {
             $mailConfig = require '../mail/config.php';
             require_once '../mail/SimpleSMTP.php';
@@ -169,13 +118,11 @@ try {
             );
 
             $smtp->send($email, $subject, $message, $mailConfig['from_name']);
+            debugLog("Verification email sent successfully.");
         } catch (Exception $e) {
             // Log error but don't fail registration
-            file_put_contents('../debug_log.txt', "Mail Error: " . $e->getMessage() . "\n", FILE_APPEND);
+            debugLog("Mail Error: " . $e->getMessage());
         }
-
-        // Also log the code for debugging purposes
-        file_put_contents('../debug_log.txt', "Verification Code for $email: $verificationCode\n", FILE_APPEND);
 
         http_response_code(201);
         echo json_encode([
@@ -184,11 +131,15 @@ try {
             'user_id' => $userId,
             'email' => $email
         ]);
+        debugLog("Registration process completed successfully.");
     } else {
+        $errorInfo = $stmt->errorInfo();
+        debugLog("Insert failed. Error Info: " . json_encode($errorInfo));
         http_response_code(500);
         echo json_encode(['message' => 'Kayıt oluşturulamadı.']);
     }
 } catch (PDOException $e) {
+    debugLog("Database Exception: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['message' => 'Veritabanı hatası: ' . $e->getMessage()]);
 }

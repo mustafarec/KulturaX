@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, Image, TouchableOpacity, DeviceEventEmitter } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -27,6 +27,14 @@ const FeedStackScreen = () => {
 
 export const TabNavigator = () => {
     const { theme } = useTheme(); // Use dynamic theme
+    const isBlackTheme = (theme as any).id === 'black';
+
+    // Black Theme Constraints
+    const blackThemeBarSettings = {
+        backgroundColor: '#000000',
+        activeColor: '#FFFFFF',
+        inactiveColor: '#a8a29e', // Stone Gray
+    };
 
     return (
         <Tab.Navigator
@@ -34,9 +42,9 @@ export const TabNavigator = () => {
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: {
-                    backgroundColor: theme.colors.surface, // Solid opaque background
+                    backgroundColor: isBlackTheme ? blackThemeBarSettings.backgroundColor : theme.colors.surface, // Solid opaque background
                     borderTopWidth: 1,
-                    borderTopColor: theme.colors.border,
+                    borderTopColor: isBlackTheme ? '#2A2420' : theme.colors.border,
                     position: 'absolute',
                     bottom: 0,
                     left: 0,
@@ -53,8 +61,8 @@ export const TabNavigator = () => {
                     shadowRadius: 4,
                 },
                 tabBarShowLabel: false,
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: theme.colors.primary,
+                tabBarActiveTintColor: isBlackTheme ? blackThemeBarSettings.activeColor : theme.colors.primary,
+                tabBarInactiveTintColor: isBlackTheme ? blackThemeBarSettings.inactiveColor : theme.colors.primary,
                 tabBarItemStyle: {
                     height: 60,
                     flex: 1,
@@ -77,6 +85,14 @@ export const TabNavigator = () => {
             <Tab.Screen
                 name="Feed"
                 component={FeedStackScreen}
+                listeners={({ navigation }) => ({
+                    tabPress: (e) => {
+                        if (navigation.isFocused()) {
+                            // If already on this tab, trigger a refresh
+                            DeviceEventEmitter.emit('refresh_feed');
+                        }
+                    },
+                })}
                 options={{
                     tabBarIcon: ({ color, focused }) => (
                         <Icon name={focused ? "home" : "home-outline"} size={26} color={color} />

@@ -5,6 +5,7 @@ export const lightTheme = {
         main: Platform.select({ ios: 'System', android: 'Roboto' }),
         quote: Platform.select({ ios: 'Georgia', android: 'serif' }),
     },
+    id: 'light', // Unique identifier
     colors: {
         primary: '#5A3E2B', // Custom Brown
         secondary: '#5A3E2B', // Custom Brown
@@ -66,17 +67,23 @@ export const lightTheme = {
 // Dim Theme (Dark Gray - Previous Dark Mode)
 export const dimTheme = {
     ...lightTheme,
+    id: 'dim', // Unique identifier
     colors: {
         ...lightTheme.colors,
-        background: '#15202B', // Twitter Dim
-        surface: '#192734',
-        text: '#FFFFFF',
-        textSecondary: '#8899A6',
+        background: '#1C1917', // Stone 900
+        surface: '#1F1B18', // User requested #1F1B18
+        text: '#E7E5E4', // User requested #E7E5E4
+        textSecondary: '#A8A29E', // Stone 400 - Adjusted for harmony with #E7E5E4
         border: '#38444D',
         glass: 'rgba(21, 32, 43, 0.85)',
         glassBorder: '#38444D',
         glassShadow: 'rgba(0, 0, 0, 0.3)',
         icon: '#FFFFFF',
+        primary: '#EA9A65', // User requested accents
+        secondary: '#EA9A65',
+        accent: '#EA9A65',
+        gradientStart: '#EA9A65',
+        gradientEnd: '#EA9A65',
     },
     shadows: {
         ...lightTheme.shadows,
@@ -101,17 +108,23 @@ export const dimTheme = {
 // Lights Out Theme (True Black - Current Dark Mode)
 export const blackTheme = {
     ...lightTheme,
+    id: 'black', // Unique identifier
     colors: {
         ...lightTheme.colors,
         background: '#000000', // True Black
         surface: '#000000', // True Black for seamless look
-        text: '#E7E9EA', // High contrast white-ish gray
-        textSecondary: '#71767B', // Twitter/X Dim Gray
-        border: '#2F3336', // Dark gray border
+        text: '#E7E5E4', // Cream/Off-White (Old Typewriter aesthetic as requested)
+        textSecondary: '#C2B2A2', // Warm Titanium / Bronze Gray (User Request)
+        border: '#2A2420', // Dark Earthy Brown (User Request)
         glass: 'rgba(0, 0, 0, 0.85)',
         glassBorder: '#2F3336',
         glassShadow: 'rgba(255, 255, 255, 0.05)',
-        icon: '#E7E9EA',
+        icon: '#C2B2A2', // Warm Titanium / Bronze Gray
+        primary: '#EA9A65', // Matching Dim Theme
+        secondary: '#EA9A65',
+        accent: '#EA9A65',
+        gradientStart: '#EA9A65',
+        gradientEnd: '#EA9A65',
 
     },
     shadows: {

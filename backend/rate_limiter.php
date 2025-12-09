@@ -109,6 +109,7 @@ function checkRateLimit($conn, $key, $action, $limit, $timeWindow) {
     $limiter = new RateLimiter($conn);
     
     if (!$limiter->check($key, $action, $limit, $timeWindow)) {
+        file_put_contents('../debug_register.log', date('Y-m-d H:i:s') . " - Rate limit exceeded for IP: $key\n", FILE_APPEND);
         http_response_code(429); // Too Many Requests
         echo json_encode(array(
             "message" => "Çok fazla istek gönderdiniz. Lütfen daha sonra tekrar deneyin.",

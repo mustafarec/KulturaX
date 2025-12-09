@@ -9,7 +9,8 @@ export const VerificationScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute();
     const { theme } = useTheme();
-    const { verifyEmail, resendEmailCode, isLoading } = useAuth();
+    const { verifyEmail, resendEmailCode } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -97,6 +98,7 @@ export const VerificationScreen = () => {
             return;
         }
 
+        setLoading(true);
         try {
             await verifyEmail(email, code);
             Toast.show({
@@ -113,12 +115,15 @@ export const VerificationScreen = () => {
             // });
         } catch (error) {
             // Error handled in context
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleResend = async () => {
         if (timer > 0) return;
 
+        setLoading(true);
         try {
             await resendEmailCode(email);
             setTimer(60); // 60 seconds cooldown
@@ -149,8 +154,8 @@ export const VerificationScreen = () => {
                 maxLength={6}
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleVerify} disabled={isLoading}>
-                {isLoading ? (
+            <TouchableOpacity style={styles.button} onPress={handleVerify} disabled={loading}>
+                {loading ? (
                     <ActivityIndicator color="#ffffff" />
                 ) : (
                     <Text style={styles.buttonText}>Doğrula</Text>
@@ -160,7 +165,7 @@ export const VerificationScreen = () => {
             <TouchableOpacity
                 style={[styles.resendButton, timer > 0 && styles.disabledButton]}
                 onPress={handleResend}
-                disabled={timer > 0 || isLoading}
+                disabled={timer > 0 || loading}
             >
                 <Text style={styles.resendText}>
                     {timer > 0 ? `Tekrar Gönder (${timer}s)` : "Kodu Tekrar Gönder"}

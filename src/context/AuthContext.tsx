@@ -52,7 +52,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const login = async (email: string, password: string) => {
-        setIsLoading(true);
         setError(null);
         try {
             const data = await authService.login(email, password);
@@ -80,7 +79,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const signup = async (email: string, password: string, name: string, surname: string, username: string, birthDate?: string, gender?: string) => {
-        setIsLoading(true);
         setError(null);
         try {
             const data = await authService.register(email, password, name, surname, username, birthDate, gender);
@@ -100,7 +98,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const verifyEmail = async (email: string, code: string) => {
-        setIsLoading(true);
         setError(null);
         try {
             const data = await authService.verifyEmail(email, code);
@@ -127,7 +124,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const resendEmailCode = async (email: string) => {
-        setIsLoading(true);
         setError(null);
         try {
             await authService.resendVerificationCode(email);
@@ -141,7 +137,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        setIsLoading(true);
         setError(null);
         try {
             // Remove token from backend and storage
