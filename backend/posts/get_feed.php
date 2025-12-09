@@ -30,12 +30,14 @@ try {
                 (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id) as repost_count,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
+                (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
                 
                 (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like') as op_like_count,
                 (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'comment') as op_comment_count,
                 (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id) as op_repost_count,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,
+                (SELECT COUNT(*) FROM bookmarks WHERE post_id = op.id AND user_id = :user_id) as op_is_saved,
                 
                 op.image_url as op_image_url,
                 op.content_type as op_content_type,
@@ -83,9 +85,10 @@ try {
     $posts = array();
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
-        // Convert is_liked and is_reposted to boolean
+        // Convert is_liked, is_reposted, is_saved to boolean
         $row['is_liked'] = $row['is_liked'] > 0;
         $row['is_reposted'] = $row['is_reposted'] > 0;
+        $row['is_saved'] = $row['is_saved'] > 0;
         
         // Structure user object
         $row['user'] = array(
@@ -113,6 +116,7 @@ try {
                 'repost_count' => $row['op_repost_count'],
                 'is_liked' => $row['op_is_liked'] > 0,
                 'is_reposted' => $row['op_is_reposted'] > 0,
+                'is_saved' => $row['op_is_saved'] > 0,
                 'user' => array(
                     'id' => $row['op_user_id'],
                     'username' => $row['op_username'],
@@ -145,6 +149,7 @@ try {
         unset($row['op_is_liked']);
         unset($row['op_repost_count']);
         unset($row['op_is_reposted']);
+        unset($row['op_is_saved']);
         
         array_push($posts, $row);
     }

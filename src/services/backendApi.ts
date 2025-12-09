@@ -399,6 +399,32 @@ export const interactionService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    toggleBookmark: async (userId: number, postId: number) => {
+        try {
+            // Using POST with action '?action=toggle'
+            const response = await backendApi.post('/interactions/bookmarks.php?action=toggle', { post_id: postId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    getBookmarks: async (userId: number, page: number = 1) => {
+        try {
+            const response = await backendApi.get(`/interactions/bookmarks.php?action=list&page=${page}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    checkBookmark: async (userId: number, postId: number) => {
+        try {
+            const response = await backendApi.get(`/interactions/bookmarks.php?action=check&post_id=${postId}`);
+            return response.data;
+        } catch (error: any) {
+            // Silently fail or return false
+            return { saved: false };
+        }
     }
 };
 

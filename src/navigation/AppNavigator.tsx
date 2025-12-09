@@ -21,6 +21,7 @@ import { PostDetailScreen } from '../screens/main/PostDetailScreen';
 import { CreatorDetailScreen } from '../screens/content/CreatorDetailScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { VerificationScreen } from '../screens/auth/VerificationScreen';
+import { SavedPostsScreen } from '../screens/main/SavedPostsScreen';
 import { useTheme } from '../context/ThemeContext';
 import { navigationRef } from '../services/NavigationService';
 import { View, Image } from 'react-native';
@@ -141,6 +142,11 @@ export const AppNavigator = () => {
                                 headerStyle: { backgroundColor: theme.colors.background },
                                 headerTintColor: theme.colors.text,
                             }}
+                        />
+                        <Stack.Screen
+                            name="SavedPosts"
+                            component={SavedPostsScreen}
+                            options={{ headerShown: false }}
                         />
                         <Stack.Screen
                             name="EditProfile"

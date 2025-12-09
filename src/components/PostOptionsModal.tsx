@@ -8,11 +8,13 @@ interface PostOptionsModalProps {
     visible: boolean;
     onClose: () => void;
     onDelete?: () => void;
-    isOwner: boolean;
+    onToggleSave?: () => void;
+    isSaved?: boolean;
+    isOwner?: boolean;
     targetPosition?: { x: number; y: number; width: number; height: number } | null;
 }
 
-export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition }) => {
+export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onToggleSave, isSaved }) => {
     const { theme } = useTheme();
 
     if (!visible || !targetPosition) return null;
@@ -24,6 +26,16 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
     const top = targetPosition.y + targetPosition.height + 6;
 
     const options = [
+        // Save Option
+        {
+            label: isSaved ? 'Kaydedilenlerden Çıkar' : 'Kaydet',
+            icon: isSaved ? 'bookmark' : 'bookmark-outline',
+            color: theme.colors.text,
+            onPress: () => {
+                onClose();
+                if (onToggleSave) onToggleSave();
+            }
+        },
         ...(isOwner ? [{
             label: 'Sil',
             icon: 'trash',
@@ -34,10 +46,13 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
             }
         }] : []),
         ...(!isOwner ? [{
-            label: 'Seçenek yok',
+            label: 'Bildir',
             icon: 'alert-circle',
             color: theme.colors.textSecondary,
-            onPress: () => { }
+            onPress: () => {
+                onClose();
+                // TODO: Implement report
+            }
         }] : [])
     ];
 
@@ -94,7 +109,8 @@ const styles = StyleSheet.create({
     },
     dropdown: {
         position: 'absolute',
-        width: 180,
+        minWidth: 160,
+        maxWidth: 260,
         borderRadius: 12,
         borderWidth: 1,
         padding: 4,

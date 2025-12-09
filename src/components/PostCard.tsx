@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatRelativeTime } from '../utils/dateUtils';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
@@ -101,18 +102,20 @@ export const PostCard: React.FC<PostCardProps> = ({
             flexDirection: 'row',
             alignItems: 'center',
             flex: 1,
-            flexWrap: 'wrap',
+            // flexWrap: 'wrap', // Disabled wrapping to force single line
         },
         name: {
             fontWeight: '700',
             fontSize: 15,
             color: theme.colors.text,
             marginRight: 4,
+            flexShrink: 1, // Allow name to shrink if absolutely necessary, but usually username goes first
         },
         username: {
             color: (theme as any).id === 'dim' ? '#D6D3D1' : theme.colors.textSecondary,
             fontSize: 14,
             marginRight: 4,
+            flexShrink: 1, // This ensures username gets truncated if space is tight
         },
         dot: {
             color: theme.colors.textSecondary,
@@ -344,11 +347,11 @@ export const PostCard: React.FC<PostCardProps> = ({
                             </Text>
                             <Text style={styles.dot}>·</Text>
                             <Text style={styles.time}>
-                                {new Date(post.created_at || Date.now()).toLocaleDateString()}
+                                {formatRelativeTime(post.created_at || Date.now())}
                             </Text>
                         </TouchableOpacity>
 
-                        {currentUserId && post.user && currentUserId === post.user.id && onOptions && (
+                        {onOptions && (
                             <TouchableOpacity
                                 ref={optionsButtonRef}
                                 onPress={handleOptionsPress}
@@ -393,7 +396,7 @@ export const PostCard: React.FC<PostCardProps> = ({
                                                     </Text>
                                                     <Text style={styles.socialQuoteDot}>·</Text>
                                                     <Text style={styles.socialQuoteTime}>
-                                                        {new Date(post.original_post.created_at || Date.now()).toLocaleDateString()}
+                                                        {formatRelativeTime(post.original_post.created_at || Date.now())}
                                                     </Text>
                                                 </View>
                                             </TouchableOpacity>

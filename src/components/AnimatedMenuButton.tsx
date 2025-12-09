@@ -23,6 +23,7 @@ export const AnimatedMenuButton = () => {
     return (
         <TouchableOpacity onPress={toggleMenu} style={styles.container}>
             <LottieView
+                key={(theme as any).id} // Force re-render on theme change
                 ref={lottieRef}
                 source={require('../assets/animations/menu.json')}
                 style={styles.lottie}
@@ -31,9 +32,22 @@ export const AnimatedMenuButton = () => {
                 speed={1.5}
                 colorFilters={[
                     {
-                        keypath: "**",
+                        keypath: "Top.Top.Stroke 1",
                         color: theme.colors.text,
                     },
+                    {
+                        keypath: "Middle.Middle.Stroke 1",
+                        color: theme.colors.text,
+                    },
+                    {
+                        keypath: "Bottom.Bottom.Stroke 1",
+                        color: theme.colors.text,
+                    },
+                    // Fallback in case structure varies slightly or to catch generic
+                    {
+                        keypath: "**.Stroke 1",
+                        color: theme.colors.text,
+                    }
                 ]}
             />
         </TouchableOpacity>

@@ -160,14 +160,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
         }
     }, [visible, isDrawer]);
 
-    const handleNavigation = (screen: string) => {
+    const handleNavigation = (screen: string, params?: any) => {
         onClose();
         if (!isDrawer) {
             setTimeout(() => {
-                (navigation as any).navigate(screen);
+                (navigation as any).navigate(screen, params);
             }, 300);
         } else {
-            (navigation as any).navigate(screen);
+            (navigation as any).navigate(screen, params);
         }
     };
 
@@ -219,6 +219,8 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
 
             <View style={styles.menuItems}>
                 <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Profile')} />
+                <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
+                <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                 <MenuItem icon="settings" label="Ayarlar" onPress={() => handleNavigation('Settings')} />
                 <MenuItem
                     icon={themeMode === 'dark' ? 'moon' : 'sunny'}
@@ -226,7 +228,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                     onPress={() => setThemeModalVisible(true)}
                     iconFamily="Ionicons"
                 />
-                <MenuItem icon="bookmark" label="Kaydedilenler" onPress={() => { /* TODO */ }} />
+                <MenuItem
+                    icon="bookmark-outline"
+                    label="Kaydedilenler"
+                    onPress={() => handleNavigation('SavedPosts')}
+                    iconFamily="Ionicons"
+                />
                 <MenuItem icon="star" label="Değerlendirmelerim" onPress={() => { /* TODO */ }} />
             </View>
 
@@ -279,6 +286,8 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
 
                     <View style={styles.menuItems}>
                         <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Profile')} />
+                        <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
+                        <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                         <MenuItem icon="settings" label="Ayarlar" onPress={() => handleNavigation('Settings')} />
                         <MenuItem
                             icon={themeMode === 'dark' ? 'moon' : 'sunny'}
@@ -286,7 +295,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                             onPress={() => setThemeModalVisible(true)}
                             iconFamily="Ionicons"
                         />
-                        <MenuItem icon="bookmark" label="Kaydedilenler" onPress={() => { /* TODO */ }} />
+                        <MenuItem
+                            icon="bookmark-outline"
+                            label="Kaydedilenler"
+                            onPress={() => handleNavigation('SavedPosts')}
+                            iconFamily="Ionicons"
+                        />
                         <MenuItem icon="star" label="Değerlendirmelerim" onPress={() => { /* TODO */ }} />
                     </View>
 

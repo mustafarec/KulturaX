@@ -439,6 +439,42 @@ export const FeedScreen = () => {
         setDeleteDialogVisible(true);
     };
 
+    const handleToggleSave = async () => {
+        const item = selectedPostForOptions;
+        if (!item || !user) return;
+
+        // Optimistic update
+        const isSaved = item.is_saved;
+        setFeed(prev => prev.map(p => {
+            if (p.id === item.id) return { ...p, is_saved: !isSaved };
+            if (p.original_post && p.original_post.id === item.id) return {
+                ...p,
+                original_post: { ...p.original_post, is_saved: !isSaved }
+            };
+            return p;
+        }));
+
+        try {
+            await interactionService.toggleBookmark(user.id, item.id);
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: !isSaved ? 'Kaydedildi.' : 'Kaydedilenlerden çıkarıldı.' });
+        } catch (error: any) {
+            console.error('Toggle Bookmark Error:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'İşlem başarısız.';
+            Toast.show({ type: 'error', text1: 'Hata', text2: errorMessage });
+
+            // Revert on error
+            setFeed(prev => prev.map(p => {
+                if (p.id === item.id) return { ...p, is_saved: isSaved };
+                if (p.original_post && p.original_post.id === item.id) return {
+                    ...p,
+                    original_post: { ...p.original_post, is_saved: isSaved }
+                };
+                return p;
+            }));
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem başarısız.' });
+        }
+    };
+
     const confirmDelete = async () => {
         const item = selectedPostForOptions;
         if (!item) return;
@@ -491,7 +527,7 @@ export const FeedScreen = () => {
                 onLike={() => handleLike(item)}
                 onComment={() => (navigation as any).navigate('PostDetail', { postId: interactionId, autoFocusComment: false })}
                 onRepost={() => handleRepostPress(item)}
-                onOptions={user && user.username === item.user.username ? (pos) => handleOptionsPress(item, pos) : undefined}
+                onOptions={(pos) => handleOptionsPress(item, pos)}
                 onUserPress={(userId) => (navigation as any).navigate('OtherProfile', { userId: userId || item.user.id })}
                 onReposterPress={() => (navigation as any).navigate('OtherProfile', { userId: item.user.id })}
                 currentUserId={user?.id}
@@ -502,7 +538,7 @@ export const FeedScreen = () => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
+            <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <AnimatedMenuButton />
@@ -612,6 +648,8 @@ export const FeedScreen = () => {
                 onDelete={handleDelete}
                 isOwner={selectedPostForOptions?.user?.id === user?.id}
                 targetPosition={menuPosition}
+                onToggleSave={handleToggleSave}
+                isSaved={!!selectedPostForOptions?.is_saved}
             />
 
             <ThemedDialog

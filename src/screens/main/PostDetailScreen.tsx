@@ -7,6 +7,8 @@ import { PostCard } from '../../components/PostCard';
 import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import Toast from 'react-native-toast-message';
+import { PostOptionsModal } from '../../components/PostOptionsModal';
+import { ThemedDialog } from '../../components/ThemedDialog';
 import { useAuth } from '../../context/AuthContext';
 
 export const PostDetailScreen = () => {
@@ -30,6 +32,49 @@ export const PostDetailScreen = () => {
     // Interaction State
     const [repostMenuVisible, setRepostMenuVisible] = useState(false);
     const [selectedRepostPost, setSelectedRepostPost] = useState<any>(null);
+
+    // Options Menu State
+    const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+    const handleOptionsPress = (position: { x: number, y: number, width: number, height: number }) => {
+        setMenuPosition(position);
+        setOptionsModalVisible(true);
+    };
+
+    const handleToggleSave = async () => {
+        if (!post || !currentUser) return;
+        const isSaved = post.is_saved;
+        setPost({ ...post, is_saved: !isSaved });
+
+        try {
+            await interactionService.toggleBookmark(currentUser.id, post.id);
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: !isSaved ? 'Kaydedildi.' : 'Kaydedilenlerden çıkarıldı.' });
+        } catch (error: any) {
+            setPost({ ...post, is_saved: isSaved });
+            const errorMessage = error.response?.data?.error || error.message || 'İşlem başarısız.';
+            Toast.show({ type: 'error', text1: 'Hata', text2: errorMessage });
+        }
+    };
+
+    const handleDelete = () => {
+        setDeleteDialogVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!post || !currentUser) return;
+        try {
+            await postService.delete(currentUser.id, post.id);
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
+            navigation.goBack();
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'Silinemedi.' });
+        } finally {
+            setDeleteDialogVisible(false);
+            setOptionsModalVisible(false);
+        }
+    };
 
     const fetchPost = async () => {
         setLoading(true);
@@ -482,6 +527,7 @@ export const PostDetailScreen = () => {
                     onLike={() => handleLike(post)}
                     onComment={() => inputRef.current?.focus()}
                     onRepost={() => handleRepost(post)}
+                    onOptions={(currentUser && (post.user.id === currentUser.id || post.user.username === currentUser.username)) ? handleOptionsPress : undefined}
                 />
 
                 <View style={styles.commentsSection}>
@@ -533,8 +579,29 @@ export const PostDetailScreen = () => {
             <RepostMenu
                 visible={repostMenuVisible}
                 onClose={() => setRepostMenuVisible(false)}
-                onRepost={handleDirectRepost}
-                onQuote={handleQuoteRepost}
+                onDirectRepost={handleDirectRepost}
+                onQuoteRepost={handleQuoteRepost}
+            />
+
+            <PostOptionsModal
+                visible={optionsModalVisible}
+                onClose={() => setOptionsModalVisible(false)}
+                onDelete={handleDelete}
+                isOwner={post?.user?.id === currentUser?.id}
+                targetPosition={menuPosition}
+                onToggleSave={handleToggleSave}
+                isSaved={!!post?.is_saved}
+            />
+
+            <ThemedDialog
+                visible={deleteDialogVisible}
+                title="Sil"
+                message="Bu gönderiyi silmek istediğinize emin misiniz?"
+                onClose={() => setDeleteDialogVisible(false)}
+                actions={[
+                    { text: 'İptal', style: 'cancel', onPress: () => setDeleteDialogVisible(false) },
+                    { text: 'Sil', style: 'destructive', onPress: confirmDelete }
+                ]}
             />
         </KeyboardAvoidingView>
     );
