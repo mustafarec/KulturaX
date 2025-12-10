@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated, TouchableWithoutFeedback, DeviceEventEmitter } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated, TouchableWithoutFeedback, DeviceEventEmitter, LayoutAnimation, UIManager, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -84,7 +84,7 @@ export const FeedScreen = () => {
     const { theme } = useTheme();
     const { toggleMenu } = useSideMenu();
 
-    const [activeTab, setActiveTab] = useState<'trend' | 'movie' | 'book' | 'music'>('trend');
+    const [activeTab, setActiveTab] = useState<'trend' | 'following' | 'movie' | 'book' | 'music'>('trend');
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const searchAnim = React.useRef(new Animated.Value(0)).current;
@@ -230,7 +230,12 @@ export const FeedScreen = () => {
                 const markedUsers = users.map((u: any) => ({ ...u, type: 'user', id: `user_${u.id}`, originalId: u.id }));
                 feedData = [...markedUsers, ...markedPosts];
             } else {
-                const posts = await postService.getFeed(user?.id, filter, searchQuery);
+                let posts;
+                if (activeTab === 'following') {
+                    posts = await postService.getFollowingFeed(user!.id, '', searchQuery);
+                } else {
+                    posts = await postService.getFeed(user?.id, filter, searchQuery);
+                }
                 feedData = posts.map((p: any) => ({ ...p, type: 'post' }));
             }
             setFeed(feedData);
@@ -536,6 +541,54 @@ export const FeedScreen = () => {
         );
     };
 
+    // Enable LayoutAnimation on Android
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+
+    const handleFeedback = async (type: 'report' | 'not_interested' | 'show_more') => {
+        const item = selectedPostForOptions;
+        if (!item || !user) return;
+
+        const isRepost = !!item.original_post_id;
+        const isQuoteRepost = isRepost && item.original_post &&
+            item.content !== 'Yeniden paylaşım' &&
+            item.content !== item.original_post.content;
+        const targetPostId = (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id;
+
+        // Optimistic UI updates
+        if (type === 'not_interested' || type === 'report') {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.linear);
+            setFeed(prev => prev.filter(post => post.id !== item.id));
+
+            // Allow animation to complete slightly before toast if needed, but synchronous is usually fine.
+            Toast.show({
+                type: 'success',
+                text1: 'Bildirim alındı',
+                text2: type === 'report' ? 'İçerik bildirildi ve gizlendi.' : 'Bu içerik gizlendi.'
+            });
+        } else if (type === 'show_more') {
+            Toast.show({
+                type: 'success',
+                text1: 'Anlaşıldı',
+                text2: 'Buna benzer içerikleri daha sık göreceksiniz.'
+            });
+        }
+
+        try {
+            await interactionService.sendFeedFeedback(targetPostId, type);
+        } catch (error) {
+            console.error('Feedback error:', error);
+            // Revert strict hiding only if critical, but usually fine to leave hidden locally.
+            if (type === 'not_interested' || type === 'report') {
+                // Optionally show error
+            }
+        } finally {
+            setOptionsModalVisible(false);
+            setSelectedPostForOptions(null);
+        }
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
@@ -600,6 +653,9 @@ export const FeedScreen = () => {
                     <TouchableOpacity onPress={() => setActiveTab('trend')} style={[styles.tab, activeTab === 'trend' && styles.activeTab]}>
                         <Text style={[styles.tabText, activeTab === 'trend' && styles.activeTabText]}>Trendler</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setActiveTab('following')} style={[styles.tab, activeTab === 'following' && styles.activeTab]}>
+                        <Text style={[styles.tabText, activeTab === 'following' && styles.activeTabText]}>Takip</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => setActiveTab('movie')} style={[styles.tab, activeTab === 'movie' && styles.activeTab]}>
                         <Text style={[styles.tabText, activeTab === 'movie' && styles.activeTabText]}>Film</Text>
                     </TouchableOpacity>
@@ -650,6 +706,7 @@ export const FeedScreen = () => {
                 targetPosition={menuPosition}
                 onToggleSave={handleToggleSave}
                 isSaved={!!selectedPostForOptions?.is_saved}
+                onFeedback={handleFeedback}
             />
 
             <ThemedDialog

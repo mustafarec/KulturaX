@@ -150,5 +150,51 @@ class Validator {
         // Bu fonksiyon rate_limiter.php ile birlikte çalışacak
         return true;
     }
+
+    /**
+     * Güvenli Görsel Dosya Kontrolü
+     * @param array $file $_FILES['input_name'] dizisi
+     * @return array|bool Hata mesajı dizisi veya true
+     */
+    public static function validateImageFile($file) {
+        // 1. Dosya Yükleme Hatası Kontrolü
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return ["status" => false, "message" => "Dosya yüklenirken bir hata oluştu."];
+        }
+
+        // 2. Boyut Kontrolü (Örn: 5MB)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            return ["status" => false, "message" => "Dosya boyutu çok büyük (Max 5MB)."];
+        }
+
+        // 3. Uzantı Kontrolü (Whitelist)
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, $allowedExtensions)) {
+            return ["status" => false, "message" => "Geçersiz dosya uzantısı. Sadece JPG, PNG, GIF ve WEBP."];
+        }
+
+        // 4. MIME Type Kontrolü (Dosya içeriğinden)
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+        
+        $allowedMimeTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ];
+
+        if (!in_array($mimeType, $allowedMimeTypes)) {
+            return ["status" => false, "message" => "Geçersiz dosya içeriği. (MIME: $mimeType)"];
+        }
+
+        // 5. Ekstra Resim Kontrolü (getimagesize)
+        if (!getimagesize($file['tmp_name'])) {
+            return ["status" => false, "message" => "Dosya geçerli bir resim değil."];
+        }
+
+        return ["status" => true];
+    }
 }
 ?>

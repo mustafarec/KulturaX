@@ -11,6 +11,7 @@ import { RepostMenu } from '../../components/RepostMenu';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
+import { ThemedDialog } from '../../components/ThemedDialog';
 
 const { width } = Dimensions.get('window');
 
@@ -63,6 +64,47 @@ export const OtherProfileScreen = () => {
             padding: 8,
             borderRadius: 20,
         },
+        optionsButton: {
+            position: 'absolute',
+            top: 50,
+            right: 20,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            padding: 8,
+            borderRadius: 20,
+            zIndex: 10,
+        },
+        menuOverlay: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 20,
+            height: '200%', // Cover enough scroll area if needed, though usually window height is better. Here relative to container.
+        },
+        dropdownMenu: {
+            position: 'absolute',
+            top: 90, // optionsButton top + height + margin
+            right: 20,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 8,
+            minWidth: 150,
+            zIndex: 30,
+            ...theme.shadows.default,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        menuItem: {
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+        },
+        menuItemTextDestructive: {
+            color: theme.colors.error || '#FF3B30',
+            fontSize: 16,
+            fontWeight: '600',
+        },
+
         profileInfoContainer: {
             marginTop: -50, // Overlap header image
             paddingBottom: 10,
@@ -375,6 +417,12 @@ export const OtherProfileScreen = () => {
     const [repostMenuVisible, setRepostMenuVisible] = useState(false);
     const [selectedRepostPost, setSelectedRepostPost] = useState<any>(null);
 
+    // Block Dialog State
+    const [blockDialogVisible, setBlockDialogVisible] = useState(false);
+    const [menuVisible, setMenuVisible] = useState(false);
+
+
+
     // Mock Header Image (Random Library/Aesthetic)
     const headerImage = profile?.header_image_url || 'https://images.unsplash.com/photo-1507842217121-9e96e4430330?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
 
@@ -601,6 +649,29 @@ export const OtherProfileScreen = () => {
         if (!selectedRepostPost) return;
         setRepostMenuVisible(false);
         (navigation as any).navigate('CreateQuote', { originalPost: selectedRepostPost });
+    };
+
+    const handleBlockUser = async () => {
+        if (!currentUser) return;
+        try {
+            await userService.blockUser(userId);
+            setBlockDialogVisible(false);
+            Toast.show({
+                type: 'success',
+                text1: 'Kullanıcı Engellendi',
+                text2: 'Artık birbirinizin içeriklerini göremeyeceksiniz.'
+            });
+            // Engelledikten sonra geriye at
+            setTimeout(() => navigation.goBack(), 1500);
+        } catch (error) {
+            console.error(error);
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'Engelleme işlemi başarısız.'
+            });
+            setBlockDialogVisible(false);
+        }
     };
 
     // Helper Components (Moved inside to access styles and theme)
@@ -838,6 +909,33 @@ export const OtherProfileScreen = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Icon name="arrow-left" size={24} color="#FFF" />
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.optionsButton}
+                    onPress={() => setMenuVisible(!menuVisible)}
+                >
+                    <Icon name="options-vertical" size={20} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Dropdown Menu */}
+                {menuVisible && (
+                    <TouchableOpacity
+                        style={styles.menuOverlay}
+                        activeOpacity={1}
+                        onPress={() => setMenuVisible(false)}
+                    >
+                        <View style={styles.dropdownMenu}>
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={() => {
+                                    setMenuVisible(false);
+                                    setBlockDialogVisible(true);
+                                }}
+                            >
+                                <Text style={styles.menuItemTextDestructive}>Engelle</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                )}
             </View>
 
             {/* Profile Info Area */}
@@ -947,6 +1045,25 @@ export const OtherProfileScreen = () => {
                 onClose={() => setRepostMenuVisible(false)}
                 onDirectRepost={handleDirectRepost}
                 onQuoteRepost={handleQuoteRepost}
+            />
+
+            <ThemedDialog
+                visible={blockDialogVisible}
+                title="Kullanıcıyı Engelle"
+                message={`@${profile.username} adlı kullanıcıyı engellemek istediğinize emin misiniz? Birbirinizin gönderilerini göremeyecek ve mesajlaşamayacaksınız.`}
+                actions={[
+                    {
+                        text: 'Vazgeç',
+                        style: 'cancel',
+                        onPress: () => setBlockDialogVisible(false)
+                    },
+                    {
+                        text: 'Engelle',
+                        style: 'destructive',
+                        onPress: handleBlockUser
+                    }
+                ]}
+                onClose={() => setBlockDialogVisible(false)}
             />
         </ScrollView >
     );

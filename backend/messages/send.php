@@ -20,6 +20,19 @@ if(
         exit;
     }
 
+    // 2.5 Block Kontrolü: Engelleyen veya engellenen kullanıcıya mesaj atılamaz
+    $checkBlock = "SELECT id FROM blocked_users WHERE (blocker_id = :sender_id AND blocked_id = :receiver_id) OR (blocker_id = :receiver_id AND blocked_id = :sender_id)";
+    $stmtBlock = $conn->prepare($checkBlock);
+    $stmtBlock->bindParam(':sender_id', $data->sender_id);
+    $stmtBlock->bindParam(':receiver_id', $data->receiver_id);
+    $stmtBlock->execute();
+
+    if ($stmtBlock->rowCount() > 0) {
+        http_response_code(403);
+        echo json_encode(array("message" => "Bu kullanıcıya mesaj gönderemezsiniz."));
+        exit;
+    }
+
     $query = "INSERT INTO messages SET sender_id = :sender_id, receiver_id = :receiver_id, content = :content";
     $stmt = $conn->prepare($query);
 

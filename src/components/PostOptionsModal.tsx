@@ -9,12 +9,13 @@ interface PostOptionsModalProps {
     onClose: () => void;
     onDelete?: () => void;
     onToggleSave?: () => void;
+    onFeedback?: (type: 'report' | 'not_interested' | 'show_more') => void;
     isSaved?: boolean;
     isOwner?: boolean;
     targetPosition?: { x: number; y: number; width: number; height: number } | null;
 }
 
-export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onToggleSave, isSaved }) => {
+export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onToggleSave, isSaved, onFeedback }) => {
     const { theme } = useTheme();
 
     if (!visible || !targetPosition) return null;
@@ -44,16 +45,35 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
                 onClose();
                 if (onDelete) onDelete();
             }
-        }] : []),
-        ...(!isOwner ? [{
-            label: 'Bildir',
-            icon: 'alert-circle',
-            color: theme.colors.textSecondary,
-            onPress: () => {
-                onClose();
-                // TODO: Implement report
+        }] : [
+            {
+                label: 'Bunu daha çok göster',
+                icon: 'heart-circle-outline',
+                color: theme.colors.primary,
+                onPress: () => {
+                    onClose();
+                    if (onFeedback) onFeedback('show_more');
+                }
+            },
+            {
+                label: 'İlgilenmiyorum',
+                icon: 'eye-off-outline',
+                color: theme.colors.textSecondary,
+                onPress: () => {
+                    onClose();
+                    if (onFeedback) onFeedback('not_interested');
+                }
+            },
+            {
+                label: 'Bildir',
+                icon: 'alert-circle-outline',
+                color: theme.colors.error,
+                onPress: () => {
+                    onClose();
+                    if (onFeedback) onFeedback('report');
+                }
             }
-        }] : [])
+        ])
     ];
 
     return (

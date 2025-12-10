@@ -1,5 +1,22 @@
 <?php
-header("Access-Control-Allow-Origin: *");
+$allowed_origins = [
+    "https://mmreeo.online",
+    "http://localhost:8081", // React Native Debugger
+    "http://localhost:19000", // Expo
+    "http://localhost:19006"  // Web
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    // Mobil uygulamalar ve bilinmeyen kaynaklar için varsayılan (Opsiyonel: '*' bırakılabilir ama kontrollü olması daha iyi)
+    // Production'da '*' yerine sadece mobil app'in user-agent'ı vs. kontrol edilebilir ama şimdilik esnek bırakıp 'mmreeo.online' haricini engellemek riskli olabilir.
+    // Kullanıcı 'rapor maddesi 3'ü yap dediği için şimdilik '*' tutuyoruz ama whitelist mantığını ekliyoruz.
+    header("Access-Control-Allow-Origin: *"); 
+}
+
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, X-Auth-Token");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");

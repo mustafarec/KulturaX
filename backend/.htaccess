@@ -1,3 +1,18 @@
 RewriteEngine On
 RewriteCond %{HTTP:Authorization} ^(.*)
 RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
+# Güvenlik: Dizin listelemeyi kapat
+Options -Indexes
+
+# Güvenlik: . (nokta) ile başlayan dosyaları gizle (.env, .git vs.)
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Güvenlik: Hassas dosya uzantılarını engelle
+<FilesMatch "\.(sql|log|ini|conf|sh|bat)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

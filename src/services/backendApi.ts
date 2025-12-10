@@ -162,6 +162,17 @@ export const postService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
+    getFollowingFeed: async (userId: number, filter?: string, search?: string) => {
+        try {
+            let url = `/posts/get_following_feed.php?user_id=${userId}&`;
+            if (filter) url += `filter=${filter}&`;
+            if (search) url += `search=${search}`;
+            const response = await backendApi.get(url);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
     getQuotesByContent: async (contentType: string, contentId: string) => {
         try {
             const response = await backendApi.get(`/posts/get_by_content.php?content_type=${contentType}&content_id=${contentId}`);
@@ -425,6 +436,30 @@ export const interactionService = {
             // Silently fail or return false
             return { saved: false };
         }
+    },
+    sendFeedFeedback: async (postId: number, type: 'report' | 'not_interested' | 'show_more', reason?: string) => {
+        try {
+            const response = await backendApi.post('/interactions/feedback.php', { post_id: postId, type, reason });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    getFeedPreferences: async () => {
+        try {
+            const response = await backendApi.get('/users/get_preferences.php');
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    deleteFeedPreference: async (id: number) => {
+        try {
+            const response = await backendApi.post('/users/delete_preference.php', { id });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 
@@ -526,6 +561,18 @@ export const userService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    blockUser: async (blockedId: number) => {
+        const response = await backendApi.post('/users/block_user.php', { blocked_id: blockedId });
+        return response.data;
+    },
+    unblockUser: async (blockedId: number) => {
+        const response = await backendApi.post('/users/unblock_user.php', { blocked_id: blockedId });
+        return response.data;
+    },
+    getBlockedUsers: async () => {
+        const response = await backendApi.get('/users/get_blocked_users.php');
+        return response.data;
     }
 };
 

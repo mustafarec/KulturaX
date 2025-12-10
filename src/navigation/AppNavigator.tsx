@@ -26,6 +26,9 @@ import { useTheme } from '../context/ThemeContext';
 import { navigationRef } from '../services/NavigationService';
 import { View, Image } from 'react-native';
 
+import { FeedPreferencesScreen } from '../screens/settings/FeedPreferencesScreen';
+import { BlockedUsersScreen } from '../screens/settings/BlockedUsersScreen';
+
 const Stack = createNativeStackNavigator();
 
 import { SideMenuProvider } from '../context/SideMenuContext';
@@ -142,6 +145,16 @@ export const AppNavigator = () => {
                                 headerStyle: { backgroundColor: theme.colors.background },
                                 headerTintColor: theme.colors.text,
                             }}
+                        />
+                        <Stack.Screen
+                            name="FeedPreferences"
+                            component={FeedPreferencesScreen}
+                            options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                            name="BlockedUsers"
+                            component={BlockedUsersScreen}
+                            options={{ headerShown: false }}
                         />
                         <Stack.Screen
                             name="SavedPosts"

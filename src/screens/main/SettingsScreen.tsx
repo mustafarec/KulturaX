@@ -83,11 +83,9 @@ export const SettingsScreen = () => {
             paddingVertical: 14,
             borderRadius: 12,
             marginBottom: 12,
-            shadowColor: theme.shadows.default.shadowColor,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
         },
         buttonIcon: {
             fontSize: 20,
@@ -125,6 +123,25 @@ export const SettingsScreen = () => {
             </View>
 
 
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>İçerik Tercihleri</Text>
+                <TouchableOpacity
+                    style={styles.connectButton}
+                    onPress={() => (navigation as any).navigate('FeedPreferences')}
+                >
+                    <Icon name="equalizer" style={[styles.buttonIcon, { color: theme.colors.primary }]} />
+                    <Text style={[styles.buttonText, { color: theme.colors.text }]}>Akış Tercihleri</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.connectButton}
+                    onPress={() => (navigation as any).navigate('BlockedUsers')}
+                >
+                    <Icon name="ban" style={[styles.buttonIcon, { color: theme.colors.error }]} />
+                    <Text style={[styles.buttonText, { color: theme.colors.text }]}>Engellenen Kullanıcılar</Text>
+                </TouchableOpacity>
+            </View>
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Hesap</Text>

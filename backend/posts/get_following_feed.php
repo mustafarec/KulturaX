@@ -11,83 +11,6 @@ $authenticatedUserId = requireAuth();
 $user_id = $authenticatedUserId; // Kimlik doğrulanan kullanıcı
 
 try {
-// (Legacy query removed - optimized version is below)
-
-    // --- Implicit Feedback: Calculate User Affinity Scores ---
-    
-    // Session bazlı önbellekleme (5 dakika)
-    if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    $scores = array('book' => 0, 'movie' => 0, 'music' => 0);
-    $cacheKey = 'affinity_scores_' . $user_id;
-
-    if (isset($_SESSION[$cacheKey]) && isset($_SESSION[$cacheKey . '_time']) && (time() - $_SESSION[$cacheKey . '_time'] < 300)) {
-        // Cache geçerli
-        $scores = $_SESSION[$cacheKey];
-    } else {
-        // 1. Calculate Score from Interactions (Likes=2, Comments=3)
-        $intQuery = "SELECT 
-                        COALESCE(p.content_type, op.content_type) as type, 
-                        i.type as interaction_type,
-                        COUNT(*) as count
-                    FROM interactions i
-                    JOIN posts p ON i.post_id = p.id
-                    LEFT JOIN posts op ON p.original_post_id = op.id
-                    WHERE i.user_id = :user_id 
-                    AND COALESCE(p.content_type, op.content_type) IN ('book', 'movie', 'music')
-                    GROUP BY COALESCE(p.content_type, op.content_type), i.type";
-        $intStmt = $conn->prepare($intQuery);
-        $intStmt->execute([':user_id' => $user_id]);
-        while($row = $intStmt->fetch(PDO::FETCH_ASSOC)) {
-            $multiplier = ($row['interaction_type'] == 'like') ? 2 : 3;
-            if(isset($scores[$row['type']])) {
-                $scores[$row['type']] += $row['count'] * $multiplier;
-            }
-        }
-
-        // 2. Calculate Score from Reposts (Repost=5)
-        $repQuery = "SELECT
-                        COALESCE(p.content_type, op.content_type) as type,
-                        COUNT(*) as count
-                     FROM posts p
-                     LEFT JOIN posts op ON p.original_post_id = op.id
-                     WHERE p.user_id = :user_id
-                     AND p.original_post_id IS NOT NULL
-                     AND COALESCE(p.content_type, op.content_type) IN ('book', 'movie', 'music')
-                     GROUP BY COALESCE(p.content_type, op.content_type)";
-        $repStmt = $conn->prepare($repQuery);
-        $repStmt->execute([':user_id' => $user_id]);
-        while($row = $repStmt->fetch(PDO::FETCH_ASSOC)) {
-            if(isset($scores[$row['type']])) {
-                $scores[$row['type']] += $row['count'] * 5;
-            }
-        }
-        
-        // Save to cache
-        $_SESSION[$cacheKey] = $scores;
-        $_SESSION[$cacheKey . '_time'] = time();
-    }
-    // ---------------------------------------------------------
-
-    // Pre-fetch 'show_more' preferences to avoid subquery in ORDER BY
-    $showMoreTypes = [];
-    $smQuery = "SELECT p.content_type FROM post_feedback pf 
-                JOIN posts p ON pf.post_id = p.id 
-                WHERE pf.user_id = :user_id AND pf.type = 'show_more'";
-    $smStmt = $conn->prepare($smQuery);
-    $smStmt->execute([':user_id' => $user_id]);
-    while($row = $smStmt->fetch(PDO::FETCH_ASSOC)) {
-        if($row['content_type']) $showMoreTypes[$row['content_type']] = true;
-    }
-
-    $boostBook = isset($showMoreTypes['book']) ? 50 : 0;
-    $boostMovie = isset($showMoreTypes['movie']) ? 50 : 0;
-    $boostMusic = isset($showMoreTypes['music']) ? 50 : 0;
-
-
-    // Main Feed Query with Optimized Exclusion using JOIN
     $query = "SELECT 
                 p.*, 
                 u.username, 
@@ -127,35 +50,36 @@ try {
               LEFT JOIN posts op ON p.original_post_id = op.id
               LEFT JOIN users ou ON op.user_id = ou.id
               
-              -- LEFT JOIN for Exclusion (Optimized NOT IN)
-              LEFT JOIN post_feedback pf_exclude ON 
-                    (pf_exclude.post_id = p.id OR (p.original_post_id IS NOT NULL AND pf_exclude.post_id = p.original_post_id))
-                    AND pf_exclude.user_id = :user_id 
-                    AND pf_exclude.type IN ('report', 'not_interested')
-                    
-              -- LEFT JOIN for Blocked Users (Both directions: I blocked them OR They blocked me)
-              LEFT JOIN blocked_users bu_exclude ON
-                    (bu_exclude.blocker_id = :user_id AND bu_exclude.blocked_id = p.user_id) OR
-                    (bu_exclude.blocker_id = p.user_id AND bu_exclude.blocked_id = :user_id)";
+              -- FOLLOW JOIN
+              JOIN follows f ON p.user_id = f.followed_id";
 
     $hasWhere = false;
-    $whereClause = "";
 
-    // IMPORTANT: Exclude where join found a match
-    $whereClause .= " WHERE pf_exclude.id IS NULL AND bu_exclude.id IS NULL"; 
+    // Filter logic if needed (optional for following tab but good to have)
+    // Safety check for blocked users (Although block removes follow, this is extra safety)
+    $query .= " AND p.user_id NOT IN (
+                    SELECT blocked_id FROM blocked_users WHERE blocker_id = :user_id
+                    UNION
+                    SELECT blocker_id FROM blocked_users WHERE blocked_id = :user_id
+                )";
+
+    $query .= " WHERE f.follower_id = :user_id";
     $hasWhere = true;
 
-    // Filter logic
+    // Filter logic if needed (optional for following tab but good to have)
     $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
     if ($filter == 'book') {
-        $whereClause .= " AND (p.content_type = 'book' OR op.content_type = 'book')";
+        $query .= " AND (p.content_type = 'book' OR op.content_type = 'book')";
     } elseif ($filter == 'movie') {
-        $whereClause .= " AND (p.content_type = 'movie' OR op.content_type = 'movie')";
+        $query .= " AND (p.content_type = 'movie' OR op.content_type = 'movie')";
     } elseif ($filter == 'music') {
-        $whereClause .= " AND (p.content_type = 'music' OR op.content_type = 'music')";
+        $query .= " AND (p.content_type = 'music' OR op.content_type = 'music')";
     }
-    
-    $query .= $whereClause;
+
+    // Exclude reported/not_interested posts
+    $excludeQuery = " AND p.id NOT IN (SELECT post_id FROM post_feedback WHERE user_id = :user_id AND type IN ('report', 'not_interested'))";
+    $excludeQuery .= " AND (p.original_post_id IS NULL OR p.original_post_id NOT IN (SELECT post_id FROM post_feedback WHERE user_id = :user_id AND type IN ('report', 'not_interested')))";
+    $query .= $excludeQuery;
 
     // Search logic
     $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -164,28 +88,10 @@ try {
         $query .= " AND (p.content LIKE :search OR p.quote_text LIKE :search OR p.comment_text LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.quote_text LIKE :search OR op.comment_text LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
     }
 
-    $query .= " ORDER BY 
-                (CASE 
-                    WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book
-                    WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie
-                    WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music
-                    ELSE 0
-                END) DESC,
-                p.created_at DESC";
+    $query .= " ORDER BY p.created_at DESC";
 
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':user_id', $user_id);
-    
-    // Bind Score Parameters
-    $stmt->bindParam(':score_book', $scores['book']);
-    $stmt->bindParam(':score_movie', $scores['movie']);
-    $stmt->bindParam(':score_music', $scores['music']);
-
-    // Bind Boost Parameters (static values from PHP logic)
-    $stmt->bindParam(':boost_book', $boostBook);
-    $stmt->bindParam(':boost_movie', $boostMovie);
-    $stmt->bindParam(':boost_music', $boostMusic);
-
     if (!empty($search)) {
         $stmt->bindParam(':search', $searchTerm);
     }
