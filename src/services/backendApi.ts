@@ -204,14 +204,20 @@ export const postService = {
 };
 
 export const libraryService = {
-    updateStatus: async (userId: number, contentType: string, contentId: string, status: string, progress: number = 0) => {
+    updateStatus: async (userId: number, contentType: string, contentId: string, status: string, progress: number = 0, contentTitle?: string, imageUrl?: string, author?: string, summary?: string, lyrics?: string, isbn?: string) => {
         try {
             const response = await backendApi.post('/library/update.php', {
                 user_id: userId,
                 content_type: contentType,
                 content_id: contentId,
                 status,
-                progress
+                progress,
+                content_title: contentTitle,
+                image_url: imageUrl,
+                author: author,
+                summary: summary,
+                lyrics: lyrics,
+                isbn: isbn
             });
             return response.data;
         } catch (error: any) {
