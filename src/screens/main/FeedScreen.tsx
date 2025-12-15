@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated, TouchableWithoutFeedback, DeviceEventEmitter, LayoutAnimation, UIManager, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, TouchableWithoutFeedback, DeviceEventEmitter, LayoutAnimation, UIManager, Platform, Share, Dimensions, ScrollView } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -16,8 +17,11 @@ import { useSideMenu } from '../../context/SideMenuContext';
 import { useMessage } from '../../context/MessageContext';
 import { useNotification } from '../../context/NotificationContext';
 import { RepostMenu } from '../../components/RepostMenu';
+import { SharePostModal } from '../../components/SharePostModal';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import ThemeIcon from 'react-native-vector-icons/Ionicons';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const UnreadBadge = () => {
     const { unreadCount } = useMessage();
@@ -74,9 +78,27 @@ const NotificationBadge = () => {
 };
 
 export const FeedScreen = () => {
-    const [feed, setFeed] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    // Tab States
+    const [trendFeed, setTrendFeed] = useState<any[]>([]);
+    const [followingFeed, setFollowingFeed] = useState<any[]>([]);
+    const [movieFeed, setMovieFeed] = useState<any[]>([]);
+    const [bookFeed, setBookFeed] = useState<any[]>([]);
+    const [musicFeed, setMusicFeed] = useState<any[]>([]);
+
+    const [loadingStates, setLoadingStates] = useState({
+        trend: true,
+        following: true,
+        movie: true,
+        book: true,
+        music: true
+    });
+
+    // Global state for current refreshing action
     const [refreshing, setRefreshing] = useState(false);
+
+    // Consolidated loading check for active tab
+    const isCurrentTabLoading = (tab: string) => loadingStates[tab as keyof typeof loadingStates];
+
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
     const { user } = useAuth();
@@ -87,8 +109,10 @@ export const FeedScreen = () => {
     const [activeTab, setActiveTab] = useState<'trend' | 'following' | 'movie' | 'book' | 'music'>('trend');
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
-    const searchAnim = React.useRef(new Animated.Value(0)).current;
-    const flatListRef = React.useRef<FlatList>(null);
+    const searchAnim = React.useRef(new RNAnimated.Value(0)).current;
+
+    // Animation Value for Tab Slide
+    const translateX = useSharedValue(0);
 
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
@@ -98,8 +122,39 @@ export const FeedScreen = () => {
     const [repostMenuVisible, setRepostMenuVisible] = useState(false);
     const [selectedPostForRepost, setSelectedPostForRepost] = useState<any>(null);
 
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
+
+    // Animasyon stili
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: translateX.value }],
+        };
+    });
+
+    const getTabIndex = (tab: string) => {
+        switch (tab) {
+            case 'trend': return 0;
+            case 'following': return 1;
+            case 'movie': return 2;
+            case 'book': return 3;
+            case 'music': return 4;
+            default: return 0;
+        }
+    };
+
+    // Tab changed animation
     useEffect(() => {
-        Animated.timing(searchAnim, {
+        const index = getTabIndex(activeTab);
+        const config = { damping: 30, stiffness: 250, mass: 1 };
+        translateX.value = withSpring(-index * SCREEN_WIDTH, config);
+
+        // Fetch data if empty or needed
+        fetchFeed(activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        RNAnimated.timing(searchAnim, {
             toValue: isSearchVisible ? 1 : 0,
             duration: 300,
             useNativeDriver: false,
@@ -147,30 +202,28 @@ export const FeedScreen = () => {
             paddingVertical: 0,
         },
         tabsContainer: {
-            flexDirection: 'row',
-            paddingHorizontal: 20,
             backgroundColor: theme.colors.surface,
-            paddingBottom: 0,
+            paddingVertical: 0,
             shadowColor: theme.dark ? "#000" : "#000",
             shadowOffset: { width: 0, height: 4 }, // Shadow below the line
             shadowOpacity: theme.dark ? 0.3 : 0.05, // Subtle on light, stronger on dark
             shadowRadius: 3,
             elevation: 3, // Android shadow
             zIndex: 9,
-            justifyContent: 'space-between',
-            alignItems: 'center',
             marginBottom: 1, // Ensure shadow is visible
         },
         tab: {
             marginRight: 24,
             paddingVertical: 12,
+            alignItems: 'center',
+            minWidth: 50, // Minimum clickable area
         },
         activeTab: {
             borderBottomWidth: 3,
             borderBottomColor: theme.colors.primary,
         },
         tabText: {
-            fontSize: 16,
+            fontSize: 14,
             color: theme.colors.textSecondary,
             fontWeight: '600',
         },
@@ -195,6 +248,15 @@ export const FeedScreen = () => {
             height: 36,
             resizeMode: 'contain',
         },
+        contentWrapper: {
+            flexDirection: 'row',
+            width: SCREEN_WIDTH * 5,
+            flex: 1,
+        },
+        page: {
+            width: SCREEN_WIDTH,
+            flex: 1,
+        },
         listContainer: {
             paddingBottom: 160,
             paddingTop: 8,
@@ -215,13 +277,48 @@ export const FeedScreen = () => {
         },
     }), [theme]);
 
-    const fetchFeed = async () => {
-        if (!refreshing) setIsLoading(true);
+    const setFeedForTab = (tab: string, data: any[]) => {
+        switch (tab) {
+            case 'trend': setTrendFeed(data); break;
+            case 'following': setFollowingFeed(data); break;
+            case 'movie': setMovieFeed(data); break;
+            case 'book': setBookFeed(data); break;
+            case 'music': setMusicFeed(data); break;
+        }
+    };
+
+    const setLoadingForTab = (tab: string, loading: boolean) => {
+        setLoadingStates(prev => ({ ...prev, [tab]: loading }));
+    };
+
+    const getFeedDataForTab = (tab: string) => {
+        switch (tab) {
+            case 'trend': return trendFeed;
+            case 'following': return followingFeed;
+            case 'movie': return movieFeed;
+            case 'book': return bookFeed;
+            case 'music': return musicFeed;
+            default: return [];
+        }
+    };
+
+    const fetchFeed = async (tabToFetch = activeTab, isRefresh = false) => {
+        // Cache check: If not refreshing, not searching, and we already have data, don't fetch.
+        if (!isRefresh && searchQuery.trim().length === 0) {
+            const currentData = getFeedDataForTab(tabToFetch);
+            if (currentData && currentData.length > 0) {
+                setLoadingForTab(tabToFetch, false);
+                return;
+            }
+        }
+
+        if (!isRefresh) setLoadingForTab(tabToFetch, true);
         try {
-            const filter = activeTab === 'trend' ? '' : activeTab;
+            const filter = tabToFetch === 'trend' ? '' : tabToFetch;
             let feedData = [];
 
             if (searchQuery.trim().length > 0) {
+                // Search logic - mostly applies to Trend or current context
                 const [posts, users] = await Promise.all([
                     postService.getFeed(user?.id, filter, searchQuery),
                     userService.search(searchQuery)
@@ -231,50 +328,53 @@ export const FeedScreen = () => {
                 feedData = [...markedUsers, ...markedPosts];
             } else {
                 let posts;
-                if (activeTab === 'following') {
+                if (tabToFetch === 'following') {
                     posts = await postService.getFollowingFeed(user!.id, '', searchQuery);
                 } else {
                     posts = await postService.getFeed(user?.id, filter, searchQuery);
                 }
                 feedData = posts.map((p: any) => ({ ...p, type: 'post' }));
             }
-            setFeed(feedData);
+            setFeedForTab(tabToFetch, feedData);
         } catch (error) {
             console.error(error);
         } finally {
-            setIsLoading(false);
-            setRefreshing(false);
+            setLoadingForTab(tabToFetch, false);
+            if (isRefresh) setRefreshing(false);
         }
     };
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
-        fetchFeed();
+        fetchFeed(activeTab, true);
     }, [activeTab, searchQuery]);
 
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('refresh_feed', () => {
-            if (flatListRef.current) {
-                flatListRef.current.scrollToOffset({ offset: 0, animated: true });
-            }
+            // Refresh current tab
             setRefreshing(true);
-            fetchFeed();
+            fetchFeed(activeTab, true);
         });
         return () => subscription.remove();
     }, [activeTab, searchQuery]);
 
     useEffect(() => {
-        fetchFeed();
-    }, [activeTab]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (isSearchVisible) {
-                fetchFeed();
-            }
-        }, 500);
-        return () => clearTimeout(timer);
+        if (searchQuery.trim().length > 0) {
+            const timer = setTimeout(() => {
+                fetchFeed(activeTab);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
     }, [searchQuery]);
+
+    // Update ALL lists to ensure consistency:
+    const updateAllFeeds = (updateFn: (feed: any[]) => any[]) => {
+        setTrendFeed(updateFn);
+        setFollowingFeed(updateFn);
+        setMovieFeed(updateFn);
+        setBookFeed(updateFn);
+        setMusicFeed(updateFn);
+    };
 
     const handleLike = async (item: any) => {
         if (!user) return;
@@ -284,7 +384,7 @@ export const FeedScreen = () => {
             item.content !== item.original_post.content;
         const targetPostId = (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id;
 
-        const updatedFeed = feed.map(post => {
+        const syncUpdate = (feedList: any[]) => feedList.map(post => {
             const isTargetPost = post.id === targetPostId;
             const isDirectRepostOfTarget = post.original_post && post.original_post.id === targetPostId &&
                 (!post.content || post.content === 'Yeniden paylaşım' || post.content === post.original_post.content);
@@ -314,7 +414,8 @@ export const FeedScreen = () => {
             }
             return post;
         });
-        setFeed(updatedFeed);
+
+        updateAllFeeds(syncUpdate);
 
         try {
             await interactionService.toggleLike(user.id, targetPostId);
@@ -338,14 +439,12 @@ export const FeedScreen = () => {
 
         // Optimistic Update
         const content = item.content;
-        const originalPosterUsername = item.user.username;
         const newSource = 'Paylaşım';
-        const newAuthor = originalPosterUsername;
+        const newAuthor = item.user.username;
         const originalPostId = item.id;
 
-        // Create optimistic post object
         const optimisticPost = {
-            id: Date.now(), // Temporary ID
+            id: Date.now(),
             user: {
                 id: user.id,
                 username: user.username,
@@ -355,7 +454,7 @@ export const FeedScreen = () => {
             content: 'Yeniden paylaşım',
             created_at: new Date().toISOString(),
             original_post_id: originalPostId,
-            original_post: item, // Embed the full original post
+            original_post: item,
             like_count: 0,
             comment_count: 0,
             repost_count: 0,
@@ -364,37 +463,8 @@ export const FeedScreen = () => {
             type: 'post'
         };
 
-        // Update feed immediately
-        setFeed(prevFeed => [optimisticPost, ...prevFeed]);
-
-        // Optimistically update the repost count of the original post in the feed
-        const updatedFeed = feed.map(post => {
-            if (post.id === item.id) {
-                return {
-                    ...post,
-                    repost_count: parseInt(post.repost_count || 0) + 1,
-                    is_reposted: true
-                };
-            }
-            // Also check if the item is an original post inside a repost
-            if (post.original_post && post.original_post.id === item.id) {
-                return {
-                    ...post,
-                    original_post: {
-                        ...post.original_post,
-                        repost_count: parseInt(post.original_post.repost_count || 0) + 1,
-                        is_reposted: true
-                    }
-                };
-            }
-            return post;
-        });
-        // Note: We are setting feed twice here which is fine in batching, but let's combine it in a real robust implementation. 
-        // For simplicity in this step, let's just prepend. The count update on the item itself is tricky because we just prepended.
-
-        // Refined Optimistic Update: Prepend AND update counts
-        setFeed(prevFeed => {
-            const updated = prevFeed.map(post => {
+        const syncUpdate = (feedList: any[]) => {
+            const updated = feedList.map(post => {
                 if (post.id === item.id) {
                     return { ...post, repost_count: (parseInt(post.repost_count || 0) + 1).toString(), is_reposted: true };
                 }
@@ -404,27 +474,31 @@ export const FeedScreen = () => {
                         original_post: {
                             ...post.original_post,
                             repost_count: (parseInt(post.original_post.repost_count || 0) + 1).toString(),
-                            is_reposted: true // Updates the green loop icon
+                            is_reposted: true
                         }
                     };
                 }
                 return post;
             });
             return [optimisticPost, ...updated];
-        });
+        };
 
+        // Only update current feed with the new post at top, but update counts everywhere
+        // Actually, prepending the new post only makes sense in the list it belongs to? 
+        // Or "Trend" and "Following" if it's my post? 
+        // For simplicity: Prepend to Trend and Following (if my post shows there), 
+        // but since we don't know for sure, let's just prepend to the currently Active Tab list, 
+        // and update counts on all.
+
+        // Simpler strategy: Just fetchFeed() after success to be accurate, but optimistic count update is nice.
+        updateAllFeeds(syncUpdate);
 
         try {
             await postService.create(user.id, '', content, newSource, newAuthor, originalPostId);
-            // In a perfect world, we replace the temp ID with the real one from response, 
-            // but for now, we just let the next natural refresh handle consistency or silently succeed.
-            // fetchFeed(); // Do NOT fetchFeed to avoid reload.
-            // Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Yeniden gönderildi!' }); // Optional, maybe too noisy if it's instant
         } catch (error: any) {
             console.error('Repost error:', error);
             Toast.show({ type: 'error', text1: 'Hata', text2: error.message || 'Paylaşılamadı.' });
-            // Revert changes on error (TODO: complex to revert perfectly without ID, but usually acceptable to just refresh)
-            fetchFeed();
+            fetchFeed(activeTab, true);
         }
     };
 
@@ -444,40 +518,44 @@ export const FeedScreen = () => {
         setDeleteDialogVisible(true);
     };
 
-    const handleToggleSave = async () => {
-        const item = selectedPostForOptions;
+    const handleToggleSave = async (item: any) => {
         if (!item || !user) return;
 
-        // Optimistic update
         const isSaved = item.is_saved;
-        setFeed(prev => prev.map(p => {
+
+        const syncUpdate = (feedList: any[]) => feedList.map(p => {
             if (p.id === item.id) return { ...p, is_saved: !isSaved };
             if (p.original_post && p.original_post.id === item.id) return {
                 ...p,
                 original_post: { ...p.original_post, is_saved: !isSaved }
             };
             return p;
-        }));
+        });
+
+        updateAllFeeds(syncUpdate);
 
         try {
             await interactionService.toggleBookmark(user.id, item.id);
             Toast.show({ type: 'success', text1: 'Başarılı', text2: !isSaved ? 'Kaydedildi.' : 'Kaydedilenlerden çıkarıldı.' });
         } catch (error: any) {
             console.error('Toggle Bookmark Error:', error);
-            const errorMessage = error.response?.data?.error || error.message || 'İşlem başarısız.';
-            Toast.show({ type: 'error', text1: 'Hata', text2: errorMessage });
-
-            // Revert on error
-            setFeed(prev => prev.map(p => {
+            // Revert
+            const revertUpdate = (feedList: any[]) => feedList.map(p => {
                 if (p.id === item.id) return { ...p, is_saved: isSaved };
                 if (p.original_post && p.original_post.id === item.id) return {
                     ...p,
                     original_post: { ...p.original_post, is_saved: isSaved }
                 };
                 return p;
-            }));
+            });
+            updateAllFeeds(revertUpdate);
             Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem başarısız.' });
         }
+    };
+
+    const handleShare = (item: any) => {
+        setSelectedPostForShare(item);
+        setShareModalVisible(true);
     };
 
     const confirmDelete = async () => {
@@ -487,14 +565,14 @@ export const FeedScreen = () => {
         try {
             if (user) {
                 await postService.delete(user.id, item.id);
-                setFeed(prev => prev.filter(post => post.id !== item.id));
+                updateAllFeeds(prev => prev.filter(post => post.id !== item.id));
                 Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
             }
         } catch (error) {
             Toast.show({ type: 'error', text1: 'Hata', text2: 'Silinemedi.' });
         } finally {
             setDeleteDialogVisible(false);
-            setOptionsModalVisible(false); // Ensure options menu is also closed/reset
+            setOptionsModalVisible(false);
             setSelectedPostForOptions(null);
         }
     };
@@ -537,6 +615,9 @@ export const FeedScreen = () => {
                 onReposterPress={() => (navigation as any).navigate('OtherProfile', { userId: item.user.id })}
                 currentUserId={user?.id}
                 onContentPress={handleContentPress}
+                onSave={() => handleToggleSave(item)}
+                isSaved={!!item.is_saved}
+                onShare={() => handleShare(item)}
             />
         );
     };
@@ -556,12 +637,10 @@ export const FeedScreen = () => {
             item.content !== item.original_post.content;
         const targetPostId = (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id;
 
-        // Optimistic UI updates
         if (type === 'not_interested' || type === 'report') {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.linear);
-            setFeed(prev => prev.filter(post => post.id !== item.id));
+            updateAllFeeds(prev => prev.filter(post => post.id !== item.id));
 
-            // Allow animation to complete slightly before toast if needed, but synchronous is usually fine.
             Toast.show({
                 type: 'success',
                 text1: 'Bildirim alındı',
@@ -579,15 +658,39 @@ export const FeedScreen = () => {
             await interactionService.sendFeedFeedback(targetPostId, type);
         } catch (error) {
             console.error('Feedback error:', error);
-            // Revert strict hiding only if critical, but usually fine to leave hidden locally.
-            if (type === 'not_interested' || type === 'report') {
-                // Optionally show error
-            }
         } finally {
             setOptionsModalVisible(false);
             setSelectedPostForOptions(null);
         }
     };
+
+    const renderList = (data: any[], loading: boolean) => {
+        if (loading) {
+            return (
+                <View style={[styles.loadingContainer, { flex: 1 }]}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                </View>
+            );
+        }
+
+        return (
+            <FlatList
+                data={data}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.listContainer}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+                }
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Icon name="ghost" size={40} color={theme.colors.textSecondary} />
+                        <Text style={styles.emptyText}>Henüz içerik yok</Text>
+                    </View>
+                }
+            />
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -620,7 +723,7 @@ export const FeedScreen = () => {
                 </View>
             </View>
 
-            <Animated.View style={[
+            <RNAnimated.View style={[
                 styles.searchContainer,
                 {
                     height: searchAnim.interpolate({
@@ -646,10 +749,15 @@ export const FeedScreen = () => {
                         onChangeText={setSearchQuery}
                     />
                 </View>
-            </Animated.View>
+            </RNAnimated.View>
 
             <View style={styles.tabsContainer}>
-                <View style={{ flexDirection: 'row' }}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 10, alignItems: 'center' }}
+                    style={{ flexGrow: 0 }}
+                >
                     <TouchableOpacity onPress={() => setActiveTab('trend')} style={[styles.tab, activeTab === 'trend' && styles.activeTab]}>
                         <Text style={[styles.tabText, activeTab === 'trend' && styles.activeTabText]}>Trendler</Text>
                     </TouchableOpacity>
@@ -665,31 +773,27 @@ export const FeedScreen = () => {
                     <TouchableOpacity onPress={() => setActiveTab('music')} style={[styles.tab, activeTab === 'music' && styles.activeTab]}>
                         <Text style={[styles.tabText, activeTab === 'music' && styles.activeTabText]}>Müzik</Text>
                     </TouchableOpacity>
-                </View>
+                </ScrollView>
             </View>
 
-            {isLoading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
+            {/* Animated Content Wrapper */}
+            <Animated.View style={[styles.contentWrapper, animatedStyle]}>
+                <View style={styles.page}>
+                    {renderList(trendFeed, loadingStates.trend)}
                 </View>
-            ) : (
-                <FlatList
-                    ref={flatListRef}
-                    data={feed}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id.toString()}
-                    contentContainerStyle={styles.listContainer}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Icon name="ghost" size={40} color={theme.colors.textSecondary} />
-                            <Text style={styles.emptyText}>Henüz içerik yok</Text>
-                        </View>
-                    }
-                />
-            )}
+                <View style={styles.page}>
+                    {renderList(followingFeed, loadingStates.following)}
+                </View>
+                <View style={styles.page}>
+                    {renderList(movieFeed, loadingStates.movie)}
+                </View>
+                <View style={styles.page}>
+                    {renderList(bookFeed, loadingStates.book)}
+                </View>
+                <View style={styles.page}>
+                    {renderList(musicFeed, loadingStates.music)}
+                </View>
+            </Animated.View>
 
             <RepostMenu
                 visible={repostMenuVisible}
@@ -698,14 +802,18 @@ export const FeedScreen = () => {
                 onQuoteRepost={handleQuoteRepost}
             />
 
+            <SharePostModal
+                visible={shareModalVisible}
+                onClose={() => setShareModalVisible(false)}
+                post={selectedPostForShare}
+            />
+
             <PostOptionsModal
                 visible={optionsModalVisible}
                 onClose={() => setOptionsModalVisible(false)}
                 onDelete={handleDelete}
                 isOwner={selectedPostForOptions?.user?.id === user?.id}
                 targetPosition={menuPosition}
-                onToggleSave={handleToggleSave}
-                isSaved={!!selectedPostForOptions?.is_saved}
                 onFeedback={handleFeedback}
             />
 

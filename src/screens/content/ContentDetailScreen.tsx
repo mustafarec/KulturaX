@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { BookLoader } from '../../components/BookLoader';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
-import { postService, reviewService, spotifyService, lyricsService } from '../../services/backendApi';
+import { postService, reviewService, spotifyService, lyricsService, libraryService } from '../../services/backendApi';
 import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
+import { LibraryStatusButton } from '../../components/LibraryStatusButton';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 
 type ContentType = 'book' | 'movie' | 'music';
@@ -95,6 +97,8 @@ export const ContentDetailScreen = () => {
             fetchData();
         }
     }, [id, type]);
+
+
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -717,10 +721,10 @@ export const ContentDetailScreen = () => {
         }
     };
 
-    if (isLoading && !content) {
+    if (isLoading) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <BookLoader />
             </View>
         );
     }
@@ -759,6 +763,17 @@ export const ContentDetailScreen = () => {
                         <Text style={styles.subtitle}>{getSubtitle()}</Text>
                     )}
                     <Text style={styles.metaText}>{getMetaText()}</Text>
+                    <View style={{ marginTop: 8 }}>
+                        <LibraryStatusButton
+                            contentType={type as 'book' | 'movie' | 'music'}
+                            contentId={id.toString()}
+                            contentTitle={getTitle()}
+                            imageUrl={getCoverUrl()}
+                            author={getSubtitle()}
+                            summary={type === 'book' ? stripHtml(content.volumeInfo?.description || content.description || '') : type === 'movie' ? (content.overview || '') : ''}
+                            lyrics={type === 'music' ? lyrics || undefined : undefined}
+                        />
+                    </View>
                 </View>
             </View>
 

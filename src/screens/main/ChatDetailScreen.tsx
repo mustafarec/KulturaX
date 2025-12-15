@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
 import { messageService, userService } from '../../services/backendApi';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { SharedPostMessage } from '../../components/SharedPostMessage';
 
 interface Message {
     id: number;
@@ -321,15 +322,54 @@ export const ChatDetailScreen = () => {
 
     const renderItem = ({ item }: { item: Message }) => {
         const isMyMessage = item.sender_id === user?.id;
+
+        // Decode HTML entities (especially quotes) before parsing
+        let content = item.content
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&#039;/g, "'");
+
+        let isSharedPost = false;
+        let sharedPostData = null;
+        let sharedPostComment = '';
+
+        try {
+            if (content.trim().startsWith('{')) {
+                const parsed = JSON.parse(content);
+                if (parsed.type === 'post_share' && parsed.post) {
+                    isSharedPost = true;
+                    sharedPostData = parsed.post;
+                    sharedPostComment = parsed.comment || '';
+                }
+            }
+        } catch (e) {
+            // Not a JSON or parse error, treat as text
+            // If it fails to parse, we should probably display the original encoded content 
+            // or the decoded one depending on how other messages are stored. 
+            // Assuming other messages might be plain text, displaying decoded content is usually safer for readability.
+        }
+
         return (
             <View style={[
                 styles.messageBubble,
-                isMyMessage ? styles.myMessage : styles.theirMessage
+                isMyMessage ? styles.myMessage : styles.theirMessage,
+                isSharedPost ? { width: '80%', padding: 4 } : {} // Fixed width percentage for cards to ensure they look good
             ]}>
-                <Text style={[
-                    styles.messageText,
-                    isMyMessage ? styles.myMessageText : styles.theirMessageText
-                ]}>{item.content}</Text>
+                {isSharedPost ? (
+                    <SharedPostMessage
+                        post={sharedPostData}
+                        comment={sharedPostComment}
+                        isMyMessage={isMyMessage}
+                    />
+                ) : (
+                    <Text style={[
+                        styles.messageText,
+                        isMyMessage ? styles.myMessageText : styles.theirMessageText
+                    ]}>{item.content}</Text>
+                )}
+
                 <Text style={[
                     styles.timeText,
                     isMyMessage ? styles.myTimeText : styles.theirTimeText

@@ -6,22 +6,35 @@ import { useAuth } from '../context/AuthContext';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 
 interface LibraryStatusButtonProps {
-    contentType: 'movie' | 'book';
+    contentType: 'movie' | 'book' | 'music';
     contentId: string;
     onStatusChange?: () => void;
+    contentTitle?: string;
+    imageUrl?: string;
+    author?: string;
+    summary?: string;
+    lyrics?: string;
 }
 
-export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ contentType, contentId, onStatusChange }) => {
+export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ contentType, contentId, onStatusChange, contentTitle, imageUrl, author, summary, lyrics }) => {
     const { theme } = useTheme();
     const { user } = useAuth();
     const [status, setStatus] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
+    const getLabels = () => {
+        if (contentType === 'book') return { read: 'Okudum', reading: 'Okuyorum', want: 'Okuyacağım' };
+        if (contentType === 'music') return { read: 'Dinledim', reading: 'Dinliyorum', want: 'Dinleyeceğim' };
+        return { read: 'İzledim', reading: 'İzliyorum', want: 'İzleyeceğim' };
+    };
+
+    const labels = getLabels();
+
     const statusOptions = [
-        { label: contentType === 'book' ? 'Okudum' : 'İzledim', value: 'read', icon: 'check' },
-        { label: contentType === 'book' ? 'Okuyorum' : 'İzliyorum', value: 'reading', icon: 'eyeglass' },
-        { label: contentType === 'book' ? 'Okuyacağım' : 'İzleyeceğim', value: 'want_to_read', icon: 'clock' },
+        { label: labels.read, value: 'read', icon: 'check' },
+        { label: labels.reading, value: 'reading', icon: 'eyeglass' }, // Maybe change icon for music? Keep for now.
+        { label: labels.want, value: 'want_to_read', icon: 'clock' },
         { label: 'Yarım Bıraktım', value: 'dropped', icon: 'close' },
     ];
 
@@ -45,7 +58,8 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
     const handleStatusUpdate = async (newStatus: string) => {
         setIsLoading(true);
         try {
-            await libraryService.updateStatus(user!.id, contentType, contentId, newStatus);
+            // Pass metadata to service
+            await libraryService.updateStatus(user!.id, contentType, contentId, newStatus, 0, contentTitle, imageUrl, author, summary, lyrics);
             setStatus(newStatus);
             setShowModal(false);
             if (onStatusChange) onStatusChange();

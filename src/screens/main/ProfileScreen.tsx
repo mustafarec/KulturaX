@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions, ImageBackground, LayoutAnimation, Platform, UIManager } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { postService, libraryService, userService, API_URL, reviewService } from '../../services/backendApi';
@@ -11,7 +12,7 @@ import { ReadingGoalCard } from '../../components/ReadingGoalCard';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import LinearGradient from 'react-native-linear-gradient';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 if (Platform.OS === 'android') {
     if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -25,11 +26,14 @@ export const ProfileScreen = () => {
     console.log('ProfileScreen user:', user);
     console.log('ReviewCard status:', ReviewCard); // Debugging
     const navigation = useNavigation();
+
     const [activeTab, setActiveTab] = useState('posts');
+    const translateX = useSharedValue(0);
+
     const [userPosts, setUserPosts] = useState<any[]>([]);
     const [userReviews, setUserReviews] = useState<any[]>([]);
     const [libraryItems, setLibraryItems] = useState<any[]>([]);
-    const [libraryFilter, setLibraryFilter] = useState<'all' | 'book' | 'movie'>('all');
+    const [libraryFilter, setLibraryFilter] = useState<'all' | 'book' | 'movie' | 'music'>('all');
     const [subFilter, setSubFilter] = useState<'all' | 'read' | 'reading' | 'want_to_read' | 'dropped'>('all');
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -38,6 +42,30 @@ export const ProfileScreen = () => {
 
     // Mock Header Image (Random Library/Aesthetic)
     const headerImage = user?.header_image_url || 'https://images.unsplash.com/photo-1507842217121-9e96e4430330?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
+
+    // Animasyon stili
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: translateX.value }],
+        };
+    });
+
+    const getTabIndex = (tab: string) => {
+        switch (tab) {
+            case 'posts': return 0;
+            case 'quotes': return 1;
+            case 'library': return 2;
+            case 'reviews': return 3;
+            default: return 0;
+        }
+    };
+
+    // Tab değiştiğinde animasyonu tetikle
+    useEffect(() => {
+        const index = getTabIndex(activeTab);
+        const config = { damping: 30, stiffness: 250, mass: 1 };
+        translateX.value = withSpring(-index * SCREEN_WIDTH, config);
+    }, [activeTab]);
 
     const fetchUserPosts = async () => {
         if (!refreshing) setIsLoading(true);
@@ -124,11 +152,13 @@ export const ProfileScreen = () => {
 
     if (!user) return null;
 
-    const handleContentPress = (type: 'book' | 'movie', id: string) => {
+    const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
         if (type === 'book') {
             (navigation as any).navigate('BookDetail', { bookId: id });
         } else if (type === 'movie') {
             (navigation as any).navigate('MovieDetail', { movieId: parseInt(id, 10) });
+        } else if (type === 'music') {
+            (navigation as any).navigate('ContentDetail', { id: id, type: 'music' });
         }
     };
 
@@ -147,185 +177,196 @@ export const ProfileScreen = () => {
         }
     };
 
-    const renderTabContent = () => {
-        if (isLoading && !refreshing) {
-            return <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />;
-        }
+    // Render Logic for Each Tab
+    const renderPosts = () => {
+        const postsOnly = userPosts.filter(p => p.type !== 'quote');
+        return postsOnly.length > 0 ? (
+            postsOnly.map((post) => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    onPress={() => { }}
+                    currentUserId={user.id}
+                    onUserPress={() => {
+                        const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
+                        if (targetUserId !== user.id) {
+                            (navigation as any).navigate('OtherProfile', { userId: targetUserId });
+                        }
+                    }}
+                    onContentPress={handleContentPress}
+                />
+            ))
+        ) : (
+            <EmptyState icon="social-dropbox" text="Henüz gönderi yok." />
+        );
+    };
 
-        switch (activeTab) {
-            case 'posts':
-                return userPosts.filter(p => p.type !== 'quote').length > 0 ? (
-                    userPosts.filter(p => p.type !== 'quote').map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            onPress={() => { }}
-                            currentUserId={user.id}
-                            onUserPress={() => {
-                                const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
-                                if (targetUserId !== user.id) {
-                                    (navigation as any).navigate('OtherProfile', { userId: targetUserId });
-                                }
-                            }}
-                            onContentPress={handleContentPress}
-                        />
-                    ))
-                ) : (
-                    <EmptyState icon="social-dropbox" text="Henüz gönderi yok." />
-                );
-            case 'quotes':
-                // Alıntı filtresi: (type 'quote' OLSUN) VEYA (quote_text boş OLMASIN) VEYA (content_type 'book'/'movie'/'music' OLSUN)
-                // Not: create_post sırasında content_type atanıyor, quote_text atanıyor.
-                const quotePosts = userPosts.filter(p =>
-                    p.type === 'quote' ||
-                    (p.quote_text && p.quote_text.length > 0) ||
-                    (p.content_type && ['book', 'movie', 'music'].includes(p.content_type) && p.content) // Eski kayıtlar için fallback
-                );
+    const renderQuotes = () => {
+        const quotePosts = userPosts.filter(p =>
+            p.type === 'quote' ||
+            (p.quote_text && p.quote_text.length > 0) ||
+            (p.content_type && ['book', 'movie', 'music'].includes(p.content_type) && p.content)
+        );
 
-                return quotePosts.length > 0 ? (
-                    quotePosts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            onPress={() => { }}
-                            currentUserId={user.id}
-                            onUserPress={() => {
-                                const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
-                                if (targetUserId !== user.id) {
-                                    (navigation as any).navigate('OtherProfile', { userId: targetUserId });
-                                }
-                            }}
-                            onContentPress={handleContentPress}
-                        />
-                    ))
-                ) : (
-                    <EmptyState icon="speech" text="Henüz alıntı yok." />
-                );
-            case 'library':
-                const filteredLibrary = libraryItems.filter(item => {
-                    const matchesType = libraryFilter === 'all' ? true : item.content_type === libraryFilter;
-                    const matchesSub = subFilter === 'all' ? true : item.status === subFilter;
-                    return matchesType && matchesSub;
-                });
+        return quotePosts.length > 0 ? (
+            quotePosts.map((post) => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    onPress={() => { }}
+                    currentUserId={user.id}
+                    onUserPress={() => {
+                        const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
+                        if (targetUserId !== user.id) {
+                            (navigation as any).navigate('OtherProfile', { userId: targetUserId });
+                        }
+                    }}
+                    onContentPress={handleContentPress}
+                />
+            ))
+        ) : (
+            <EmptyState icon="speech" text="Henüz alıntı yok." />
+        );
+    };
 
-                const handleFilterChange = (filter: 'all' | 'book' | 'movie') => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setLibraryFilter(filter);
-                    setSubFilter('all');
-                };
+    const renderLibrary = () => {
+        const filteredLibrary = libraryItems.filter(item => {
+            const matchesType = libraryFilter === 'all' ? true : item.content_type === libraryFilter;
+            const matchesSub = subFilter === 'all' ? true : item.status === subFilter;
+            return matchesType && matchesSub;
+        });
 
-                const getSubFilters = () => {
-                    if (libraryFilter === 'book') {
-                        return [
-                            { label: 'Tümü', value: 'all' },
-                            { label: 'Okudum', value: 'read' },
-                            { label: 'Okuyorum', value: 'reading' },
-                            { label: 'Okuyacağım', value: 'want_to_read' },
-                            { label: 'Yarım Bıraktım', value: 'dropped' },
-                        ];
-                    } else if (libraryFilter === 'movie') {
-                        return [
-                            { label: 'Tümü', value: 'all' },
-                            { label: 'İzledim', value: 'read' },
-                            { label: 'İzliyorum', value: 'reading' },
-                            { label: 'İzleyeceğim', value: 'want_to_read' },
-                            { label: 'Yarım Bıraktım', value: 'dropped' },
-                        ];
-                    }
-                    return [];
-                };
+        const handleFilterChange = (filter: 'all' | 'book' | 'movie' | 'music') => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setLibraryFilter(filter);
+            setSubFilter('all');
+        };
 
-                return (
-                    <View>
-                        {/* Ana Filtreler */}
-                        <View style={[styles.filterContainer, { marginBottom: 8 }]}>
+        const getSubFilters = () => {
+            if (libraryFilter === 'book') {
+                return [
+                    { label: 'Tümü', value: 'all' },
+                    { label: 'Okudum', value: 'read' },
+                    { label: 'Okuyorum', value: 'reading' },
+                    { label: 'Okuyacağım', value: 'want_to_read' },
+                    { label: 'Yarım Bıraktım', value: 'dropped' },
+                ];
+            } else if (libraryFilter === 'movie') {
+                return [
+                    { label: 'Tümü', value: 'all' },
+                    { label: 'İzledim', value: 'read' },
+                    { label: 'İzliyorum', value: 'reading' },
+                    { label: 'İzleyeceğim', value: 'want_to_read' },
+                    { label: 'Yarım Bıraktım', value: 'dropped' },
+                ];
+            } else if (libraryFilter === 'music') {
+                return [
+                    { label: 'Tümü', value: 'all' },
+                    { label: 'Dinledim', value: 'read' },
+                    { label: 'Dinliyorum', value: 'reading' },
+                    { label: 'Dinleyeceğim', value: 'want_to_read' },
+                    { label: 'Yarım Bıraktım', value: 'dropped' },
+                ];
+            }
+            return [];
+        };
+
+        return (
+            <View>
+                {/* Ana Filtreler */}
+                <View style={[styles.filterContainer, { marginBottom: 8 }]}>
+                    <TouchableOpacity
+                        style={[styles.filterChip, libraryFilter === 'all' && styles.activeFilterChip]}
+                        onPress={() => handleFilterChange('all')}
+                    >
+                        <Text style={[styles.filterText, libraryFilter === 'all' && styles.activeFilterText]}>Tümü</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterChip, libraryFilter === 'book' && styles.activeFilterChip]}
+                        onPress={() => handleFilterChange('book')}
+                    >
+                        <Text style={[styles.filterText, libraryFilter === 'book' && styles.activeFilterText]}>Kitaplar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterChip, libraryFilter === 'movie' && styles.activeFilterChip]}
+                        onPress={() => handleFilterChange('movie')}
+                    >
+                        <Text style={[styles.filterText, libraryFilter === 'movie' && styles.activeFilterText]}>Filmler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterChip, libraryFilter === 'music' && styles.activeFilterChip]}
+                        onPress={() => handleFilterChange('music')}
+                    >
+                        <Text style={[styles.filterText, libraryFilter === 'music' && styles.activeFilterText]}>Müzikler</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Alt Filtreler (Animasyonlu) */}
+                {libraryFilter !== 'all' && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, paddingHorizontal: 4 }}>
+                        {getSubFilters().map((sub) => (
                             <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'all' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('all')}
+                                key={sub.value}
+                                style={[
+                                    styles.filterChip,
+                                    { backgroundColor: subFilter === sub.value ? theme.colors.primary : theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, marginRight: 6, paddingVertical: 4, paddingHorizontal: 12 }
+                                ]}
+                                onPress={() => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setSubFilter(sub.value as any);
+                                }}
                             >
-                                <Text style={[styles.filterText, libraryFilter === 'all' && styles.activeFilterText]}>Tümü</Text>
+                                <Text style={[styles.filterText, { fontSize: 11, color: subFilter === sub.value ? '#fff' : theme.colors.text }]}>{sub.label}</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'book' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('book')}
-                            >
-                                <Text style={[styles.filterText, libraryFilter === 'book' && styles.activeFilterText]}>Kitaplar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'movie' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('movie')}
-                            >
-                                <Text style={[styles.filterText, libraryFilter === 'movie' && styles.activeFilterText]}>Filmler</Text>
-                            </TouchableOpacity>
-                        </View>
+                        ))}
+                    </ScrollView>
+                )}
 
-                        {/* Alt Filtreler (Animasyonlu) */}
-                        {libraryFilter !== 'all' && (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, paddingHorizontal: 4 }}>
-                                {getSubFilters().map((sub) => (
-                                    <TouchableOpacity
-                                        key={sub.value}
-                                        style={[
-                                            styles.filterChip,
-                                            { backgroundColor: subFilter === sub.value ? theme.colors.primary : theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, marginRight: 6, paddingVertical: 4, paddingHorizontal: 12 }
-                                        ]}
-                                        onPress={() => {
-                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                            setSubFilter(sub.value as any);
-                                        }}
-                                    >
-                                        <Text style={[styles.filterText, { fontSize: 11, color: subFilter === sub.value ? '#fff' : theme.colors.text }]}>{sub.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        )}
-
-                        {filteredLibrary.length > 0 ? (
-                            filteredLibrary.map((item) => (
-                                <TouchableOpacity key={item.id} style={styles.libraryItemCard} onPress={() => handleContentPress(item.content_type, item.content_id)}>
-                                    {item.image_url ? (
-                                        <Image source={{ uri: item.image_url }} style={styles.libraryBookCover} />
-                                    ) : (
-                                        <View style={[styles.libraryBookCover, { justifyContent: 'center', alignItems: 'center', backgroundColor: item.content_type === 'movie' ? '#E50914' : theme.colors.secondary }]}>
-                                            <Icon name={item.content_type === 'movie' ? 'film' : 'book-open'} size={24} color="#FFF" />
-                                        </View>
-                                    )}
-                                    <View style={styles.libraryItemContent}>
-                                        <View>
-                                            <Text style={styles.libraryItemTitle} numberOfLines={2}>{item.content_title || 'İsimsiz Eser'}</Text>
-                                            {item.author && <Text style={styles.libraryItemAuthor} numberOfLines={1}>{item.author}</Text>}
-                                        </View>
-                                        <View style={styles.libraryMetaRow}>
-                                            <View style={[styles.statusBadge, { backgroundColor: item.status === 'read' ? '#4CAF50' : item.status === 'reading' ? '#2196F3' : '#FFC107' }]}>
-                                                <Text style={styles.statusText}>
-                                                    {getStatusText(item.status, item.content_type)}
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.libraryItemDate}>{new Date(item.updated_at).toLocaleDateString()} güncellendi</Text>
-                                        </View>
+                {filteredLibrary.length > 0 ? (
+                    filteredLibrary.map((item) => (
+                        <TouchableOpacity key={item.id} style={styles.libraryItemCard} onPress={() => handleContentPress(item.content_type || 'book', item.content_id)}>
+                            {item.image_url ? (
+                                <Image source={{ uri: item.image_url }} style={styles.libraryBookCover} />
+                            ) : (
+                                <View style={[styles.libraryBookCover, { justifyContent: 'center', alignItems: 'center', backgroundColor: item.content_type === 'movie' ? '#E50914' : theme.colors.secondary }]}>
+                                    <Icon name={item.content_type === 'movie' ? 'film' : 'book-open'} size={24} color="#FFF" />
+                                </View>
+                            )}
+                            <View style={styles.libraryItemContent}>
+                                <View>
+                                    <Text style={styles.libraryItemTitle} numberOfLines={2}>{item.content_title || 'İsimsiz Eser'}</Text>
+                                    {item.author && <Text style={styles.libraryItemAuthor} numberOfLines={1}>{item.author}</Text>}
+                                </View>
+                                <View style={styles.libraryMetaRow}>
+                                    <View style={[styles.statusBadge, { backgroundColor: item.status === 'read' ? '#4CAF50' : item.status === 'reading' ? '#2196F3' : '#FFC107' }]}>
+                                        <Text style={styles.statusText}>
+                                            {getStatusText(item.status, item.content_type)}
+                                        </Text>
                                     </View>
-                                </TouchableOpacity>
-                            ))
-                        ) : (
-                            <EmptyState icon="book-open" text={libraryFilter === 'all' ? "Kütüphaneniz boş." : "Bu kategoride içerik yok."} />
-                        )}
-                    </View>
-                );
-            case 'reviews':
-                return userReviews.length > 0 ? (
-                    userReviews.map((review) => (
-                        <ReviewCard
-                            key={review.id}
-                            review={review}
-                            onUserPress={() => { }} // Kendi profilimizde zaten
-                        />
+                                    <Text style={styles.libraryItemDate}>{new Date(item.updated_at).toLocaleDateString()} güncellendi</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
                     ))
                 ) : (
-                    <EmptyState icon="pencil" text="Henüz inceleme yok." />
-                );
-            default:
-                return null;
-        }
+                    <EmptyState icon="book-open" text={libraryFilter === 'all' ? "Kütüphaneniz boş." : "Bu kategoride içerik yok."} />
+                )}
+            </View>
+        );
+    };
+
+    const renderReviews = () => {
+        return userReviews.length > 0 ? (
+            userReviews.map((review) => (
+                <ReviewCard
+                    key={review.id}
+                    review={review}
+                    onUserPress={() => { }} // Kendi profilimizde zaten
+                />
+            ))
+        ) : (
+            <EmptyState icon="pencil" text="Henüz inceleme yok." />
+        );
     };
 
     // Helper Components
@@ -577,7 +618,12 @@ export const ProfileScreen = () => {
         activeFilterText: {
             color: '#FFFFFF',
         },
-        contentContainer: {
+        contentWrapper: {
+            flexDirection: 'row',
+            width: SCREEN_WIDTH * 4, // 4 sekmeli yapı
+        },
+        page: {
+            width: SCREEN_WIDTH,
             padding: 20,
         },
         libraryItemCard: {
@@ -727,7 +773,8 @@ export const ProfileScreen = () => {
                 {/* Stats Scroll */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
                     <StatItem number={userPosts.length} label="Gönderi" />
-                    <StatItem number={libraryItems.filter(i => i.status === 'read').length} label="Kitap" />
+                    <StatItem number={libraryItems.filter(i => (i.content_type === 'book' || !i.content_type) && i.status === 'read').length} label="Kitap" />
+                    <StatItem number={libraryItems.filter(i => i.content_type === 'movie' && i.status === 'read').length} label="Film" />
                     <StatItem
                         number={profileStats.follower_count}
                         label="Takipçi"
@@ -755,10 +802,21 @@ export const ProfileScreen = () => {
                 </View>
             </View>
 
-            {/* Content */}
-            <View style={styles.contentContainer}>
-                {renderTabContent()}
-            </View>
+            {/* Content (Animated) */}
+            <Animated.View style={[styles.contentWrapper, animatedStyle]}>
+                <View style={styles.page}>
+                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderPosts()}
+                </View>
+                <View style={styles.page}>
+                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderQuotes()}
+                </View>
+                <View style={styles.page}>
+                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderLibrary()}
+                </View>
+                <View style={styles.page}>
+                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderReviews()}
+                </View>
+            </Animated.View>
 
             <View style={{ height: 120 }} />
         </ScrollView>

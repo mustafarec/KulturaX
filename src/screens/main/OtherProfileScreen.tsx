@@ -406,7 +406,7 @@ export const OtherProfileScreen = () => {
     const [userPosts, setUserPosts] = useState<any[]>([]);
     const [userReviews, setUserReviews] = useState<any[]>([]);
     const [libraryItems, setLibraryItems] = useState<any[]>([]);
-    const [libraryFilter, setLibraryFilter] = useState<'all' | 'book' | 'movie'>('all');
+    const [libraryFilter, setLibraryFilter] = useState<'all' | 'book' | 'movie' | 'music'>('all');
     const [subFilter, setSubFilter] = useState<'all' | 'read' | 'reading' | 'want_to_read' | 'dropped'>('all');
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -581,11 +581,13 @@ export const OtherProfileScreen = () => {
         }
     };
 
-    const handleContentPress = (type: 'book' | 'movie', id: string) => {
+    const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
         if (type === 'book') {
             (navigation as any).navigate('BookDetail', { bookId: id });
         } else if (type === 'movie') {
             (navigation as any).navigate('MovieDetail', { movieId: parseInt(id, 10) });
+        } else if (type === 'music') {
+            (navigation as any).navigate('ContentDetail', { id: id, type: 'music' });
         }
     };
 
@@ -771,7 +773,7 @@ export const OtherProfileScreen = () => {
                     return matchesType && matchesSub;
                 });
 
-                const handleFilterChange = (filter: 'all' | 'book' | 'movie') => {
+                const handleFilterChange = (filter: 'all' | 'book' | 'movie' | 'music') => {
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                     setLibraryFilter(filter);
                     setSubFilter('all');
@@ -792,6 +794,14 @@ export const OtherProfileScreen = () => {
                             { label: 'İzledim', value: 'read' },
                             { label: 'İzliyorum', value: 'reading' },
                             { label: 'İzleyeceğim', value: 'want_to_read' },
+                            { label: 'Yarım Bıraktım', value: 'dropped' },
+                        ];
+                    } else if (libraryFilter === 'music') {
+                        return [
+                            { label: 'Tümü', value: 'all' },
+                            { label: 'Dinledim', value: 'read' },
+                            { label: 'Dinliyorum', value: 'reading' },
+                            { label: 'Dinleyeceğim', value: 'want_to_read' },
                             { label: 'Yarım Bıraktım', value: 'dropped' },
                         ];
                     }
@@ -819,6 +829,12 @@ export const OtherProfileScreen = () => {
                                 onPress={() => handleFilterChange('movie')}
                             >
                                 <Text style={[styles.filterText, libraryFilter === 'movie' && styles.activeFilterText]}>Filmler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.filterChip, libraryFilter === 'music' && styles.activeFilterChip]}
+                                onPress={() => handleFilterChange('music')}
+                            >
+                                <Text style={[styles.filterText, libraryFilter === 'music' && styles.activeFilterText]}>Müzikler</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -1009,7 +1025,8 @@ export const OtherProfileScreen = () => {
                 {/* Stats Scroll */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
                     <StatItem number={userPosts.length} label="Gönderi" />
-                    <StatItem number={libraryItems.filter(i => i.status === 'read').length} label="Kitap" />
+                    <StatItem number={libraryItems.filter(i => (i.content_type === 'book' || !i.content_type) && i.status === 'read').length} label="Kitap" />
+                    <StatItem number={libraryItems.filter(i => i.content_type === 'movie' && i.status === 'read').length} label="Film" />
                     <StatItem
                         number={profile?.follower_count || 0}
                         label="Takipçi"

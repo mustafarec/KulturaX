@@ -37,11 +37,7 @@ export const QuoteCard = ({
             alignItems: 'center',
             ...theme.shadows.soft,
         },
-        quoteIcon: {
-            position: 'absolute',
-            top: 20,
-            left: 20,
-        },
+
         text: {
             fontSize: 16, // Slightly larger than body for the main card 
             color: '#ffffff',
@@ -184,7 +180,7 @@ export const QuoteCard = ({
 
     return (
         <View style={[styles.card, { backgroundColor: activeThemeColor }]}>
-            <Icon name="speech" size={40} color="rgba(255,255,255,0.3)" style={styles.quoteIcon} />
+
             <Text style={styles.text}>{text}</Text>
             <View style={styles.footer}>
                 <Text style={styles.source}>— {source}</Text>

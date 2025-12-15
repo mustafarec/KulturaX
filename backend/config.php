@@ -37,10 +37,10 @@ if (file_exists($envFile)) {
 
 // Database Configuration
 // Prioritize .env values, fallback to defaults if not set
-$host = $env['DB_HOST'] ?? "localhost";
-$db_name = $env['DB_NAME'] ?? "trakyali_kitapmuzikfilmapp";
-$username = $env['DB_USER'] ?? "trakyali_admin";
-$password = $env['DB_PASS'] ?? "Marmara34.?";
+$host = $env['DB_HOST'];
+$db_name = $env['DB_NAME'];
+$username = $env['DB_USER'];
+$password = $env['DB_PASS'];
 
 try {
     $conn = new PDO("mysql:host=" . $host . ";dbname=" . $db_name . ";charset=utf8", $username, $password);

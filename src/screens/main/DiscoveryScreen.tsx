@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
@@ -8,6 +9,7 @@ import backendApi, { spotifyService, ticketmasterService } from '../../services/
 import { SectionHeader } from '../../components/SectionHeader';
 import { HorizontalList } from '../../components/HorizontalList';
 import { EventCard } from '../../components/EventCard';
+import { theme } from '../../theme/theme';
 
 export const DiscoveryScreen = () => {
     const [query, setQuery] = useState('');
@@ -47,6 +49,21 @@ export const DiscoveryScreen = () => {
         }
     }, [activeTab]);
 
+    // Trend kitaplar için günlük stabil sorgu seçici
+    // Hem dashboard hem de kategori sayfasında aynısı kullanılmalı
+    const getDailyBookQuery = () => {
+        const queries = [
+            'çok satanlar', 'roman', 'edebiyat', 'tarih', 'bilim kurgu',
+            'kişisel gelişim', 'psikoloji', 'felsefe', 'şiir', 'biyografi',
+            'klasikler', 'macera', 'polisiye', 'korku', 'fantastik',
+            'nobel prize', 'booker prize', 'new york times bestseller',
+            'subject:fiction', 'subject:history'
+        ];
+        const dayOfMonth = new Date().getDate();
+        const index = dayOfMonth % queries.length;
+        return queries[index];
+    };
+
     const fetchDashboardData = async () => {
         setIsLoading(true);
         try {
@@ -73,14 +90,21 @@ export const DiscoveryScreen = () => {
                 }));
             });
 
-            // 3. Trending Books
-            const booksPromise = googleBooksApi.searchBooks('subject:fiction', 'newest').then((books: any[]) => {
-                return books.slice(0, 10).map((book: any) => ({
+            // 3. Trend Kitaplar (Günlük Stabil Trend)
+            const dailyQuery = getDailyBookQuery();
+
+            const booksPromise = googleBooksApi.searchBooks(dailyQuery, {
+                langRestrict: 'tr',
+                orderBy: 'relevance',
+                maxResults: 10,
+                printType: 'books'
+            }).then((books: any[]) => {
+                return books.map((book: any) => ({
                     id: book.id,
                     title: book.volumeInfo.title,
                     type: 'book',
                     image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:'),
-                    subtitle: book.volumeInfo.authors ? book.volumeInfo.authors[0] : ''
+                    subtitle: book.volumeInfo.authors ? book.volumeInfo.authors[0] : (book.volumeInfo.publisher || '')
                 }));
             });
 
@@ -139,13 +163,32 @@ export const DiscoveryScreen = () => {
                     subtitle: movie.release_date?.split('-')[0]
                 }));
             } else if (category === 'books') {
-                let books = searchQuery ? await googleBooksApi.searchBooks(searchQuery) : await googleBooksApi.searchBooks('subject:fiction', 'newest');
+                let books;
+                if (searchQuery) {
+                    books = await googleBooksApi.searchBooks(searchQuery, {
+                        langRestrict: 'tr',
+                        orderBy: 'relevance',
+                        maxResults: 20,
+                        printType: 'books'
+                    });
+                } else {
+                    // Kategori sekmesinde de aynı "Günlük Trend" mantığını kullan
+                    const dailyQuery = getDailyBookQuery();
+
+                    books = await googleBooksApi.searchBooks(dailyQuery, {
+                        langRestrict: 'tr',
+                        orderBy: 'relevance',
+                        maxResults: 20,
+                        printType: 'books'
+                    });
+                }
+
                 data = books.map((book: any) => ({
                     id: book.id,
                     title: book.volumeInfo.title,
                     type: 'book',
                     image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:'),
-                    subtitle: book.volumeInfo.authors ? book.volumeInfo.authors[0] : ''
+                    subtitle: book.volumeInfo.authors ? book.volumeInfo.authors[0] : (book.volumeInfo.publisher || '')
                 }));
             } else if (category === 'music') {
                 // If searching, searching tracks. If just category listing, maybe show top 50 full list?
@@ -253,25 +296,25 @@ export const DiscoveryScreen = () => {
             backgroundColor: theme.colors.background,
         },
         header: {
-            paddingTop: 40,
-            paddingBottom: 10,
+            paddingTop: Platform.OS === 'ios' ? 60 : 40,
+            paddingBottom: 16,
             paddingHorizontal: 20,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.colors.background,
+            zIndex: 10,
         },
         searchContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: theme.colors.background,
-            borderRadius: 24, // Softer roundness
+            backgroundColor: theme.colors.surface,
+            borderRadius: 20,
             paddingHorizontal: 16,
-            height: 48,
+            height: 52,
+            ...theme.shadows.soft,
             borderWidth: 1,
-            borderColor: 'transparent', // Cleaner look
+            borderColor: theme.colors.border,
         },
         searchIcon: {
-            fontSize: 18,
-            marginRight: 10,
-            color: theme.colors.textSecondary,
+            marginRight: 12,
         },
         searchInput: {
             flex: 1,
@@ -284,11 +327,6 @@ export const DiscoveryScreen = () => {
             paddingHorizontal: 20,
             backgroundColor: theme.colors.surface,
             marginBottom: 8,
-            // shadowColor: theme.shadows.default.shadowColor,
-            // shadowOffset: { width: 0, height: 2 },
-            // shadowOpacity: 0.05,
-            // shadowRadius: 4,
-            // elevation: 2,
         },
         chip: {
             paddingHorizontal: 20,
@@ -359,6 +397,8 @@ export const DiscoveryScreen = () => {
             paddingTop: 100,
         }
     }), [theme]);
+
+
 
     const renderDashboard = () => (
         <ScrollView
@@ -439,14 +479,16 @@ export const DiscoveryScreen = () => {
         />
     );
 
+
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <View style={styles.searchContainer}>
-                    <Text style={styles.searchIcon}>🔍</Text>
+                    <Icon name="magnifier" size={18} color={theme.colors.primary} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Ara..."
+                        placeholder="Kitap, film, müzik veya etkinlik ara..."
                         placeholderTextColor={theme.colors.textSecondary}
                         value={query}
                         onChangeText={setQuery}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, FlatList, StatusBar } from 'react-native';
+import { BookLoader } from '../../components/BookLoader';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
-import { postService, reviewService } from '../../services/backendApi';
+import { postService, reviewService, libraryService } from '../../services/backendApi';
 import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
@@ -57,6 +58,9 @@ export const MovieDetailScreen = () => {
             fetchData();
         }
     }, [movieId]);
+
+    // Auto-save 'visited' status and metadata on load
+
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -507,7 +511,7 @@ export const MovieDetailScreen = () => {
     if (isLoading) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <BookLoader />
             </View>
         );
     }
@@ -545,6 +549,10 @@ export const MovieDetailScreen = () => {
                         <LibraryStatusButton
                             contentType="movie"
                             contentId={String(movieId)}
+                            contentTitle={movie.title}
+                            imageUrl={posterUrl}
+                            author={movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Bilinmiyor'}
+                            summary={movie.overview || ''}
                         />
                     </View>
                 </View>

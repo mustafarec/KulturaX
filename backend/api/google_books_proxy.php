@@ -43,18 +43,38 @@ try {
                 echo json_encode(array("message" => "Arama sorgusu gerekli."));
                 exit;
             }
+            // Parametreleri al ve güvenli hale getir
+            $langRestrict = isset($_GET['langRestrict']) ? $_GET['langRestrict'] : 'tr'; // Varsayılan TR
+            $printType = isset($_GET['printType']) ? $_GET['printType'] : 'books';
+            $maxResults = isset($_GET['maxResults']) ? (int)$_GET['maxResults'] : 20;
+            $startIndex = isset($_GET['startIndex']) ? (int)$_GET['startIndex'] : 0;
             
-            $url = "$baseUrl/volumes?q=$query&maxResults=20&langRestrict=tr";
+            // Güvenlik kontrolleri (Validation)
+            if (!in_array($langRestrict, ['tr', 'en'])) $langRestrict = 'tr';
+            if (!in_array($printType, ['all', 'books', 'magazines'])) $printType = 'books';
+            if ($maxResults < 1 || $maxResults > 40) $maxResults = 20;
+            if ($startIndex < 0) $startIndex = 0;
+
+            // URL oluştur
+            $url = "$baseUrl/volumes?q=$query";
+            $url .= "&maxResults=$maxResults";
+            $url .= "&startIndex=$startIndex";
+            $url .= "&langRestrict=" . urlencode($langRestrict);
+            $url .= "&printType=" . urlencode($printType);
             
             if (!empty($orderBy)) {
-                $url .= "&orderBy=" . urlencode($orderBy);
+                // orderBy için de basit bir validation iyi olur
+                if (in_array($orderBy, ['relevance', 'newest'])) {
+                    $url .= "&orderBy=" . urlencode($orderBy);
+                }
             }
 
             if (!empty($googleApiKey)) {
                 $url .= "&key=$googleApiKey";
             }
             
-            $cacheKey = "google_books_search_" . md5($query . $orderBy);
+            // Cache key'i tüm parametreleri içerecek şekilde güncelle
+            $cacheKey = "google_books_search_" . md5($query . $orderBy . $langRestrict . $printType . $maxResults . $startIndex);
             $cacheTTL = 86400; // 1 gün
             break;
             

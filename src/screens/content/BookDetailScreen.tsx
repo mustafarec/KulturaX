@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, StatusBar } from 'react-native';
+import { BookLoader } from '../../components/BookLoader';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
-import { postService, reviewService } from '../../services/backendApi';
+import { postService, reviewService, libraryService } from '../../services/backendApi';
 import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
@@ -443,7 +444,7 @@ export const BookDetailScreen = () => {
     if (isLoading) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <BookLoader />
             </View>
         );
     }
@@ -461,6 +462,10 @@ export const BookDetailScreen = () => {
     return (
         <ScrollView style={styles.container}>
             <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
+
+            {/* Auto-save 'visited' status and metadata on load */}
+
+
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Icon name="arrow-left" size={24} color={theme.colors.text} />
@@ -481,6 +486,9 @@ export const BookDetailScreen = () => {
                         <LibraryStatusButton
                             contentType="book"
                             contentId={bookId}
+                            contentTitle={book.title}
+                            imageUrl={coverUrl}
+                            author={book.volumeInfo?.authors ? book.volumeInfo.authors.join(', ') : (book.authors ? book.authors.join(', ') : 'Bilinmiyor')}
                         />
                     </View>
                 </View>
@@ -537,7 +545,7 @@ export const BookDetailScreen = () => {
                 initialContentType="book"
                 initialContentId={bookId}
             />
-        </ScrollView>
+        </ScrollView >
     );
 };
 

@@ -8,14 +8,12 @@ interface PostOptionsModalProps {
     visible: boolean;
     onClose: () => void;
     onDelete?: () => void;
-    onToggleSave?: () => void;
     onFeedback?: (type: 'report' | 'not_interested' | 'show_more') => void;
-    isSaved?: boolean;
     isOwner?: boolean;
     targetPosition?: { x: number; y: number; width: number; height: number } | null;
 }
 
-export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onToggleSave, isSaved, onFeedback }) => {
+export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onFeedback }) => {
     const { theme } = useTheme();
 
     if (!visible || !targetPosition) return null;
@@ -27,16 +25,8 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
     const top = targetPosition.y + targetPosition.height + 6;
 
     const options = [
-        // Save Option
-        {
-            label: isSaved ? 'Kaydedilenlerden Çıkar' : 'Kaydet',
-            icon: isSaved ? 'bookmark' : 'bookmark-outline',
-            color: theme.colors.text,
-            onPress: () => {
-                onClose();
-                if (onToggleSave) onToggleSave();
-            }
-        },
+        // Save Option Removed
+
         ...(isOwner ? [{
             label: 'Sil',
             icon: 'trash',

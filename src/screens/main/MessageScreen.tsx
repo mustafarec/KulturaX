@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, StatusBar, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, StatusBar, Alert, Dimensions } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { theme } from '../../theme/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,14 +18,41 @@ interface Conversation {
     last_message_sender_id: number;
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export const MessageScreen = () => {
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [inboxConversations, setInboxConversations] = useState<Conversation[]>([]);
+    const [requestsConversations, setRequestsConversations] = useState<Conversation[]>([]);
+
+    const [isLoadingInbox, setIsLoadingInbox] = useState(true);
+    const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+
     const [refreshing, setRefreshing] = useState(false);
+
+    const [activeTab, setActiveTab] = useState<'inbox' | 'requests'>('inbox');
+    const translateX = useSharedValue(0);
+
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
+
+    // Animasyon stili
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: translateX.value }],
+        };
+    });
+
+    // Tab değiştiğinde animasyonu tetikle
+    useEffect(() => {
+        const config = { damping: 30, stiffness: 250, mass: 1 };
+        if (activeTab === 'inbox') {
+            translateX.value = withSpring(0, config);
+        } else {
+            translateX.value = withSpring(-SCREEN_WIDTH, config);
+        }
+    }, [activeTab]);
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -35,11 +63,12 @@ export const MessageScreen = () => {
             backgroundColor: theme.colors.surface,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
-            marginBottom: 10, // Add spacing below header
+            paddingBottom: 0,
+            zIndex: 10,
         },
         headerContent: {
             padding: 20,
-            paddingBottom: 10, // Reduce internal padding slightly
+            paddingBottom: 10,
         },
         headerTitle: {
             fontSize: 28,
@@ -53,7 +82,6 @@ export const MessageScreen = () => {
             borderRadius: 12,
             padding: 4,
             width: '100%',
-            marginTop: 0, // Remove top margin as we have padding in headerContent
         },
         tab: {
             flex: 1,
@@ -77,12 +105,22 @@ export const MessageScreen = () => {
         activeTabText: {
             color: theme.colors.text,
         },
+        contentContainer: {
+            flex: 1,
+            flexDirection: 'row',
+            width: SCREEN_WIDTH * 2, // 2 ekran genişliği
+        },
+        page: {
+            width: SCREEN_WIDTH,
+            height: '100%',
+        },
         list: {
+            paddingTop: 10,
             paddingBottom: 20,
         },
         item: {
             flexDirection: 'row',
-            paddingVertical: 12, // Reduce vertical padding
+            paddingVertical: 12,
             paddingHorizontal: 16,
             marginHorizontal: 16,
             backgroundColor: theme.colors.surface,
@@ -113,7 +151,7 @@ export const MessageScreen = () => {
             fontWeight: 'bold',
             color: theme.colors.text,
         },
-        contentContainer: {
+        itemContent: {
             flex: 1,
         },
         headerRow: {
@@ -144,6 +182,7 @@ export const MessageScreen = () => {
             alignItems: 'center',
             justifyContent: 'center',
             paddingTop: 100,
+            paddingHorizontal: 40,
         },
         emptyIcon: {
             fontSize: 64,
@@ -160,18 +199,23 @@ export const MessageScreen = () => {
         emptyText: {
             fontSize: 15,
             color: theme.colors.textSecondary,
+            textAlign: 'center',
         },
         deleteAction: {
             backgroundColor: theme.colors.error,
             justifyContent: 'center',
             alignItems: 'center',
             width: 80,
-            height: '80%', // Match item box height visually roughly, or use flex but parent height is dynamic. Using explicit height matching item margin adjustments.
-            // Better: make it fill parent height
-            marginTop: 0,
-            marginBottom: 12,
-            marginRight: 16,
+            height: '100%', // Swipeable içinde tam boy
             borderRadius: 16,
+        },
+        deleteActionContainer: {
+            width: 80,
+            marginRight: 16,
+            paddingVertical: 0, // Wrapper padding
+            height: '100%', // Ensure full height
+            justifyContent: 'center',
+            alignItems: 'center',
         },
         deleteActionText: {
             color: 'white',
@@ -179,37 +223,53 @@ export const MessageScreen = () => {
         },
     }), [theme]);
 
-    const [activeTab, setActiveTab] = useState<'inbox' | 'requests'>('inbox');
-
     const fetchInbox = async () => {
         if (!user) return;
-        if (!refreshing) setIsLoading(true);
         try {
-            const data = await messageService.getInbox(user.id, activeTab);
-            setConversations(Array.isArray(data) ? data : []);
+            const data = await messageService.getInbox(user.id, 'inbox');
+            setInboxConversations(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch inbox:', error);
         } finally {
-            setIsLoading(false);
-            setRefreshing(false);
+            setIsLoadingInbox(false);
         }
     };
 
+    const fetchRequests = async () => {
+        if (!user) return;
+        try {
+            const data = await messageService.getInbox(user.id, 'requests');
+            setRequestsConversations(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch requests:', error);
+        } finally {
+            setIsLoadingRequests(false);
+        }
+    }
+
+    const fetchAll = async () => {
+        setRefreshing(true);
+        await Promise.all([fetchInbox(), fetchRequests()]);
+        setRefreshing(false);
+    }
+
     useEffect(() => {
-        fetchInbox();
-    }, [activeTab, user]);
+        if (user) {
+            fetchInbox();
+            fetchRequests();
+        }
+    }, [user]);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
-            fetchInbox();
+            // Her odaklanmada veriyi taze tut, ama loading gösterme
+            if (user) {
+                messageService.getInbox(user.id, 'inbox').then(data => setInboxConversations(Array.isArray(data) ? data : []));
+                messageService.getInbox(user.id, 'requests').then(data => setRequestsConversations(Array.isArray(data) ? data : []));
+            }
         });
         return unsubscribe;
-    }, [navigation, user, activeTab]);
-
-    const onRefresh = React.useCallback(() => {
-        setRefreshing(true);
-        fetchInbox();
-    }, [activeTab]);
+    }, [navigation, user]);
 
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
@@ -222,7 +282,7 @@ export const MessageScreen = () => {
         return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
     };
 
-    const handleDelete = (partnerId: number) => {
+    const handleDelete = (partnerId: number, type: 'inbox' | 'requests') => {
         Alert.alert(
             "Sohbeti Sil",
             "Bu sohbeti ve tüm mesajlarını silmek istediğine emin misin?",
@@ -233,17 +293,24 @@ export const MessageScreen = () => {
                     style: "destructive",
                     onPress: async () => {
                         // Optimistic update
-                        const previousConversations = [...conversations];
-                        setConversations(prev => prev.filter(c => c.chat_partner_id !== partnerId));
-
-                        try {
-                            if (user) {
-                                await messageService.deleteConversation(user.id, partnerId);
+                        if (type === 'inbox') {
+                            const prev = [...inboxConversations];
+                            setInboxConversations(p => p.filter(c => c.chat_partner_id !== partnerId));
+                            try {
+                                if (user) await messageService.deleteConversation(user.id, partnerId);
+                            } catch (error) {
+                                console.error('Failed to delete conversation:', error);
+                                setInboxConversations(prev);
                             }
-                        } catch (error) {
-                            console.error('Failed to delete conversation:', error);
-                            // Revert on error
-                            setConversations(previousConversations);
+                        } else {
+                            const prev = [...requestsConversations];
+                            setRequestsConversations(p => p.filter(c => c.chat_partner_id !== partnerId));
+                            try {
+                                if (user) await messageService.deleteConversation(user.id, partnerId);
+                            } catch (error) {
+                                console.error('Failed to delete conversation:', error);
+                                setRequestsConversations(prev);
+                            }
                         }
                     }
                 }
@@ -251,31 +318,56 @@ export const MessageScreen = () => {
         );
     };
 
-    const renderRightActions = (progress: any, dragX: any, partnerId: number) => {
+    const renderRightActions = (progress: any, dragX: any, partnerId: number, type: 'inbox' | 'requests') => {
         return (
-            <TouchableOpacity
-                style={styles.deleteAction}
-                onPress={() => handleDelete(partnerId)}
-            >
-                <Text style={styles.deleteActionText}>Sil</Text>
-            </TouchableOpacity>
+            <View style={{ width: 80, paddingVertical: 12, marginRight: 16 }}>
+                <TouchableOpacity
+                    style={styles.deleteAction}
+                    onPress={() => handleDelete(partnerId, type)}
+                >
+                    <Text style={styles.deleteActionText}>Sil</Text>
+                </TouchableOpacity>
+            </View>
         );
     };
 
-    const renderItem = ({ item }: { item: Conversation }) => (
+    const formatLastMessage = (message: string) => {
+        const decoded = message
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&#039;/g, "'");
+
+        try {
+            if (decoded.trim().startsWith('{')) {
+                const parsed = JSON.parse(decoded);
+                if (parsed.type === 'post_share') {
+                    const postUser = parsed.post.user || parsed.post.author || {};
+                    const authorName = postUser.username || postUser.name || 'bir';
+                    return parsed.comment ? `📷 ${parsed.comment}` : `📷 ${authorName} adlı kullanıcının gönderisini iletti`;
+                }
+            }
+        } catch (e) {
+            // Not a JSON
+        }
+        return decoded;
+    };
+
+    const renderItem = ({ item, type }: { item: Conversation, type: 'inbox' | 'requests' }) => (
         <Swipeable
-            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.chat_partner_id)}
+            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.chat_partner_id, type)}
             overshootRight={false}
         >
             <TouchableOpacity
                 style={styles.item}
                 activeOpacity={0.7}
-                delayPressIn={150} // Prevent accidental opacity change during swipe
+                delayPressIn={100}
                 onPress={() => (navigation as any).navigate('ChatDetail', {
                     otherUserId: item.chat_partner_id,
                     username: item.username,
                     avatarUrl: item.avatar_url,
-                    isRequest: activeTab === 'requests' // Pass flag to ChatDetail
+                    isRequest: type === 'requests'
                 })}
             >
                 <View style={styles.avatarContainer}>
@@ -287,70 +379,91 @@ export const MessageScreen = () => {
                         </View>
                     )}
                 </View>
-                <View style={styles.contentContainer}>
+                <View style={styles.itemContent}>
                     <View style={styles.headerRow}>
                         <Text style={styles.username}>{item.username}</Text>
                         <Text style={styles.time}>{formatTime(item.last_message_time)}</Text>
                     </View>
                     <Text style={styles.message} numberOfLines={1}>
-                        {item.last_message_sender_id === user?.id ? 'Siz: ' : ''}{item.last_message}
+                        {item.last_message_sender_id === user?.id ? 'Siz: ' : ''}{formatLastMessage(item.last_message)}
                     </Text>
                 </View>
             </TouchableOpacity>
         </Swipeable>
     );
 
-    const renderHeader = () => (
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-            <View style={styles.headerContent}>
-                <Text style={styles.headerTitle}>Mesajlar</Text>
-                <View style={styles.tabContainer}>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'inbox' && styles.activeTab]}
-                        onPress={() => setActiveTab('inbox')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'inbox' && styles.activeTabText]}>Gelen Kutusu</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-                        onPress={() => setActiveTab('requests')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>İstekler</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </View>
-    );
-
-    return (
-        <View style={styles.container}>
-            {isLoading && !refreshing ? (
+    const renderEmptyState = (type: 'inbox' | 'requests', loading: boolean) => {
+        if (loading) {
+            return (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
-            ) : (
-                <FlatList
-                    data={conversations}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.chat_partner_id.toString()}
-                    contentContainerStyle={styles.list}
-                    ListHeaderComponent={renderHeader}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyIcon}>💬</Text>
-                            <Text style={styles.emptyTitle}>{activeTab === 'inbox' ? 'Mesaj Yok' : 'İstek Yok'}</Text>
-                            <Text style={styles.emptyText}>
-                                {activeTab === 'inbox'
-                                    ? 'Henüz kimseyle mesajlaşmadınız.'
-                                    : 'Bekleyen mesaj isteğiniz yok.'}
-                            </Text>
-                        </View>
-                    }
-                />
-            )}
+            )
+        }
+        return (
+            <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>💬</Text>
+                <Text style={styles.emptyTitle}>{type === 'inbox' ? 'Mesaj Yok' : 'İstek Yok'}</Text>
+                <Text style={styles.emptyText}>
+                    {type === 'inbox'
+                        ? 'Henüz kimseyle mesajlaşmadınız.'
+                        : 'Bekleyen mesaj isteğiniz yok.'}
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <View style={[styles.header, { paddingTop: insets.top }]}>
+                <View style={styles.headerContent}>
+                    <Text style={styles.headerTitle}>Mesajlar</Text>
+                    <View style={styles.tabContainer}>
+                        <TouchableOpacity
+                            style={[styles.tab, activeTab === 'inbox' && styles.activeTab]}
+                            onPress={() => setActiveTab('inbox')}
+                        >
+                            <Text style={[styles.tabText, activeTab === 'inbox' && styles.activeTabText]}>Gelen Kutusu</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
+                            onPress={() => setActiveTab('requests')}
+                        >
+                            <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>İstekler</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+
+            <Animated.View style={[styles.contentContainer, animatedStyle]}>
+                {/* Inbox Page */}
+                <View style={styles.page}>
+                    <FlatList
+                        data={inboxConversations}
+                        renderItem={(props) => renderItem({ ...props, type: 'inbox' })}
+                        keyExtractor={(item) => item.chat_partner_id.toString()}
+                        contentContainerStyle={styles.list}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={fetchAll} colors={[theme.colors.primary]} />
+                        }
+                        ListEmptyComponent={() => renderEmptyState('inbox', isLoadingInbox)}
+                    />
+                </View>
+
+                {/* Requests Page */}
+                <View style={styles.page}>
+                    <FlatList
+                        data={requestsConversations}
+                        renderItem={(props) => renderItem({ ...props, type: 'requests' })}
+                        keyExtractor={(item) => item.chat_partner_id.toString()}
+                        contentContainerStyle={styles.list}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={fetchAll} colors={[theme.colors.primary]} />
+                        }
+                        ListEmptyComponent={() => renderEmptyState('requests', isLoadingRequests)}
+                    />
+                </View>
+            </Animated.View>
         </View>
     );
 };

@@ -17,6 +17,9 @@ interface PostCardProps {
     onReposterPress?: () => void;
     currentUserId?: number;
     onContentPress?: (type: 'book' | 'movie', id: string) => void;
+    onSave?: () => void;
+    isSaved?: boolean;
+    onShare?: () => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -29,7 +32,10 @@ export const PostCard: React.FC<PostCardProps> = ({
     onUserPress,
     onReposterPress,
     currentUserId,
-    onContentPress
+    onContentPress,
+    onSave,
+    isSaved,
+    onShare
 }) => {
     const { theme } = useTheme();
 
@@ -474,8 +480,18 @@ export const PostCard: React.FC<PostCardProps> = ({
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.actionButton}>
+                        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
+                            {/* Share button placeholder, keeping it generic or maybe user wants save here. Let's add Save next to it. */}
                             <Icon name="share" size={16} color={interactionColors.inactive} style={styles.actionIcon} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.actionButton} onPress={onSave}>
+                            <Ionicons
+                                name={isSaved ? "bookmark" : "bookmark-outline"}
+                                size={16}
+                                color={isSaved ? theme.colors.primary : interactionColors.inactive}
+                                style={styles.actionIcon}
+                            />
                         </TouchableOpacity>
                     </View>
                 </View>
