@@ -161,7 +161,7 @@ export const OtherProfileScreen = () => {
         followButtonText: {
             fontSize: 14,
             fontWeight: '600',
-            color: '#FFFFFF',
+            color: theme.colors.background,
         },
         followingButtonText: {
             color: theme.colors.text,

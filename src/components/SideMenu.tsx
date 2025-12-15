@@ -234,7 +234,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                     onPress={() => handleNavigation('SavedPosts')}
                     iconFamily="Ionicons"
                 />
-                <MenuItem icon="star" label="Değerlendirmelerim" onPress={() => { /* TODO */ }} />
+
             </View>
 
             <View style={styles.footer}>
@@ -301,7 +301,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                             onPress={() => handleNavigation('SavedPosts')}
                             iconFamily="Ionicons"
                         />
-                        <MenuItem icon="star" label="Değerlendirmelerim" onPress={() => { /* TODO */ }} />
+
                     </View>
 
                     <View style={styles.footer}>

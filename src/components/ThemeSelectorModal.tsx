@@ -216,7 +216,7 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
                                         style={styles.radioRow}
                                         onPress={() => setDarkThemeStyle('dim')}
                                     >
-                                        <Text style={styles.radioLabel}>Loş</Text>
+                                        <Text style={styles.radioLabel}>Kahverengi</Text>
                                         <View style={[styles.radioButton, darkThemeStyle === 'dim' && styles.radioButtonSelected]}>
                                             {darkThemeStyle === 'dim' && <View style={styles.radioButtonInner} />}
                                         </View>

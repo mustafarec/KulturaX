@@ -105,27 +105,30 @@ export const PostCard: React.FC<PostCardProps> = ({
             marginBottom: 2,
         },
         userInfo: {
+            flexDirection: 'column',
+            justifyContent: 'center',
+            flex: 1,
+            marginLeft: 0,
+        },
+        userInfoRow: {
             flexDirection: 'row',
             alignItems: 'center',
-            flex: 1,
-            // flexWrap: 'wrap', // Disabled wrapping to force single line
         },
         name: {
             fontWeight: '700',
             fontSize: 15,
             color: theme.colors.text,
-            marginRight: 4,
-            flexShrink: 1, // Allow name to shrink if absolutely necessary, but usually username goes first
+            marginBottom: 2,
         },
         username: {
             color: (theme as any).id === 'dim' ? '#D6D3D1' : theme.colors.textSecondary,
-            fontSize: 14,
+            fontSize: 13,
             marginRight: 4,
-            flexShrink: 1, // This ensures username gets truncated if space is tight
+            fontWeight: '400',
         },
         dot: {
             color: theme.colors.textSecondary,
-            fontSize: 14,
+            fontSize: 13,
             marginRight: 4,
         },
         time: {
@@ -136,7 +139,8 @@ export const PostCard: React.FC<PostCardProps> = ({
             fontSize: 15,
             color: theme.colors.text,
             lineHeight: 20,
-            marginBottom: 8,
+            marginTop: 6, // Added space from header
+            marginBottom: 4, // Reduced space to card
         },
         footer: {
             flexDirection: 'row',
@@ -348,13 +352,15 @@ export const PostCard: React.FC<PostCardProps> = ({
                             <Text style={styles.name} numberOfLines={1}>
                                 {displayUser.full_name || displayUser.username}
                             </Text>
-                            <Text style={styles.username} numberOfLines={1}>
-                                @{displayUser.username}
-                            </Text>
-                            <Text style={styles.dot}>·</Text>
-                            <Text style={styles.time}>
-                                {formatRelativeTime(post.created_at || Date.now())}
-                            </Text>
+                            <View style={styles.userInfoRow}>
+                                <Text style={styles.username} numberOfLines={1}>
+                                    @{displayUser.username}
+                                </Text>
+                                <Text style={styles.dot}>·</Text>
+                                <Text style={styles.time}>
+                                    {formatRelativeTime(post.created_at || Date.now())}
+                                </Text>
+                            </View>
                         </TouchableOpacity>
 
                         {onOptions && (
@@ -370,7 +376,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
                     {displayComment ? (
                         <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-                            <Text style={[styles.content, (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music') && { marginBottom: 8 }]}>{displayComment}</Text>
+                            <Text style={styles.content}>{displayComment}</Text>
                         </TouchableOpacity>
                     ) : null}
 
