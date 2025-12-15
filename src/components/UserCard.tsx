@@ -9,6 +9,7 @@ interface UserCardProps {
         name: string;
         surname: string;
         avatar_url?: string;
+        follower_count?: number;
     };
     onPress: () => void;
 }
@@ -50,6 +51,10 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
         infoContainer: {
             flex: 1,
         },
+        followerContainer: {
+            marginLeft: 8,
+            alignItems: 'flex-end',
+        },
         name: {
             fontSize: 16,
             fontWeight: '600',
@@ -58,6 +63,11 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
         username: {
             fontSize: 14,
             color: theme.colors.textSecondary,
+        },
+        followerText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+            fontWeight: '500',
         },
     }), [theme]);
 
@@ -68,7 +78,7 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
             ) : (
                 <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>
-                        {user.username.charAt(0).toUpperCase()}
+                        {(user.username || '?').charAt(0).toUpperCase()}
                     </Text>
                 </View>
             )}
@@ -76,6 +86,12 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
                 <Text style={styles.name}>{user.name} {user.surname}</Text>
                 <Text style={styles.username}>@{user.username}</Text>
             </View>
+
+            {user.follower_count !== undefined && (
+                <View style={styles.followerContainer}>
+                    <Text style={styles.followerText}>{user.follower_count} Takipçi</Text>
+                </View>
+            )}
         </TouchableOpacity>
     );
 };
