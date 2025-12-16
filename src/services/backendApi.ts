@@ -200,6 +200,14 @@ export const postService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    markViewed: async (postId: number, userId?: number) => {
+        try {
+            await backendApi.post('/posts/view.php', { post_id: postId, user_id: userId });
+        } catch (error) {
+            // View istatistiği başarısız olsa bile kullanıcı deneyimini bozmamak için sessizce yutuyoruz.
+            console.log('Mark view failed', error);
+        }
     }
 };
 
@@ -579,6 +587,14 @@ export const userService = {
     getBlockedUsers: async () => {
         const response = await backendApi.get('/users/get_blocked_users.php');
         return response.data;
+    },
+    getPopularUsers: async () => {
+        try {
+            const response = await backendApi.get('/users/popular_users.php');
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 

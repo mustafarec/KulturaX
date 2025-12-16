@@ -664,6 +664,31 @@ export const FeedScreen = () => {
         }
     };
 
+    // View Tracking Logic
+    const viewedPosts = React.useRef(new Set<number>());
+    const userRef = React.useRef(user);
+
+    useEffect(() => {
+        userRef.current = user;
+    }, [user]);
+
+    const viewabilityConfig = React.useRef({
+        itemVisiblePercentThreshold: 50,
+        minimumViewTime: 1000
+    }).current;
+
+    const onViewableItemsChanged = React.useRef(({ viewableItems }: { viewableItems: any[] }) => {
+        viewableItems.forEach(viewableItem => {
+            const item = viewableItem.item;
+            if (item && item.id && item.type === 'post') {
+                if (!viewedPosts.current.has(item.id)) {
+                    viewedPosts.current.add(item.id);
+                    postService.markViewed(item.id, userRef.current?.id);
+                }
+            }
+        });
+    }).current;
+
     const renderList = (data: any[], loading: boolean) => {
         if (loading) {
             return (
@@ -682,6 +707,8 @@ export const FeedScreen = () => {
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
                 }
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Icon name="ghost" size={40} color={theme.colors.textSecondary} />

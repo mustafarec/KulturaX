@@ -120,12 +120,17 @@ try {
                 op.content_type as op_content_type,
                 op.content_id as op_content_id,
                 op.quote_text as op_quote_text,
-                op.comment_text as op_comment_text
+                op.comment_text as op_comment_text,
+                op.view_count as op_view_count
 
               FROM posts p
               JOIN users u ON p.user_id = u.id
               LEFT JOIN posts op ON p.original_post_id = op.id
               LEFT JOIN users ou ON op.user_id = ou.id
+              
+              -- SMART FEED: Görüntülenme Kontrolü
+              LEFT JOIN post_views pv ON pv.post_id = p.id AND pv.user_id = :user_id
+              LEFT JOIN post_views opv ON opv.post_id = op.id AND opv.user_id = :user_id
               
               -- LEFT JOIN for Exclusion (Optimized NOT IN)
               LEFT JOIN post_feedback pf_exclude ON 
@@ -145,6 +150,9 @@ try {
     $whereClause .= " WHERE pf_exclude.id IS NULL AND bu_exclude.id IS NULL"; 
     $hasWhere = true;
 
+    // SMART FEED: Katı zaman filtresini kaldırıyoruz (Gravity halledecek).
+    // Sadece arama yapılmıyorsa geçerli.
+    
     // Filter logic
     $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
     if ($filter == 'book') {
@@ -158,19 +166,41 @@ try {
     $query .= $whereClause;
 
     // Search logic
-    $search = isset($_GET['search']) ? $_GET['search'] : '';
     if (!empty($search)) {
         $searchTerm = "%$search%";
         $query .= " AND (p.content LIKE :search OR p.quote_text LIKE :search OR p.comment_text LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.quote_text LIKE :search OR op.comment_text LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
     }
 
+    // SMART FEED ALGORİTMASI (Gravity + Seen Penalty)
+    // Formül: (İlgi + Etkileşim) / ((Saat Farkı + 2)^1.5 * (Görüldü Cezası))
     $query .= " ORDER BY 
-                (CASE 
-                    WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book
-                    WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie
-                    WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music
-                    ELSE 0
-                END) DESC,
+                (
+                    (
+                        -- 1. Kişisel İlgi Skoru
+                        (CASE 
+                            WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book
+                            WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie
+                            WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music
+                            ELSE 0
+                        END) 
+                        +
+                        -- 2. Global Etkileşim Skoru
+                        (
+                            COALESCE(op.view_count, p.view_count, 0) * 0.1 + 
+                            (SELECT COUNT(*) FROM interactions WHERE post_id = COALESCE(op.id, p.id) AND type = 'like') * 5 +
+                            (SELECT COUNT(*) FROM interactions WHERE post_id = COALESCE(op.id, p.id) AND type = 'comment') * 8 +
+                            (SELECT COUNT(*) FROM posts WHERE original_post_id = COALESCE(op.id, p.id)) * 10
+                        )
+                    )
+                    /
+                    (
+                        -- 3. Gravity (Zaman Çekimi): Eskidikçe puan düşer
+                        POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.5)
+                        *
+                        -- 4. Seen Penalty (Görülme Cezası): Görüldüyse puan 5'e bölünür
+                        (CASE WHEN pv.id IS NOT NULL OR opv.id IS NOT NULL THEN 5 ELSE 1 END)
+                    )
+                ) DESC,
                 p.created_at DESC";
 
     $stmt = $conn->prepare($query);

@@ -110,7 +110,7 @@ const PostMenuOverlay = ({ visible, onClose, theme }: { visible: boolean, onClos
     };
 
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <View style={StyleSheet.absoluteFill} pointerEvents={visible ? "box-none" : "none"}>
             {/* Backdrop */}
             {visible && (
                 <TouchableWithoutFeedback onPress={onClose}>

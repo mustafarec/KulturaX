@@ -221,6 +221,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                 <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Profile')} />
                 <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
                 <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
+                <MenuItem icon="star" label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
                 <MenuItem icon="settings" label="Ayarlar" onPress={() => handleNavigation('Settings')} />
                 <MenuItem
                     icon={themeMode === 'dark' ? 'moon' : 'sunny'}
@@ -288,6 +289,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                         <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Profile')} />
                         <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
                         <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
+                        <MenuItem icon="star" label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
                         <MenuItem icon="settings" label="Ayarlar" onPress={() => handleNavigation('Settings')} />
                         <MenuItem
                             icon={themeMode === 'dark' ? 'moon' : 'sunny'}

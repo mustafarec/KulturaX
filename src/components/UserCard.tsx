@@ -10,9 +10,17 @@ interface UserCardProps {
         surname: string;
         avatar_url?: string;
         follower_count?: number;
+        total_views?: number;
     };
     onPress: () => void;
 }
+
+const formatNumber = (num?: number) => {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+};
 
 export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
     const { theme } = useTheme();
@@ -71,6 +79,16 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
         },
     }), [theme]);
 
+    const displayStats = () => {
+        if (user.total_views !== undefined && user.total_views > 0) {
+            return `${formatNumber(user.total_views)} Görüntülenme`;
+        }
+        if (user.follower_count !== undefined) {
+            return `${formatNumber(user.follower_count)} Takipçi`;
+        }
+        return '';
+    };
+
     return (
         <TouchableOpacity style={styles.container} onPress={onPress}>
             {user.avatar_url ? (
@@ -87,11 +105,9 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onPress }) => {
                 <Text style={styles.username}>@{user.username}</Text>
             </View>
 
-            {user.follower_count !== undefined && (
-                <View style={styles.followerContainer}>
-                    <Text style={styles.followerText}>{user.follower_count} Takipçi</Text>
-                </View>
-            )}
+            <View style={styles.followerContainer}>
+                <Text style={styles.followerText}>{displayStats()}</Text>
+            </View>
         </TouchableOpacity>
     );
 };

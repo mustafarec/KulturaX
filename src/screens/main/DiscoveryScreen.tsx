@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl, Platform, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import { useTheme } from '../../context/ThemeContext';
@@ -12,10 +12,38 @@ import { EventCard } from '../../components/EventCard';
 import { theme } from '../../theme/theme';
 
 export const DiscoveryScreen = () => {
+    // Helper for event images
+    const getBestEventImage = (images: any[]) => {
+        if (!images || images.length === 0) return null;
+
+        // 1. Filter out fallback images (generic venue images) if possible
+        const specificImages = images.filter(img => img.fallback === false);
+        const candidateImages = specificImages.length > 0 ? specificImages : images;
+
+        // 2. Prioritize 16_9 images (standard event cards)
+        const wideImages = candidateImages.filter(img => img.ratio === '16_9');
+        if (wideImages.length > 0) {
+            return wideImages.sort((a, b) => b.width - a.width)[0].url;
+        }
+
+        // 3. Fallback: 4_3 or 3_2
+        const standardImages = candidateImages.filter(img => img.ratio === '4_3' || img.ratio === '3_2');
+        if (standardImages.length > 0) {
+            return standardImages.sort((a, b) => b.width - a.width)[0].url;
+        }
+
+        // 4. Final fallback: just the largest image available
+        return candidateImages.slice().sort((a, b) => b.width - a.width)[0].url;
+    };
+
     const [query, setQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'dashboard' | 'movies' | 'books' | 'music' | 'events'>('dashboard');
+
+    const [filterCity, setFilterCity] = useState<string | null>(null);
+    const [availableCities, setAvailableCities] = useState<string[]>([]);
+    const [dropdownVisible, setDropdownVisible] = useState(false);
 
     // Dashboard Data State
     interface DashboardData {
@@ -108,6 +136,8 @@ export const DiscoveryScreen = () => {
                 }));
             });
 
+
+
             // 4. Upcoming Events
             const eventsPromise = ticketmasterService.searchEvents('', 'Istanbul').then((data: any) => { // Defaulting to Istanbul for now
                 if (data?._embedded?.events) {
@@ -116,9 +146,11 @@ export const DiscoveryScreen = () => {
                         title: event.name,
                         date: event.dates?.start?.localDate,
                         location: event._embedded?.venues ? event._embedded.venues[0].name : 'Unknown Location',
-                        image: event.images ? event.images.find((img: any) => img.ratio === '16_9' && img.width > 600)?.url || event.images[0].url : null,
+                        image: getBestEventImage(event.images),
                         type: 'event',
-                        rawDate: event.dates?.start?.localDate
+                        rawDate: event.dates?.start?.localDate,
+                        city: event._embedded?.venues?.[0]?.city?.name, // Add city
+                        url: event.url
                     }));
                 }
                 return [];
@@ -149,6 +181,17 @@ export const DiscoveryScreen = () => {
     const fetchCategoryData = async (category: string, searchQuery: string) => {
         setIsLoading(true);
         setCategoryData([]);
+        // Reset filters when switching categories or searching
+        if (!searchQuery && category === 'events') {
+            // Keep current filter if just refining? Or reset? 
+            // Let's NOT reset availableCities here to avoid flickering, but maybe reset filterCity if tab changed?
+            // Actually, if we are fetching new data, we should probably reset availableCities unless we want to accumulate.
+            // Let's reset availableCities only if we are doing a fresh category load, handled by setAvailableCities([]) below if needed.
+        } else if (category !== 'events') {
+            setFilterCity(null);
+            setAvailableCities([]);
+        }
+
         try {
             let data: any[] = [];
 
@@ -214,17 +257,24 @@ export const DiscoveryScreen = () => {
                     }));
                 }
             } else if (category === 'events') {
-                const events = await ticketmasterService.searchEvents(searchQuery, 'Istanbul');
+                const events = await ticketmasterService.searchEvents(searchQuery, ''); // Search broadly (no city constraint)
                 if (events?._embedded?.events) {
+                    // Reusing logic: sort by width desc
                     data = events._embedded.events.map((event: any) => ({
                         id: event.id,
                         title: event.name,
                         date: event.dates?.start?.localDate,
                         location: event._embedded?.venues ? event._embedded.venues[0].name : 'Unknown Location',
-                        image: event.images ? event.images.find((img: any) => img.ratio === '16_9' && img.width > 600)?.url || event.images[0].url : null,
+                        image: getBestEventImage(event.images),
                         type: 'event',
-                        rawDate: event.dates?.start?.localDate
+                        rawDate: event.dates?.start?.localDate,
+                        city: event._embedded?.venues?.[0]?.city?.name, // Add city
+                        url: event.url
                     }));
+
+                    // Extract unique cities
+                    const cities = Array.from(new Set(data.map(item => item.city).filter(Boolean))).sort();
+                    setAvailableCities(cities as string[]);
                 }
             }
 
@@ -262,7 +312,9 @@ export const DiscoveryScreen = () => {
         if (item.type === 'event') {
             // Navigate to event detail? Or maybe webview for ticketmaster?
             // For now just console log or basic alert if no detail screen exists
-            console.log("Event pressed:", item.title);
+            if (item.url) {
+                Linking.openURL(item.url).catch(err => console.error("Couldn't load page", err));
+            }
             return;
         }
 
@@ -394,7 +446,52 @@ export const DiscoveryScreen = () => {
         emptyContainer: {
             alignItems: 'center',
             justifyContent: 'center',
-            paddingTop: 100,
+        },
+
+        dropdownButton: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface,
+            padding: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        dropdownButtonText: {
+            fontSize: 14,
+            color: theme.colors.text,
+            fontWeight: '600',
+        },
+        dropdownList: {
+            position: 'absolute',
+            top: 50, // Height of button + minimal margin
+            left: 16,
+            right: 16,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.soft,
+            zIndex: 1000, // Ensure it sits on top
+            paddingVertical: 4,
+        },
+        dropdownItem: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderBottomWidth: 0.5,
+            borderBottomColor: theme.colors.border,
+        },
+        dropdownItemText: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+        },
+        activeDropdownText: {
+            color: theme.colors.primary,
+            fontWeight: '700',
         }
     }), [theme]);
 
@@ -446,40 +543,90 @@ export const DiscoveryScreen = () => {
         </ScrollView>
     );
 
-    const renderCategoryContent = () => (
-        <FlatList
-            key={activeTab === 'events' ? 'list' : 'grid'} // Force re-render when switching structure
-            data={categoryData}
-            renderItem={({ item }) => (
-                item.type === 'event' ? (
-                    <EventCard event={item} onPress={handleItemPress} />
-                ) : (
-                    <TouchableOpacity style={styles.gridCard} onPress={() => handleItemPress(item)}>
-                        <Image source={{ uri: item.image }} style={styles.gridImage} resizeMode="cover" />
-                        <View style={styles.gridInfo}>
-                            <Text style={styles.gridTitle} numberOfLines={2}>{item.title}</Text>
-                            <Text style={styles.gridSubtitle} numberOfLines={1}>{item.subtitle}</Text>
-                        </View>
-                    </TouchableOpacity>
-                )
-            )}
-            keyExtractor={item => item.id}
-            numColumns={activeTab === 'events' ? 1 : 2}
-            columnWrapperStyle={activeTab === 'events' ? undefined : styles.gridRow}
-            contentContainerStyle={styles.gridList}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-            ListEmptyComponent={
-                !isLoading ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={{ fontSize: 16, color: theme.colors.textSecondary }}>Sonuç bulunamadı.</Text>
+    const renderCategoryContent = () => {
+        // Filter content based on active filters
+        const filteredData = activeTab === 'events' && filterCity
+            ? categoryData.filter(item => item.city === filterCity)
+            : categoryData;
+
+        return (
+            <View style={{ flex: 1 }}>
+                {activeTab === 'events' && availableCities.length > 0 && (
+                    <View style={{ paddingHorizontal: 16, marginBottom: 8, zIndex: 100 }}>
+                        <TouchableOpacity
+                            style={styles.dropdownButton}
+                            onPress={() => setDropdownVisible(!dropdownVisible)}
+                        >
+                            <Text style={styles.dropdownButtonText}>
+                                {filterCity ? filterCity : 'Tüm Şehirler'}
+                            </Text>
+                            <Icon name={dropdownVisible ? "arrow-up" : "arrow-down"} size={16} color={theme.colors.text} />
+                        </TouchableOpacity>
+
+                        {dropdownVisible && (
+                            <View style={styles.dropdownList}>
+                                <TouchableOpacity
+                                    style={styles.dropdownItem}
+                                    onPress={() => {
+                                        setFilterCity(null);
+                                        setDropdownVisible(false);
+                                    }}
+                                >
+                                    <Text style={[styles.dropdownItemText, !filterCity && styles.activeDropdownText]}>Tüm Şehirler</Text>
+                                    {!filterCity && <Icon name="check" size={16} color={theme.colors.primary} />}
+                                </TouchableOpacity>
+                                {availableCities.map(city => (
+                                    <TouchableOpacity
+                                        key={city}
+                                        style={styles.dropdownItem}
+                                        onPress={() => {
+                                            setFilterCity(city);
+                                            setDropdownVisible(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.dropdownItemText, filterCity === city && styles.activeDropdownText]}>{city}</Text>
+                                        {filterCity === city && <Icon name="check" size={16} color={theme.colors.primary} />}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
                     </View>
-                ) : null
-            }
-        />
-    );
 
-
+                )
+                }
+                <FlatList
+                    key={activeTab === 'events' ? 'list' : 'grid'} // Force re-render when switching structure
+                    data={filteredData}
+                    renderItem={({ item }) => (
+                        item.type === 'event' ? (
+                            <EventCard event={item} onPress={handleItemPress} />
+                        ) : (
+                            <TouchableOpacity style={styles.gridCard} onPress={() => handleItemPress(item)}>
+                                <Image source={{ uri: item.image }} style={styles.gridImage} resizeMode="cover" />
+                                <View style={styles.gridInfo}>
+                                    <Text style={styles.gridTitle} numberOfLines={2}>{item.title}</Text>
+                                    <Text style={styles.gridSubtitle} numberOfLines={1}>{item.subtitle}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )
+                    )}
+                    keyExtractor={item => item.id}
+                    numColumns={activeTab === 'events' ? 1 : 2}
+                    columnWrapperStyle={activeTab === 'events' ? undefined : styles.gridRow}
+                    contentContainerStyle={styles.gridList}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                    ListEmptyComponent={
+                        !isLoading ? (
+                            <View style={styles.emptyContainer}>
+                                <Text style={{ fontSize: 16, color: theme.colors.textSecondary }}>Sonuç bulunamadı.</Text>
+                            </View>
+                        ) : null
+                    }
+                />
+            </View >
+        );
+    };
 
     return (
         <View style={styles.container}>
