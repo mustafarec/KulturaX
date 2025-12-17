@@ -200,7 +200,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             !isDrawer && { transform: [{ translateX: slideAnim }], paddingTop: insets.top }
         ]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => handleNavigation('Profile')}>
+                <TouchableOpacity onPress={() => handleNavigation('Main', { screen: 'Profile' })}>
                     {user?.avatar_url ? (
                         <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
                     ) : (
@@ -218,7 +218,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             <View style={styles.divider} />
 
             <View style={styles.menuItems}>
-                <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Profile')} />
+                <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
                 <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
                 <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                 <MenuItem icon="star" label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
@@ -268,7 +268,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                 ]}>
                     {/* Re-render content for Modal mode to ensure animation works correctly with the Animated.View wrapper above */}
                     <View style={styles.header}>
-                        <TouchableOpacity onPress={() => handleNavigation('Profile')}>
+                        <TouchableOpacity onPress={() => handleNavigation('Main', { screen: 'Profile' })}>
                             {user?.avatar_url ? (
                                 <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
                             ) : (
@@ -286,7 +286,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                     <View style={styles.divider} />
 
                     <View style={styles.menuItems}>
-                        <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Profile')} />
+                        <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
                         <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
                         <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                         <MenuItem icon="star" label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
