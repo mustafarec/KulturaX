@@ -82,6 +82,26 @@ try {
         if($row['content_type']) $showMoreTypes[$row['content_type']] = true;
     }
 
+    // Fetch 'not_interested' preferences
+    $dislikedTypes = [];
+    $niQuery = "SELECT p.content_type FROM post_feedback pf 
+                JOIN posts p ON pf.post_id = p.id 
+                WHERE pf.user_id = :user_id AND pf.type = 'not_interested'";
+    $niStmt = $conn->prepare($niQuery);
+    $niStmt->execute([':user_id' => $user_id]);
+    while($row = $niStmt->fetch(PDO::FETCH_ASSOC)) {
+        if($row['content_type']) $dislikedTypes[$row['content_type']] = true;
+    }
+
+    // Fetch posts where user already gave feed feedback
+    $givenFeedbackPosts = [];
+    $ffQuery = "SELECT post_id FROM feed_feedback WHERE user_id = :user_id";
+    $ffStmt = $conn->prepare($ffQuery);
+    $ffStmt->execute([':user_id' => $user_id]);
+    while($row = $ffStmt->fetch(PDO::FETCH_ASSOC)) {
+        $givenFeedbackPosts[$row['post_id']] = true;
+    }
+
     $boostBook = isset($showMoreTypes['book']) ? 50 : 0;
     $boostMovie = isset($showMoreTypes['movie']) ? 50 : 0;
     $boostMusic = isset($showMoreTypes['music']) ? 50 : 0;
@@ -108,6 +128,7 @@ try {
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id) as repost_count,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
                 (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
+                p.is_pinned,
                 
                 (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like') as op_like_count,
                 (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'comment') as op_comment_count,
@@ -290,6 +311,41 @@ try {
         unset($row['op_is_reposted']);
         unset($row['op_is_saved']);
         
+        // SMART FEEDBACK TRIGGER LOGIC
+        $row['request_feedback'] = false;
+        
+        // Only consider if user hasn't given feedback on this specific post yet
+        if (!isset($givenFeedbackPosts[$row['id']])) {
+            $contentType = $row['content_type'];
+            if (!$contentType && isset($row['original_post']) && isset($row['original_post']['content_type'])) {
+                $contentType = $row['original_post']['content_type'];
+            }
+
+            if ($contentType) {
+                // 1. Exploration: User has 0 score interaction with this type (New to them)
+                $isNewType = isset($scores[$contentType]) ? ($scores[$contentType] == 0) : true;
+                
+                // 2. Re-verification: User disliked this type, but this post is popular (>50 likes)
+                // (Looking for "Exceptional" content in a disliked category)
+                $isDislikedType = isset($dislikedTypes[$contentType]);
+                $isPopular = $row['like_count'] > 50;
+
+                // Probability checks
+                // If it's a new type, 10% chance to ask
+                if ($isNewType && rand(1, 10) == 1) {
+                    $row['request_feedback'] = true;
+                }
+                // If it's a disliked type but popular, 20% chance to ask (to double check)
+                else if ($isDislikedType && $isPopular && rand(1, 5) == 1) {
+                    $row['request_feedback'] = true;
+                }
+                // Random check for any post (very low probability, e.g. 2%) to keep training data fresh
+                else if (rand(1, 50) == 1) {
+                    $row['request_feedback'] = true;
+                }
+            }
+        }
+
         array_push($posts, $row);
     }
 

@@ -62,7 +62,9 @@ try {
     $original_post_id = isset($data->original_post_id) ? (int)$data->original_post_id : null;
     $content_type = (isset($data->content_type) && !empty($data->content_type)) ? Validator::sanitizeInput($data->content_type) : 'general';
     $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
+    $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
     $image_url = isset($data->image_url) ? filter_var($data->image_url, FILTER_SANITIZE_URL) : null;
+    $topic_id = isset($data->topic_id) ? (int)$data->topic_id : null;
 
     // Duplicate Repost Check
     // Sadece repost (alıntı metni olmayan) için kontrol et
@@ -80,7 +82,7 @@ try {
         }
     }
 
-    $query = "INSERT INTO posts (user_id, content, quote_text, comment_text, source, author, original_post_id, content_type, content_id, image_url) VALUES (:user_id, :content, :quote_text, :comment_text, :source, :author, :original_post_id, :content_type, :content_id, :image_url)";
+    $query = "INSERT INTO posts (user_id, content, quote_text, comment_text, source, author, original_post_id, content_type, content_id, image_url, topic_id) VALUES (:user_id, :content, :quote_text, :comment_text, :source, :author, :original_post_id, :content_type, :content_id, :image_url, :topic_id)";
     $stmt = $conn->prepare($query);
 
     $stmt->bindParam(':user_id', $userId);
@@ -92,7 +94,9 @@ try {
     $stmt->bindParam(':original_post_id', $original_post_id);
     $stmt->bindParam(':content_type', $content_type);
     $stmt->bindParam(':content_id', $content_id);
+    $stmt->bindParam(':content_id', $content_id);
     $stmt->bindParam(':image_url', $image_url);
+    $stmt->bindParam(':topic_id', $topic_id);
 
     if($stmt->execute()){
         $newPostId = $conn->lastInsertId();
@@ -102,6 +106,11 @@ try {
             include_once '../notifications/notification_helper.php';
             $notifType = !empty($quote_text) ? 'quote' : 'repost';
             sendRepostNotification($conn, $userId, $newPostId, $original_post_id, $notifType);
+        }
+
+        // Increment topic post count if topic_id is present
+        if ($topic_id) {
+            $conn->query("UPDATE topics SET post_count = post_count + 1 WHERE id = $topic_id");
         }
 
         http_response_code(201);

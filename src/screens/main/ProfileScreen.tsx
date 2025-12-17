@@ -3,14 +3,18 @@ import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIn
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { postService, libraryService, userService, API_URL, reviewService } from '../../services/backendApi';
+import { postService, libraryService, userService, API_URL, reviewService, interactionService } from '../../services/backendApi';
 import { ReviewCard } from '../../components/ReviewCard';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
 import { useNavigation } from '@react-navigation/native';
 import { ReadingGoalCard } from '../../components/ReadingGoalCard';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import { PostOptionsModal } from '../../components/PostOptionsModal';
+import { ThemedDialog } from '../../components/ThemedDialog';
+import Toast from 'react-native-toast-message';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -23,8 +27,6 @@ if (Platform.OS === 'android') {
 export const ProfileScreen = () => {
     const { user, logout } = useAuth();
     const { theme } = useTheme();
-    console.log('ProfileScreen user:', user);
-    console.log('ReviewCard status:', ReviewCard); // Debugging
     const navigation = useNavigation();
 
     const [activeTab, setActiveTab] = useState('posts');
@@ -40,7 +42,13 @@ export const ProfileScreen = () => {
     const [nowPlaying, setNowPlaying] = useState<any>(null);
     const [profileStats, setProfileStats] = useState({ follower_count: 0, following_count: 0 });
 
-    // Mock Header Image (Random Library/Aesthetic)
+    // Options Modal State
+    const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+    const [selectedPostForOptions, setSelectedPostForOptions] = useState<any>(null);
+    const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+
+    // Mock Header Image
     const headerImage = user?.header_image_url || 'https://images.unsplash.com/photo-1507842217121-9e96e4430330?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
 
     // Animasyon stili
@@ -71,7 +79,13 @@ export const ProfileScreen = () => {
         if (!refreshing) setIsLoading(true);
         try {
             const data = await postService.getFeed(user?.id);
-            const myPosts = data.filter((post: any) => post.user.username === user?.username);
+            const myPosts = data
+                .filter((post: any) => post.user.username === user?.username)
+                .sort((a: any, b: any) => {
+                    const pinA = (a.is_pinned === 1 || a.is_pinned === '1' || a.is_pinned === true) ? 1 : 0;
+                    const pinB = (b.is_pinned === 1 || b.is_pinned === '1' || b.is_pinned === true) ? 1 : 0;
+                    return pinB - pinA;
+                });
             setUserPosts(myPosts);
         } catch (error) {
             console.error(error);
@@ -177,6 +191,79 @@ export const ProfileScreen = () => {
         }
     };
 
+    const handleOptionsPress = React.useCallback((item: any, position: { x: number; y: number; width: number; height: number }) => {
+        setSelectedPostForOptions(item);
+        setMenuPosition(position);
+        setOptionsModalVisible(true);
+    }, []);
+
+    const handleDelete = () => {
+        setDeleteDialogVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        const item = selectedPostForOptions;
+        if (!item || !user) return;
+        try {
+            await postService.delete(user.id, item.id);
+            setUserPosts(prev => prev.filter(p => p.id !== item.id));
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'Silinemedi.' });
+        } finally {
+            setDeleteDialogVisible(false);
+            setOptionsModalVisible(false);
+            setSelectedPostForOptions(null);
+        }
+    };
+
+    const handleTogglePin = async () => {
+        const item = selectedPostForOptions;
+        if (!item) return;
+
+        // Optimistic Update
+        const newPinnedStatus = !item.is_pinned;
+
+        // Check limit if pinning (Checking local state is simplified, backend enforces stricter)
+        if (newPinnedStatus) {
+            const pinnedCount = userPosts.filter(p => p.is_pinned).length;
+            // We can check limit here if needed, but backend check is critical.
+            if (pinnedCount >= 3) {
+                Toast.show({ type: 'error', text1: 'Limit', text2: 'En fazla 3 gönderi sabitleyebilirsiniz.' });
+                return;
+            }
+        }
+
+        const updatedPosts = userPosts.map(p => {
+            if (p.id === item.id) return { ...p, is_pinned: newPinnedStatus };
+            return p;
+        }).sort((a: any, b: any) => {
+            const pinA = (a.is_pinned === 1 || a.is_pinned === '1' || a.is_pinned === true) ? 1 : 0;
+            const pinB = (b.is_pinned === 1 || b.is_pinned === '1' || b.is_pinned === true) ? 1 : 0;
+            return pinB - pinA;
+        });
+
+        setUserPosts(updatedPosts);
+
+        try {
+            const response = await postService.togglePin(item.id);
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: response.message });
+        } catch (error: any) {
+            console.error("Pin failed", error);
+            // Revert
+            const revertPosts = userPosts.map(p => {
+                if (p.id === item.id) return { ...p, is_pinned: !newPinnedStatus };
+                return p;
+            }).sort((a: any, b: any) => {
+                const pinA = (a.is_pinned === 1 || a.is_pinned === '1' || a.is_pinned === true) ? 1 : 0;
+                const pinB = (b.is_pinned === 1 || b.is_pinned === '1' || b.is_pinned === true) ? 1 : 0;
+                return pinB - pinA;
+            });
+            setUserPosts(revertPosts);
+            Toast.show({ type: 'error', text1: 'Hata', text2: error.message || 'İşlem başarısız.' });
+        }
+    };
+
     // Render Logic for Each Tab
     const renderPosts = () => {
         const postsOnly = userPosts.filter(p => p.type !== 'quote');
@@ -194,6 +281,7 @@ export const ProfileScreen = () => {
                         }
                     }}
                     onContentPress={handleContentPress}
+                    onOptions={(pos) => handleOptionsPress(post, pos)}
                 />
             ))
         ) : (
@@ -222,6 +310,7 @@ export const ProfileScreen = () => {
                         }
                     }}
                     onContentPress={handleContentPress}
+                    onOptions={(pos) => handleOptionsPress(post, pos)}
                 />
             ))
         ) : (
@@ -694,131 +783,151 @@ export const ProfileScreen = () => {
     }), [theme]);
 
     return (
-        <ScrollView
-            style={styles.container}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
-            showsVerticalScrollIndicator={false}
-        >
-            {/* Header Image Area */}
-            <View style={styles.headerImageContainer}>
-                <Image
-                    key={headerImage}
-                    source={{ uri: headerImage }}
-                    style={styles.headerImage}
-                />
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.3)', theme.colors.background]}
-                    style={styles.headerGradient}
-                />
-                <TouchableOpacity style={styles.settingsButton} onPress={() => (navigation as any).navigate('Settings')}>
-                    <Icon name="settings" size={24} color="#FFF" />
-                </TouchableOpacity>
-            </View>
-
-            {/* Profile Info Area */}
-            <View style={styles.profileInfoContainer}>
-                <View style={styles.avatarRow}>
+        <View style={styles.container}>
+            <ScrollView
+                style={{ flex: 1 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header Image Area */}
+                <View style={styles.headerImageContainer}>
                     <Image
-                        key={user.avatar_url}
-                        source={{ uri: user.avatar_url || 'https://via.placeholder.com/150' }}
-                        style={styles.avatar}
+                        key={headerImage}
+                        source={{ uri: headerImage }}
+                        style={styles.headerImage}
                     />
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                            style={styles.editButton}
-                            onPress={() => (navigation as any).navigate('EditProfile')}
-                        >
-                            <Text style={styles.editButtonText}>Profili Düzenle</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.shareButton}>
-                            <Icon name="share" size={18} color={theme.colors.text} />
-                        </TouchableOpacity>
-                    </View>
+                    <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.3)', theme.colors.background]}
+                        style={styles.headerGradient}
+                    />
+                    <TouchableOpacity style={styles.settingsButton} onPress={() => (navigation as any).navigate('Settings')}>
+                        <Icon name="settings" size={24} color="#FFF" />
+                    </TouchableOpacity>
                 </View>
 
-                <View style={styles.userInfo}>
-                    <View style={styles.nameRow}>
-                        <Text style={styles.name}>{user.full_name || user.username}</Text>
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>Okur</Text>
+                {/* Profile Info Area */}
+                <View style={styles.profileInfoContainer}>
+                    <View style={styles.avatarRow}>
+                        <Image
+                            key={user.avatar_url}
+                            source={{ uri: user.avatar_url || 'https://via.placeholder.com/150' }}
+                            style={styles.avatar}
+                        />
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity
+                                style={styles.editButton}
+                                onPress={() => (navigation as any).navigate('EditProfile')}
+                            >
+                                <Text style={styles.editButtonText}>Profili Düzenle</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.shareButton}>
+                                <Icon name="share" size={18} color={theme.colors.text} />
+                            </TouchableOpacity>
                         </View>
                     </View>
-                    <Text style={styles.username}>@{user.username}</Text>
 
-                    {user.bio && <Text style={styles.bio}>{user.bio}</Text>}
-
-                    <View style={styles.metaInfo}>
-                        <Icon name="location-pin" size={14} color={theme.colors.textSecondary} />
-                        <Text style={styles.metaText}>{user.location || 'İstanbul'}</Text>
-                        <Icon name="calendar" size={14} color={theme.colors.textSecondary} style={{ marginLeft: 12 }} />
-                        <Text style={styles.metaText}>Katılım: Kasım 2025</Text>
-                    </View>
-                </View>
-
-                {/* Now Playing */}
-                {nowPlaying && (
-                    <View style={styles.listeningContainer}>
-                        <Image source={{ uri: nowPlaying.image }} style={styles.albumArt} />
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Icon name="music-tone-alt" size={12} color="#1DB954" style={{ marginRight: 4 }} />
-                                <Text style={styles.listeningLabel}>Dinliyor</Text>
+                    <View style={styles.userInfo}>
+                        <View style={styles.nameRow}>
+                            <Text style={styles.name}>{user.full_name || user.username}</Text>
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>Okur</Text>
                             </View>
-                            <Text style={styles.listeningTrack} numberOfLines={1}>{nowPlaying.track}</Text>
-                            <Text style={styles.listeningArtist} numberOfLines={1}>{nowPlaying.artist}</Text>
+                        </View>
+                        <Text style={styles.username}>@{user.username}</Text>
+
+                        {user.bio && <Text style={styles.bio}>{user.bio}</Text>}
+
+                        <View style={styles.metaInfo}>
+                            <Icon name="location-pin" size={14} color={theme.colors.textSecondary} />
+                            <Text style={styles.metaText}>{user.location || 'İstanbul'}</Text>
+                            <Icon name="calendar" size={14} color={theme.colors.textSecondary} style={{ marginLeft: 12 }} />
+                            <Text style={styles.metaText}>Katılım: Kasım 2025</Text>
                         </View>
                     </View>
-                )}
 
-                {/* Stats Scroll */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
-                    <StatItem number={userPosts.length} label="Gönderi" />
-                    <StatItem number={libraryItems.filter(i => (i.content_type === 'book' || !i.content_type) && i.status === 'read').length} label="Kitap" />
-                    <StatItem number={libraryItems.filter(i => i.content_type === 'movie' && i.status === 'read').length} label="Film" />
-                    <StatItem
-                        number={profileStats.follower_count}
-                        label="Takipçi"
-                        onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'followers' })}
-                    />
-                    <StatItem
-                        number={profileStats.following_count}
-                        label="Takip"
-                        onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'following' })}
-                    />
-                    <StatItem number={userReviews.length} label="İnceleme" onPress={() => setActiveTab('reviews')} />
-                </ScrollView>
+                    {/* Now Playing */}
+                    {nowPlaying && (
+                        <View style={styles.listeningContainer}>
+                            <Image source={{ uri: nowPlaying.image }} style={styles.albumArt} />
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Icon name="music-tone-alt" size={12} color="#1DB954" style={{ marginRight: 4 }} />
+                                    <Text style={styles.listeningLabel}>Dinliyor</Text>
+                                </View>
+                                <Text style={styles.listeningTrack} numberOfLines={1}>{nowPlaying.track}</Text>
+                                <Text style={styles.listeningArtist} numberOfLines={1}>{nowPlaying.artist}</Text>
+                            </View>
+                        </View>
+                    )}
 
-                {/* Reading Goal */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                    <ReadingGoalCard />
+                    {/* Stats Scroll */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
+                        <StatItem number={userPosts.length} label="Gönderi" />
+                        <StatItem number={libraryItems.filter(i => (i.content_type === 'book' || !i.content_type) && i.status === 'read').length} label="Kitap" />
+                        <StatItem number={libraryItems.filter(i => i.content_type === 'movie' && i.status === 'read').length} label="Film" />
+                        <StatItem
+                            number={profileStats.follower_count}
+                            label="Takipçi"
+                            onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'followers' })}
+                        />
+                        <StatItem
+                            number={profileStats.following_count}
+                            label="Takip"
+                            onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'following' })}
+                        />
+                        <StatItem number={userReviews.length} label="İnceleme" onPress={() => setActiveTab('reviews')} />
+                    </ScrollView>
+
+                    {/* Reading Goal */}
+                    <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                        <ReadingGoalCard />
+                    </View>
+
+                    {/* Tabs */}
+                    <View style={styles.tabsContainer}>
+                        <TabButton title="Gönderiler" active={activeTab === 'posts'} onPress={() => setActiveTab('posts')} />
+                        <TabButton title="Alıntılar" active={activeTab === 'quotes'} onPress={() => setActiveTab('quotes')} />
+                        <TabButton title="Kütüphane" active={activeTab === 'library'} onPress={() => setActiveTab('library')} />
+                        <TabButton title="İncelemeler" active={activeTab === 'reviews'} onPress={() => setActiveTab('reviews')} />
+                    </View>
                 </View>
 
-                {/* Tabs */}
-                <View style={styles.tabsContainer}>
-                    <TabButton title="Gönderiler" active={activeTab === 'posts'} onPress={() => setActiveTab('posts')} />
-                    <TabButton title="Alıntılar" active={activeTab === 'quotes'} onPress={() => setActiveTab('quotes')} />
-                    <TabButton title="Kütüphane" active={activeTab === 'library'} onPress={() => setActiveTab('library')} />
-                    <TabButton title="İncelemeler" active={activeTab === 'reviews'} onPress={() => setActiveTab('reviews')} />
-                </View>
-            </View>
-
-            {/* Content (Animated) */}
-            <Animated.View style={[styles.contentWrapper, animatedStyle]}>
+                {/* Content Area */}
                 <View style={styles.page}>
-                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderPosts()}
+                    {activeTab === 'posts' && renderPosts()}
+                    {activeTab === 'quotes' && renderQuotes()}
+                    {activeTab === 'library' && renderLibrary()}
+                    {activeTab === 'reviews' && renderReviews()}
                 </View>
-                <View style={styles.page}>
-                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderQuotes()}
-                </View>
-                <View style={styles.page}>
-                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderLibrary()}
-                </View>
-                <View style={styles.page}>
-                    {isLoading && !refreshing ? <ActivityIndicator size="large" color={theme.colors.primary} /> : renderReviews()}
-                </View>
-            </Animated.View>
+            </ScrollView>
 
-            <View style={{ height: 120 }} />
-        </ScrollView>
+            <PostOptionsModal
+                visible={optionsModalVisible}
+                onClose={() => setOptionsModalVisible(false)}
+                targetPosition={menuPosition}
+                isOwner={selectedPostForOptions?.user.id === user.id}
+                onDelete={handleDelete}
+                isPinned={selectedPostForOptions?.is_pinned === 1 || selectedPostForOptions?.is_pinned === true || selectedPostForOptions?.is_pinned === '1'}
+                onTogglePin={handleTogglePin}
+            />
+            <ThemedDialog
+                visible={deleteDialogVisible}
+                title="Gönderiyi Sil"
+                message="Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+                actions={[
+                    {
+                        text: 'İptal',
+                        style: 'cancel',
+                        onPress: () => setDeleteDialogVisible(false)
+                    },
+                    {
+                        text: 'Sil',
+                        style: 'destructive',
+                        onPress: confirmDelete
+                    }
+                ]}
+                onClose={() => setDeleteDialogVisible(false)}
+            />
+        </View>
     );
 };

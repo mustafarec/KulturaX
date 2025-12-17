@@ -11,9 +11,11 @@ interface PostOptionsModalProps {
     onFeedback?: (type: 'report' | 'not_interested' | 'show_more') => void;
     isOwner?: boolean;
     targetPosition?: { x: number; y: number; width: number; height: number } | null;
+    isPinned?: boolean;
+    onTogglePin?: () => void;
 }
 
-export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onFeedback }) => {
+export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onFeedback, isPinned, onTogglePin }) => {
     const { theme } = useTheme();
 
     if (!visible || !targetPosition) return null;
@@ -34,6 +36,15 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
             onPress: () => {
                 onClose();
                 if (onDelete) onDelete();
+            }
+        },
+        {
+            label: isPinned ? 'Sabitlemeyi Kaldır' : 'Profile Sabitle',
+            icon: isPinned ? 'pricetag' : 'pricetag-outline',
+            color: theme.colors.text,
+            onPress: () => {
+                onClose();
+                if (onTogglePin) onTogglePin();
             }
         }] : [
             {

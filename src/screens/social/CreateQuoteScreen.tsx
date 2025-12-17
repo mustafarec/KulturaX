@@ -11,6 +11,7 @@ import { googleBooksApi } from '../../services/googleBooksApi';
 import { tmdbApi } from '../../services/tmdbApi';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { TopicSelectionModal } from '../../components/TopicSelectionModal';
 
 export const CreateQuoteScreen = () => {
     const route = useRoute<any>();
@@ -30,7 +31,10 @@ export const CreateQuoteScreen = () => {
     const [selectedImage, setSelectedImage] = useState<string | undefined>(initialImage);
     const [selectedType, setSelectedType] = useState<'book' | 'movie' | 'music' | null>(initialType);
     const [selectedId, setSelectedId] = useState<string | null>(initialId);
+
     const [status, setStatus] = useState<string | null>(null);
+    const [selectedTopic, setSelectedTopic] = useState<any>(null);
+    const [topicModalVisible, setTopicModalVisible] = useState(false);
 
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
@@ -356,7 +360,8 @@ export const CreateQuoteScreen = () => {
                         undefined,
                         selectedType || initialType || undefined,
                         selectedId || initialId || undefined,
-                        selectedImage || initialImage // Use the cover image directly
+                        selectedImage || initialImage, // Use the cover image directly
+                        selectedTopic?.id // Pass topic_id
                     );
 
                     // Update library status if selected
@@ -475,6 +480,22 @@ export const CreateQuoteScreen = () => {
                                 />
                             </View>
                         )}
+
+                        {/* Topic Selection Button */}
+                        <TouchableOpacity
+                            style={styles.singleInputContainer}
+                            onPress={() => setTopicModalVisible(true)}
+                        >
+                            <Ionicons name="pricetag-outline" size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                            <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
+                                {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
+                            </Text>
+                            {selectedTopic && (
+                                <TouchableOpacity onPress={() => setSelectedTopic(null)}>
+                                    <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </TouchableOpacity>
                     </View>
 
                     {/* 3. Metadata Inputs (Source/Author) - Only for Quotes/Reviews */}
@@ -551,6 +572,12 @@ export const CreateQuoteScreen = () => {
 
                 </ScrollView>
             </KeyboardAvoidingView>
-        </View>
+
+            <TopicSelectionModal
+                visible={topicModalVisible}
+                onClose={() => setTopicModalVisible(false)}
+                onSelect={(topic) => setSelectedTopic(topic)}
+            />
+        </View >
     );
 };

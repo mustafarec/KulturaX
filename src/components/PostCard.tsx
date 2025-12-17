@@ -65,6 +65,12 @@ export const PostCard: React.FC<PostCardProps> = ({
             marginBottom: 4,
             marginLeft: 42,
         },
+        pinnedHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 4,
+            marginLeft: 42,
+        },
         repostText: {
             fontSize: 12,
             color: theme.colors.textSecondary,
@@ -331,6 +337,15 @@ export const PostCard: React.FC<PostCardProps> = ({
                         {post.user.full_name || post.user.username} yeniden gönderdi
                     </Text>
                 </TouchableOpacity>
+            )}
+
+            {(post.is_pinned === 1 || post.is_pinned === true || post.is_pinned === '1') && (
+                <View style={styles.pinnedHeader}>
+                    <Ionicons name="pricetag" size={12} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
+                    <Text style={styles.repostText}>
+                        Sabitlenmiş Gönderi
+                    </Text>
+                </View>
             )}
 
             <View style={styles.cardContent}>

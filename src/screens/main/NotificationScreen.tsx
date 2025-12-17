@@ -29,6 +29,8 @@ export const NotificationScreen = () => {
     const navigation = useNavigation();
     const { fetchUnreadCount, decrementUnreadCount } = useNotification();
 
+    const [activeFilter, setActiveFilter] = useState<'all' | 'like' | 'follow' | 'comment' | 'mention'>('all');
+
     const fetchNotifications = async () => {
         if (!user) return;
         // Sadece manuel yenileme veya ilk yüklemede loading göster, 
@@ -50,6 +52,21 @@ export const NotificationScreen = () => {
         } finally {
             setIsLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    const getFilteredNotifications = () => {
+        switch (activeFilter) {
+            case 'like':
+                return notifications.filter(n => n.type === 'like');
+            case 'comment':
+                return notifications.filter(n => n.type === 'comment' || n.type === 'reply');
+            case 'follow':
+                return notifications.filter(n => n.type === 'follow');
+            case 'mention':
+                return notifications.filter(n => n.type === 'quote' || n.type === 'repost');
+            default:
+                return notifications;
         }
     };
 
@@ -146,21 +163,49 @@ export const NotificationScreen = () => {
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: theme.colors.background, // Was #F8F9FA
+            backgroundColor: theme.colors.background,
         },
         header: {
             paddingTop: 30,
             paddingBottom: 10,
             paddingHorizontal: 20,
-            backgroundColor: theme.colors.background, // Was #FFFFFF
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border, // Was rgba(0,0,0,0.05)
+            backgroundColor: theme.colors.background,
+            // borderBottomWidth: 1, // Removed border here to merge with filters
+            // borderBottomColor: theme.colors.border,
         },
         headerTitle: {
             fontSize: 28,
             fontWeight: '700',
-            color: theme.colors.text, // Was #1A1A1A
+            color: theme.colors.text,
             letterSpacing: 0.5,
+        },
+        filtersContainer: {
+            paddingHorizontal: 16,
+            paddingBottom: 12,
+            backgroundColor: theme.colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        filterChip: {
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 20,
+            marginRight: 8,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        activeFilterChip: {
+            backgroundColor: theme.colors.text,
+            borderColor: theme.colors.text,
+        },
+        filterText: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.text,
+        },
+        activeFilterText: {
+            color: theme.colors.background, // Invert color for active state
         },
         list: {
             padding: 16,
@@ -175,18 +220,15 @@ export const NotificationScreen = () => {
             flexDirection: 'row',
             alignItems: 'center',
             padding: 16,
-            backgroundColor: theme.colors.surface, // Was #FFFFFF
+            backgroundColor: theme.colors.surface,
             borderRadius: 16,
             marginBottom: 12,
             borderWidth: 1,
-            borderColor: theme.colors.border, // Was rgba(0,0,0,0.03)
+            borderColor: theme.colors.border,
         },
         shadowIOS: {
             shadowColor: theme.shadows.default.shadowColor,
-            shadowOffset: {
-                width: 0,
-                height: 4,
-            },
+            shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.05,
             shadowRadius: 12,
         },
@@ -194,7 +236,7 @@ export const NotificationScreen = () => {
             elevation: 3,
         },
         unreadItem: {
-            backgroundColor: theme.colors.surface, // Was #FFFFFF
+            backgroundColor: theme.colors.surface,
             borderColor: theme.colors.primary + '30',
             borderWidth: 1,
         },
@@ -218,26 +260,26 @@ export const NotificationScreen = () => {
         title: {
             fontSize: 16,
             fontWeight: '600',
-            color: theme.colors.text, // Was #2C3E50
+            color: theme.colors.text,
             flex: 1,
             marginRight: 8,
         },
         unreadText: {
-            color: theme.colors.text, // Was #000000
+            color: theme.colors.text,
             fontWeight: '700',
         },
         message: {
             fontSize: 14,
-            color: theme.colors.textSecondary, // Was #7F8C8D
+            color: theme.colors.textSecondary,
             lineHeight: 20,
         },
         unreadMessage: {
-            color: theme.colors.text, // Was #34495E
+            color: theme.colors.text,
             fontWeight: '500',
         },
         time: {
             fontSize: 12,
-            color: theme.colors.textSecondary, // Was #95A5A6
+            color: theme.colors.textSecondary,
             fontWeight: '500',
         },
         dot: {
@@ -261,12 +303,12 @@ export const NotificationScreen = () => {
         emptyTitle: {
             fontSize: 20,
             fontWeight: 'bold',
-            color: theme.colors.text, // Was #2C3E50
+            color: theme.colors.text,
             marginBottom: 8,
         },
         emptyText: {
             fontSize: 15,
-            color: theme.colors.textSecondary, // Was #95A5A6
+            color: theme.colors.textSecondary,
             textAlign: 'center',
             maxWidth: '70%',
             lineHeight: 22,
@@ -281,7 +323,7 @@ export const NotificationScreen = () => {
             alignItems: 'center',
             width: 80,
             marginBottom: 12,
-            marginRight: 16, // Match list padding/margin
+            marginRight: 16,
             borderRadius: 16,
             overflow: 'hidden',
         },
@@ -316,12 +358,6 @@ export const NotificationScreen = () => {
     };
 
     const renderRightActions = (progress: any, dragX: any, id: number) => {
-        const trans = dragX.interpolate({
-            inputRange: [-100, 0],
-            outputRange: [0, 100],
-            extrapolate: 'clamp',
-        });
-
         return (
             <TouchableOpacity onPress={() => handleDelete(id)} style={styles.deleteButtonContainer}>
                 <View style={styles.deleteButton}>
@@ -403,10 +439,38 @@ export const NotificationScreen = () => {
         );
     };
 
+    const FilterChip = ({ id, label }: { id: typeof activeFilter, label: string }) => (
+        <TouchableOpacity
+            style={[styles.filterChip, activeFilter === id && styles.activeFilterChip]}
+            onPress={() => setActiveFilter(id)}
+        >
+            <Text style={[styles.filterText, activeFilter === id && styles.activeFilterText]}>
+                {label}
+            </Text>
+        </TouchableOpacity>
+    );
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Bildirimler</Text>
+            </View>
+
+            <View style={{ marginBottom: 4 }}>
+                <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filtersContainer}
+                    data={[
+                        { id: 'all', label: 'Hepsi' },
+                        { id: 'like', label: 'Beğeniler' },
+                        { id: 'comment', label: 'Yorumlar' },
+                        { id: 'mention', label: 'Bahsetmeler' },
+                        { id: 'follow', label: 'Yeni takipçiler' },
+                    ]}
+                    keyExtractor={item => item.id}
+                    renderItem={({ item }) => <FilterChip id={item.id as any} label={item.label} />}
+                />
             </View>
 
             {isLoading && !refreshing ? (
@@ -415,7 +479,7 @@ export const NotificationScreen = () => {
                 </View>
             ) : (
                 <FlatList
-                    data={notifications}
+                    data={getFilteredNotifications()}
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.list}
@@ -424,7 +488,11 @@ export const NotificationScreen = () => {
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyIcon}>📭</Text>
                             <Text style={styles.emptyTitle}>Bildirim Yok</Text>
-                            <Text style={styles.emptyText}>Henüz size ulaşan bir bildirim bulunmuyor.</Text>
+                            <Text style={styles.emptyText}>
+                                {activeFilter === 'all'
+                                    ? 'Henüz size ulaşan bir bildirim bulunmuyor.'
+                                    : 'Bu filtreye uygun bildirim bulunmuyor.'}
+                            </Text>
                         </View>
                     }
                     refreshControl={

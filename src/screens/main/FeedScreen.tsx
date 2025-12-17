@@ -7,11 +7,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 import { postService, interactionService, userService } from '../../services/backendApi';
+import { FeedbackCard } from '../../components/FeedbackCard';
 import { PostCard } from '../../components/PostCard';
 import { UserCard } from '../../components/UserCard';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { AnimatedMenuButton } from '../../components/AnimatedMenuButton';
+import { SuggestedUsers } from '../../components/SuggestedUsers';
 
 import { useSideMenu } from '../../context/SideMenuContext';
 import { useMessage } from '../../context/MessageContext';
@@ -106,7 +108,10 @@ export const FeedScreen = () => {
     const { theme } = useTheme();
     const { toggleMenu } = useSideMenu();
 
-    const [activeTab, setActiveTab] = useState<'trend' | 'following' | 'movie' | 'book' | 'music'>('trend');
+    const [activeMainTab, setActiveMainTab] = useState<'forYou' | 'following'>('forYou');
+    const [activeSubTab, setActiveSubTab] = useState<'trend' | 'movie' | 'book' | 'music'>('trend');
+    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const searchAnim = React.useRef(new RNAnimated.Value(0)).current;
@@ -133,25 +138,22 @@ export const FeedScreen = () => {
     });
 
     const getTabIndex = (tab: string) => {
-        switch (tab) {
-            case 'trend': return 0;
-            case 'following': return 1;
-            case 'movie': return 2;
-            case 'book': return 3;
-            case 'music': return 4;
-            default: return 0;
-        }
+        return tab === 'following' ? 1 : 0;
     };
 
     // Tab changed animation
     useEffect(() => {
-        const index = getTabIndex(activeTab);
+        const index = getTabIndex(activeMainTab);
         const config = { damping: 30, stiffness: 250, mass: 1 };
         translateX.value = withSpring(-index * SCREEN_WIDTH, config);
 
         // Fetch data if empty or needed
-        fetchFeed(activeTab);
-    }, [activeTab]);
+        if (activeMainTab === 'following') {
+            fetchFeed('following');
+        } else {
+            fetchFeed(activeSubTab);
+        }
+    }, [activeMainTab, activeSubTab]);
 
     useEffect(() => {
         RNAnimated.timing(searchAnim, {
@@ -277,6 +279,8 @@ export const FeedScreen = () => {
         },
     }), [theme]);
 
+
+
     const setFeedForTab = (tab: string, data: any[]) => {
         switch (tab) {
             case 'trend': setTrendFeed(data); break;
@@ -302,23 +306,26 @@ export const FeedScreen = () => {
         }
     };
 
-    const fetchFeed = async (tabToFetch = activeTab, isRefresh = false) => {
-        // Cache check: If not refreshing, not searching, and we already have data, don't fetch.
+    const fetchFeed = async (tabToFetch: string | undefined = undefined, isRefresh = false) => {
+        // Determine what to fetch based on current state if not specified
+        const targetTab = tabToFetch || (activeMainTab === 'following' ? 'following' : activeSubTab);
+
+        // Cache check
         if (!isRefresh && searchQuery.trim().length === 0) {
-            const currentData = getFeedDataForTab(tabToFetch);
+            const currentData = getFeedDataForTab(targetTab);
             if (currentData && currentData.length > 0) {
-                setLoadingForTab(tabToFetch, false);
+                setLoadingForTab(targetTab, false);
                 return;
             }
         }
 
-        if (!isRefresh) setLoadingForTab(tabToFetch, true);
+        if (!isRefresh) setLoadingForTab(targetTab, true);
         try {
-            const filter = tabToFetch === 'trend' ? '' : tabToFetch;
+            const filter = targetTab === 'trend' ? '' : targetTab;
             let feedData = [];
 
             if (searchQuery.trim().length > 0) {
-                // Search logic - mostly applies to Trend or current context
+                // Search logic
                 const [posts, users] = await Promise.all([
                     postService.getFeed(user?.id, filter, searchQuery),
                     userService.search(searchQuery)
@@ -328,40 +335,66 @@ export const FeedScreen = () => {
                 feedData = [...markedUsers, ...markedPosts];
             } else {
                 let posts;
-                if (tabToFetch === 'following') {
+                if (targetTab === 'following') {
                     posts = await postService.getFollowingFeed(user!.id, '', searchQuery);
                 } else {
-                    posts = await postService.getFeed(user?.id, filter, searchQuery);
+                    posts = await postService.getFeed(user?.id, filter === 'following' ? '' : filter, searchQuery);
                 }
                 feedData = posts.map((p: any) => ({ ...p, type: 'post' }));
+
+                if (targetTab === 'trend') {
+                    // Inject Suggested Users Block
+                    if (feedData.length >= 5) {
+                        const min = 5;
+                        const max = Math.min(feedData.length, 10);
+                        const randomIndex = Math.floor(Math.random() * (max - min + 1)) + min;
+                        feedData.splice(randomIndex, 0, { type: 'suggested_users', id: 'suggested_users_block_1' });
+                    }
+
+                    // Inject Feedback Cards based on Backend Trigger (Smart Triggers)
+                    // Iterate backwards to avoid index shifting
+                    for (let i = feedData.length - 1; i >= 0; i--) {
+                        const targetPost = feedData[i];
+
+                        // Check if backend requested feedback for this post
+                        if (targetPost && targetPost.type === 'post' && targetPost.request_feedback) {
+                            const feedbackId = `feedback_${targetPost.id}_${Date.now()}`;
+                            // Insert AFTER the post
+                            feedData.splice(i + 1, 0, {
+                                type: 'feedback',
+                                id: feedbackId,
+                                targetPostId: targetPost.id
+                            });
+                        }
+                    }
+                }
             }
-            setFeedForTab(tabToFetch, feedData);
+            setFeedForTab(targetTab, feedData);
         } catch (error) {
             console.error(error);
         } finally {
-            setLoadingForTab(tabToFetch, false);
+            setLoadingForTab(targetTab, false);
             if (isRefresh) setRefreshing(false);
         }
     };
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
-        fetchFeed(activeTab, true);
-    }, [activeTab, searchQuery]);
+        fetchFeed(undefined, true);
+    }, [activeMainTab, activeSubTab, searchQuery]);
 
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('refresh_feed', () => {
-            // Refresh current tab
             setRefreshing(true);
-            fetchFeed(activeTab, true);
+            fetchFeed(undefined, true);
         });
         return () => subscription.remove();
-    }, [activeTab, searchQuery]);
+    }, [activeMainTab, activeSubTab, searchQuery]);
 
     useEffect(() => {
         if (searchQuery.trim().length > 0) {
             const timer = setTimeout(() => {
-                fetchFeed(activeTab);
+                fetchFeed();
             }, 500);
             return () => clearTimeout(timer);
         }
@@ -498,7 +531,7 @@ export const FeedScreen = () => {
         } catch (error: any) {
             console.error('Repost error:', error);
             Toast.show({ type: 'error', text1: 'Hata', text2: error.message || 'Paylaşılamadı.' });
-            fetchFeed(activeTab, true);
+            fetchFeed(undefined, true);
         }
     };
 
@@ -582,6 +615,19 @@ export const FeedScreen = () => {
     };
 
     const renderItem = ({ item }: { item: any }) => {
+        if (item.type === 'suggested_users') {
+            return <SuggestedUsers />;
+        }
+
+        if (item.type === 'feedback') {
+            return (
+                <FeedbackCard
+                    onFeedback={(interested) => handleFeedbackAction(item.targetPostId, interested, item.id)}
+                    onDismiss={() => handleFeedbackDismiss(item.id)}
+                />
+            );
+        }
+
         if (item.type === 'user') {
             return (
                 <UserCard
@@ -626,6 +672,23 @@ export const FeedScreen = () => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
         UIManager.setLayoutAnimationEnabledExperimental(true);
     }
+
+    const handleFeedbackAction = async (targetPostId: number, interested: boolean, feedbackItemId: string) => {
+        // UI: Remove the feedback card locally
+        updateAllFeeds(prev => prev.filter(item => item.id !== feedbackItemId));
+
+        if (!user) return;
+        try {
+            await interactionService.sendFeedFeedback(targetPostId, interested ? 'show_more' : 'not_interested');
+            // Toast.show({ type: 'success', text1: 'Geri bildiriminiz alındı.' });
+        } catch (error) {
+            console.error('Feedback failed', error);
+        }
+    };
+
+    const handleFeedbackDismiss = (feedbackItemId: string) => {
+        updateAllFeeds(prev => prev.filter(item => item.id !== feedbackItemId));
+    };
 
     const handleFeedback = async (type: 'report' | 'not_interested' | 'show_more') => {
         const item = selectedPostForOptions;
@@ -778,47 +841,117 @@ export const FeedScreen = () => {
                 </View>
             </RNAnimated.View>
 
-            <View style={styles.tabsContainer}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 10, alignItems: 'center' }}
-                    style={{ flexGrow: 0 }}
-                >
-                    <TouchableOpacity onPress={() => setActiveTab('trend')} style={[styles.tab, activeTab === 'trend' && styles.activeTab]}>
-                        <Text style={[styles.tabText, activeTab === 'trend' && styles.activeTabText]}>Trendler</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setActiveTab('following')} style={[styles.tab, activeTab === 'following' && styles.activeTab]}>
-                        <Text style={[styles.tabText, activeTab === 'following' && styles.activeTabText]}>Takip</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setActiveTab('movie')} style={[styles.tab, activeTab === 'movie' && styles.activeTab]}>
-                        <Text style={[styles.tabText, activeTab === 'movie' && styles.activeTabText]}>Film</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setActiveTab('book')} style={[styles.tab, activeTab === 'book' && styles.activeTab]}>
-                        <Text style={[styles.tabText, activeTab === 'book' && styles.activeTabText]}>Kitap</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setActiveTab('music')} style={[styles.tab, activeTab === 'music' && styles.activeTab]}>
-                        <Text style={[styles.tabText, activeTab === 'music' && styles.activeTabText]}>Müzik</Text>
-                    </TouchableOpacity>
-                </ScrollView>
+            {/* Modified Tabs Header */}
+            <View style={[styles.tabsContainer, { zIndex: 20 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+
+                    {/* Size Özel Tab (with Dropdown) */}
+                    <View style={{ flex: 1, position: 'relative', zIndex: 20, alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setActiveMainTab('forYou');
+                                setIsDropdownVisible(!isDropdownVisible);
+                            }}
+                            style={[
+                                styles.tab,
+                                { flexDirection: 'row', alignItems: 'center', marginRight: 0, paddingVertical: 12 },
+                                activeMainTab === 'forYou' && styles.activeTab
+                            ]}
+                        >
+                            <Text style={[styles.tabText, activeMainTab === 'forYou' && styles.activeTabText, { marginRight: 4 }]}>
+                                {activeSubTab === 'trend' ? 'Size Özel' :
+                                    activeSubTab === 'movie' ? 'Film' :
+                                        activeSubTab === 'book' ? 'Kitap' : 'Müzik'}
+                            </Text>
+                            <ThemeIcon name="chevron-down" size={12} color={activeMainTab === 'forYou' ? theme.colors.text : theme.colors.textSecondary} />
+                        </TouchableOpacity>
+
+                        {/* Dropdown Menu */}
+                        {isDropdownVisible && (
+                            <View style={{
+                                position: 'absolute',
+                                top: 45,
+                                alignSelf: 'center',
+                                width: 150,
+                                backgroundColor: theme.colors.surface,
+                                borderRadius: 12,
+                                padding: 8,
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.2,
+                                shadowRadius: 8,
+                                elevation: 5,
+                                borderWidth: 1,
+                                borderColor: theme.colors.border,
+                                zIndex: 100
+                            }}>
+                                {[
+                                    { id: 'trend', label: 'Trendler' },
+                                    { id: 'movie', label: 'Film' },
+                                    { id: 'book', label: 'Kitap' },
+                                    { id: 'music', label: 'Müzik' }
+                                ].map((item) => (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={{
+                                            paddingVertical: 10,
+                                            paddingHorizontal: 12,
+                                            backgroundColor: activeSubTab === item.id ? theme.colors.border : 'transparent',
+                                            borderRadius: 8,
+                                            marginBottom: 4
+                                        }}
+                                        onPress={() => {
+                                            setActiveSubTab(item.id as any);
+                                            setIsDropdownVisible(false);
+                                            setActiveMainTab('forYou');
+                                        }}
+                                    >
+                                        <Text style={{
+                                            color: activeSubTab === item.id ? theme.colors.primary : theme.colors.text,
+                                            fontWeight: activeSubTab === item.id ? '700' : '500'
+                                        }}>
+                                            {item.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Takip Tab */}
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setActiveMainTab('following');
+                                setIsDropdownVisible(false); // Close dropdown if open
+                            }}
+                            style={[styles.tab, { marginRight: 0 }, activeMainTab === 'following' && styles.activeTab]}
+                        >
+                            <Text style={[styles.tabText, activeMainTab === 'following' && styles.activeTabText]}>Takip</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </View>
             </View>
 
-            {/* Animated Content Wrapper */}
-            <Animated.View style={[styles.contentWrapper, animatedStyle]}>
+            {/* Close dropdown when tapping backdrop if needed - managed via visible state toggle mostly,
+                 but can add a transparent absolute view to close it if desired.
+                 For now, clicking the header toggles it, checking other interactions. */}
+            {isDropdownVisible && (
+                <TouchableWithoutFeedback onPress={() => setIsDropdownVisible(false)}>
+                    <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 10 }} />
+                </TouchableWithoutFeedback>
+            )}
+
+            {/* Animated Content Wrapper - only 2 pages now */}
+            <Animated.View style={[styles.contentWrapper, { width: SCREEN_WIDTH * 2 }, animatedStyle]}>
                 <View style={styles.page}>
-                    {renderList(trendFeed, loadingStates.trend)}
+                    {/* Page 1: Size Özel (Dynamic Content) */}
+                    {renderList(getFeedDataForTab(activeSubTab), loadingStates[activeSubTab as keyof typeof loadingStates])}
                 </View>
                 <View style={styles.page}>
+                    {/* Page 2: Following */}
                     {renderList(followingFeed, loadingStates.following)}
-                </View>
-                <View style={styles.page}>
-                    {renderList(movieFeed, loadingStates.movie)}
-                </View>
-                <View style={styles.page}>
-                    {renderList(bookFeed, loadingStates.book)}
-                </View>
-                <View style={styles.page}>
-                    {renderList(musicFeed, loadingStates.music)}
                 </View>
             </Animated.View>
 

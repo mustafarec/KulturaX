@@ -5,59 +5,64 @@ include_once '../auth_middleware.php';
 
 $user_id = requireAuth();
 
-$data = json_decode(file_get_contents("php://input"));
-
-if (!isset($data->post_id) || !isset($data->type)) {
-    http_response_code(400);
-    echo json_encode(array("message" => "Eksik parametreler."));
-    exit;
-}
-
-$post_id = $data->post_id;
-$type = $data->type; // 'report', 'not_interested', 'show_more'
-$reason = isset($data->reason) ? $data->reason : null;
-
-// Validate type
-$allowed_types = ['report', 'not_interested', 'show_more'];
-if (!in_array($type, $allowed_types)) {
-    http_response_code(400);
-    echo json_encode(array("message" => "Geçersiz bildirim türü."));
-    exit;
-}
-
 try {
-    // Check if duplicate feedback exists for this user/post/type
-    // We used UNIQUE KEY in schema but let's handle gently
-    $checkQuery = "SELECT id FROM post_feedback WHERE user_id = :user_id AND post_id = :post_id AND type = :type";
+    $data = json_decode(file_get_contents("php://input"));
+
+    if (!isset($data->post_id) || !isset($data->type)) {
+        http_response_code(400);
+        echo json_encode(["message" => "Eksik parametreler (post_id, type)."]);
+        exit();
+    }
+
+    $post_id = $data->post_id;
+    $feedback_type = $data->type;
+    $reason = isset($data->reason) ? $data->reason : null;
+
+    // Validate enum
+    $allowed_types = ['interested', 'not_interested', 'report', 'show_more'];
+    if (!in_array($feedback_type, $allowed_types)) {
+        http_response_code(400);
+        echo json_encode(["message" => "Geçersiz feedback türü."]);
+        exit();
+    }
+
+    // Check if exists
+    $checkQuery = "SELECT id FROM feed_feedback WHERE user_id = :user_id AND post_id = :post_id";
     $stmt = $conn->prepare($checkQuery);
     $stmt->bindParam(':user_id', $user_id);
     $stmt->bindParam(':post_id', $post_id);
-    $stmt->bindParam(':type', $type);
     $stmt->execute();
 
     if ($stmt->rowCount() > 0) {
-        // Already exists, just return success
-        echo json_encode(array("message" => "Geri bildirim zaten alınmış."));
-        exit;
-    }
-
-    $query = "INSERT INTO post_feedback (user_id, post_id, type, reason) VALUES (:user_id, :post_id, :type, :reason)";
-    $stmt = $conn->prepare($query);
-
-    $stmt->bindParam(':user_id', $user_id);
-    $stmt->bindParam(':post_id', $post_id);
-    $stmt->bindParam(':type', $type);
-    $stmt->bindParam(':reason', $reason);
-
-    if ($stmt->execute()) {
-        http_response_code(201);
-        echo json_encode(array("message" => "Geri bildirim alındı."));
+        // Update
+        $updateQuery = "UPDATE feed_feedback 
+                        SET feedback_type = :type, reason = :reason, created_at = CURRENT_TIMESTAMP 
+                        WHERE user_id = :user_id AND post_id = :post_id";
+        $stmt = $conn->prepare($updateQuery);
+        $stmt->bindParam(':type', $feedback_type);
+        $stmt->bindParam(':reason', $reason);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':post_id', $post_id);
+        $stmt->execute();
     } else {
-        http_response_code(503);
-        echo json_encode(array("message" => "Veritabanı hatası."));
+        // Insert
+        $insertQuery = "INSERT INTO feed_feedback (user_id, post_id, feedback_type, reason) 
+                        VALUES (:user_id, :post_id, :type, :reason)";
+        $stmt = $conn->prepare($insertQuery);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':post_id', $post_id);
+        $stmt->bindParam(':type', $feedback_type);
+        $stmt->bindParam(':reason', $reason);
+        $stmt->execute();
     }
+
+    // If 'not_interested', we might want to ensure we don't show this post again (handled in feed query probably)
+    // For now just recording the feedback is enough.
+
+    echo json_encode(["message" => "Geri bildirim kaydedildi."]);
+
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(array("message" => "Sunucu hatası: " . $e->getMessage()));
+    echo json_encode(["message" => "Sunucu hatası: " . $e->getMessage()]);
 }
 ?>

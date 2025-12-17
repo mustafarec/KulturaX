@@ -448,7 +448,13 @@ export const OtherProfileScreen = () => {
             try {
                 const postsData = await postService.getFeed(userId);
                 if (Array.isArray(postsData)) {
-                    const filteredPosts = postsData.filter((post: any) => post.user.id == userId);
+                    const filteredPosts = postsData
+                        .filter((post: any) => post.user.id == userId)
+                        .sort((a: any, b: any) => {
+                            const pinA = (a.is_pinned === 1 || a.is_pinned === '1' || a.is_pinned === true) ? 1 : 0;
+                            const pinB = (b.is_pinned === 1 || b.is_pinned === '1' || b.is_pinned === true) ? 1 : 0;
+                            return pinB - pinA;
+                        });
                     setUserPosts(filteredPosts);
                 }
             } catch (postError) {

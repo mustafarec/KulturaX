@@ -5,7 +5,8 @@ import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
-import backendApi, { spotifyService, ticketmasterService } from '../../services/backendApi';
+import backendApi, { spotifyService, ticketmasterService, topicService } from '../../services/backendApi';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SectionHeader } from '../../components/SectionHeader';
 import { HorizontalList } from '../../components/HorizontalList';
 import { EventCard } from '../../components/EventCard';
@@ -51,13 +52,15 @@ export const DiscoveryScreen = () => {
         music: any[];
         books: any[];
         events: any[];
+        topics: any[];
     }
 
     const [dashboardData, setDashboardData] = useState<DashboardData>({
         movies: [],
         music: [],
         books: [],
-        events: []
+        events: [],
+        topics: []
     });
 
     // Category Specific Data State (for grid views)
@@ -105,6 +108,9 @@ export const DiscoveryScreen = () => {
                     image: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
                     subtitle: movie.release_date ? movie.release_date.split('-')[0] : ''
                 }));
+            }).catch(e => {
+                console.error('Movies error', e);
+                return [];
             });
 
             // 2. Trending Music (Search fallback)
@@ -116,6 +122,9 @@ export const DiscoveryScreen = () => {
                     image: track.image, // Ensure image is mapped correctly in searchTracks response
                     subtitle: track.artist
                 }));
+            }).catch(e => {
+                console.error('Music error', e);
+                return [];
             });
 
             // 3. Trend Kitaplar (Günlük Stabil Trend)
@@ -134,6 +143,9 @@ export const DiscoveryScreen = () => {
                     image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:'),
                     subtitle: book.volumeInfo.authors ? book.volumeInfo.authors[0] : (book.volumeInfo.publisher || '')
                 }));
+            }).catch(e => {
+                console.error('Books error', e);
+                return [];
             });
 
 
@@ -154,20 +166,33 @@ export const DiscoveryScreen = () => {
                     }));
                 }
                 return [];
+            }).catch(e => {
+                console.error('Events error', e);
+                return [];
             });
 
-            const [movies, music, books, events] = await Promise.all([
+            // 5. Popular Topics
+            const topicsPromise = topicService.getPopular()
+                .then((topics: any[]) => topics || [])
+                .catch(e => {
+                    console.error('Topics error', e);
+                    return [];
+                });
+
+            const [movies, music, books, events, topics] = await Promise.all([
                 moviesPromise,
                 musicPromise,
                 booksPromise,
-                eventsPromise
+                eventsPromise,
+                topicsPromise
             ]);
 
             setDashboardData({
                 movies,
                 music,
                 books,
-                events
+                events,
+                topics
             });
 
         } catch (error) {
@@ -438,6 +463,26 @@ export const DiscoveryScreen = () => {
             fontSize: 12,
             color: theme.colors.textSecondary,
         },
+        topicCard: {
+            width: 140,
+            height: 100,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            marginRight: 12,
+            padding: 12,
+            justifyContent: 'space-between',
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        topicName: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.text,
+        },
+        topicStats: {
+            fontSize: 11,
+            color: theme.colors.textSecondary,
+        },
         loadingContainer: {
             flex: 1,
             justifyContent: 'center',
@@ -503,6 +548,24 @@ export const DiscoveryScreen = () => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
             showsVerticalScrollIndicator={false}
         >
+            {/* 0. Popular Topics */}
+            <SectionHeader title="Popüler Konular" />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+                {dashboardData.topics && dashboardData.topics.slice(0, 10).map((topic: any) => (
+                    <TouchableOpacity
+                        key={topic.id}
+                        style={styles.topicCard}
+                        onPress={() => (navigation as any).navigate('TopicDetail', { topic })}
+                    >
+                        <Ionicons name={topic.icon || 'cube-outline'} size={24} color={theme.colors.primary} />
+                        <View>
+                            <Text style={styles.topicName} numberOfLines={1}>{topic.name}</Text>
+                            <Text style={styles.topicStats}>{topic.post_count} gönderi</Text>
+                        </View>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+
             {/* 1. Trend Filmler */}
             <SectionHeader title="Trend Filmler" onViewAll={() => setActiveTab('movies')} />
             <HorizontalList

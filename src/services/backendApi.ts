@@ -107,6 +107,15 @@ export const authService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
+    togglePin: async (postId: number) => {
+        try {
+            const response = await backendApi.post('/posts/toggle_pin.php', { post_id: postId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Verify Email
     verifyEmail: async (email: string, code: string) => {
         try {
             const response = await backendApi.post('/auth/verify.php', { email, code });
@@ -132,7 +141,7 @@ export const authService = {
 };
 
 export const postService = {
-    create: async (userId: number, quote: string, comment: string, source: string, author: string, originalPostId?: number, contentType?: string, contentId?: string, imageUrl?: string) => {
+    create: async (userId: number, quote: string, comment: string, source: string, author: string, originalPostId?: number, contentType?: string, contentId?: string, imageUrl?: string, topicId?: number) => {
         try {
             const response = await backendApi.post('/posts/create.php', {
                 user_id: userId,
@@ -143,8 +152,17 @@ export const postService = {
                 original_post_id: originalPostId,
                 content_type: contentType,
                 content_id: contentId,
-                image_url: imageUrl
+                image_url: imageUrl,
+                topic_id: topicId
             });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    togglePin: async (postId: number) => {
+        try {
+            const response = await backendApi.post('/posts/toggle_pin.php', { post_id: postId });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -557,6 +575,15 @@ export const userService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
+    savePreference: async (userId: number, key: string, value: string, expiresInHours?: number) => {
+        const response = await backendApi.post('/users/set_preference.php', {
+            key,
+            value,
+            expires_in_hours: expiresInHours
+        });
+        return response.data;
+    },
+
     search: async (query: string) => {
         try {
             const response = await backendApi.get(`/users/search.php?query=${encodeURIComponent(query)}`);
@@ -595,10 +622,46 @@ export const userService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    getSuggestedUsers: async (userId: number) => {
+        try {
+            const response = await backendApi.get(`/users/suggested_users.php?user_id=${userId}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 
 
+
+export const topicService = {
+    getPopular: async () => {
+        try {
+            const response = await backendApi.get('/topics/get_popular.php');
+            return response.data;
+        } catch (error: any) {
+            console.error('getPopular error', error);
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    followTopic: async (topicId: number) => {
+        try {
+            const response = await backendApi.post('/topics/follow.php', { topic_id: topicId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    getPostsByTopic: async (topicId: number) => {
+        try {
+            const response = await backendApi.get(`/topics/get_by_topic.php?topic_id=${topicId}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    }
+};
 
 export const spotifyService = {
     searchTracks: async (query: string) => {
