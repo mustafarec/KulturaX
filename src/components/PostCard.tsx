@@ -375,6 +375,14 @@ export const PostCard: React.FC<PostCardProps> = ({
                                 <Text style={styles.time}>
                                     {formatRelativeTime(post.created_at || Date.now())}
                                 </Text>
+                                {post.topic_name && (
+                                    <>
+                                        <Text style={styles.dot}>·</Text>
+                                        <Text style={[styles.time, { color: theme.colors.primary, fontWeight: '500' }]}>
+                                            {post.topic_name}
+                                        </Text>
+                                    </>
+                                )}
                             </View>
                         </TouchableOpacity>
 

@@ -22,6 +22,10 @@ import { RepostMenu } from '../../components/RepostMenu';
 import { SharePostModal } from '../../components/SharePostModal';
 import Icon from 'react-native-vector-icons/SimpleLineIcons';
 import ThemeIcon from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const FEEDBACK_STORAGE_KEY = '@last_feedback_time';
+const FEEDBACK_COOLDOWN = 12 * 60 * 60 * 1000; // 12 hours
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -352,19 +356,33 @@ export const FeedScreen = () => {
                     }
 
                     // Inject Feedback Cards based on Backend Trigger (Smart Triggers)
-                    // Iterate backwards to avoid index shifting
-                    for (let i = feedData.length - 1; i >= 0; i--) {
-                        const targetPost = feedData[i];
+                    // Check local cooldown first
+                    const lastFeedbackTimeStr = await AsyncStorage.getItem(FEEDBACK_STORAGE_KEY);
+                    const lastFeedbackTime = lastFeedbackTimeStr ? parseInt(lastFeedbackTimeStr, 10) : 0;
+                    const now = Date.now();
+                    const shouldShowFeedback = (now - lastFeedbackTime) > FEEDBACK_COOLDOWN;
 
-                        // Check if backend requested feedback for this post
-                        if (targetPost && targetPost.type === 'post' && targetPost.request_feedback) {
-                            const feedbackId = `feedback_${targetPost.id}_${Date.now()}`;
-                            // Insert AFTER the post
-                            feedData.splice(i + 1, 0, {
-                                type: 'feedback',
-                                id: feedbackId,
-                                targetPostId: targetPost.id
-                            });
+                    if (shouldShowFeedback) {
+                        let feedbackInjected = false;
+                        // Iterate backwards to avoid index shifting
+                        for (let i = feedData.length - 1; i >= 0; i--) {
+                            if (feedbackInjected) break; // Only show one per session/load if cooldown passed
+
+                            const targetPost = feedData[i];
+
+                            // Check if backend requested feedback for this post
+                            if (targetPost && targetPost.type === 'post' && targetPost.request_feedback) {
+                                const feedbackId = `feedback_${targetPost.id}_${Date.now()}`;
+                                // Insert AFTER the post
+                                feedData.splice(i + 1, 0, {
+                                    type: 'feedback',
+                                    id: feedbackId,
+                                    targetPostId: targetPost.id
+                                });
+                                feedbackInjected = true;
+                                // Update storage
+                                AsyncStorage.setItem(FEEDBACK_STORAGE_KEY, now.toString());
+                            }
                         }
                     }
                 }
@@ -849,8 +867,12 @@ export const FeedScreen = () => {
                     <View style={{ flex: 1, position: 'relative', zIndex: 20, alignItems: 'center' }}>
                         <TouchableOpacity
                             onPress={() => {
-                                setActiveMainTab('forYou');
-                                setIsDropdownVisible(!isDropdownVisible);
+                                if (activeMainTab === 'forYou') {
+                                    setIsDropdownVisible(!isDropdownVisible);
+                                } else {
+                                    setActiveMainTab('forYou');
+                                    setIsDropdownVisible(false);
+                                }
                             }}
                             style={[
                                 styles.tab,

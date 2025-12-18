@@ -28,7 +28,7 @@ export const TopicDetailScreen = () => {
     const [posts, setPosts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(topic?.is_followed || false);
-    const [followerCount, setFollowerCount] = useState(topic?.follower_count || 0);
+    const [followerCount, setFollowerCount] = useState(parseInt(topic?.follower_count || '0', 10));
 
     // Interaction States
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);

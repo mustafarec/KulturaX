@@ -142,12 +142,16 @@ try {
                 op.content_id as op_content_id,
                 op.quote_text as op_quote_text,
                 op.comment_text as op_comment_text,
-                op.view_count as op_view_count
+                op.view_count as op_view_count,
+
+                t.name as topic_name,
+                t.icon as topic_icon
 
               FROM posts p
               JOIN users u ON p.user_id = u.id
               LEFT JOIN posts op ON p.original_post_id = op.id
               LEFT JOIN users ou ON op.user_id = ou.id
+              LEFT JOIN topics t ON p.topic_id = t.id
               
               -- SMART FEED: Görüntülenme Kontrolü
               LEFT JOIN post_views pv ON pv.post_id = p.id AND pv.user_id = :user_id
