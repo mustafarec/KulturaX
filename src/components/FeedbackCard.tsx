@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { X, XCircle, CheckCircle } from 'lucide-react-native';
 
 interface FeedbackCardProps {
     onFeedback: (interested: boolean) => void;
@@ -96,7 +96,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({ onFeedback, onDismis
             <View style={styles.header}>
                 <Text style={styles.title}>Bu gönderi ilginizi çekiyor mu?</Text>
                 <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                    <Ionicons name="close" size={16} color={theme.colors.textSecondary} />
+                    <X size={16} color={theme.colors.textSecondary} />
                 </TouchableOpacity>
             </View>
             <View style={styles.actionsContainer}>
@@ -105,7 +105,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({ onFeedback, onDismis
                     onPress={() => handlePress(false)}
                     activeOpacity={0.7}
                 >
-                    <Ionicons name="close-circle-outline" size={16} color={theme.colors.error} />
+                    <XCircle size={16} color={theme.colors.error} />
                     <Text style={styles.buttonText}>İlgimi çekmiyor</Text>
                 </TouchableOpacity>
 
@@ -114,7 +114,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({ onFeedback, onDismis
                     onPress={() => handlePress(true)}
                     activeOpacity={0.7}
                 >
-                    <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.success || '#4CAF50'} />
+                    <CheckCircle size={16} color={theme.colors.success || '#4CAF50'} />
                     <Text style={styles.buttonText}>İlgimi çekiyor</Text>
                 </TouchableOpacity>
             </View>

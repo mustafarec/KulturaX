@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { BookOpen } from 'lucide-react-native';
 
 interface QuoteCardProps {
     text: string;
@@ -147,7 +147,7 @@ export const QuoteCard = ({
                                     />
                                 ) : (
                                     <View style={[styles.bookCover, { justifyContent: 'center', alignItems: 'center' }]}>
-                                        <Icon name="book-open" size={16} color="#fff" />
+                                        <BookOpen size={16} color="#fff" />
                                     </View>
                                 )}
                                 <View style={styles.bookDetails}>

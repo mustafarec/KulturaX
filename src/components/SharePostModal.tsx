@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Image, Animated, Keyboard, Platform, KeyboardAvoidingView } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { X, Search, XCircle } from 'lucide-react-native';
 import { userService, messageService } from '../services/backendApi';
 import { useAuth } from '../context/AuthContext';
 import Toast from 'react-native-toast-message';
@@ -359,13 +359,13 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
                     <View style={styles.header}>
                         <Text style={styles.title}>Gönderiyi Paylaş</Text>
                         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                            <Icon name="close" size={24} color={theme.colors.text} />
+                            <X size={24} color={theme.colors.text} />
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.searchContainer}>
                         <View style={styles.searchInputContainer}>
-                            <Icon name="search" size={20} color={theme.colors.textSecondary} />
+                            <Search size={20} color={theme.colors.textSecondary} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Kişi ara..."
@@ -405,7 +405,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
                                         </Text>
                                     </View>
                                     <TouchableOpacity onPress={handleCloseSelection} style={styles.cancelButton}>
-                                        <Icon name="close-circle" size={24} color={theme.colors.textSecondary} />
+                                        <XCircle size={24} color={theme.colors.textSecondary} />
                                     </TouchableOpacity>
                                 </View>
 

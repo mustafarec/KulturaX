@@ -1,5 +1,4 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigator } from './AuthNavigator';
 import { TabNavigator } from './TabNavigator';
@@ -59,8 +58,21 @@ export const AppNavigator = () => {
         );
     }
 
+    // Construct Navigation Theme based on our App Theme
+    const navigationTheme = {
+        ...(theme.dark ? DarkTheme : DefaultTheme),
+        colors: {
+            ...(theme.dark ? DarkTheme.colors : DefaultTheme.colors),
+            background: theme.colors.background,
+            card: theme.colors.surface,
+            text: theme.colors.text,
+            border: theme.colors.border,
+            primary: theme.colors.primary,
+        },
+    };
+
     return (
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {user ? (
                     <>

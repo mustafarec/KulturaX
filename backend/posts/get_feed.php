@@ -11,7 +11,88 @@ $authenticatedUserId = requireAuth();
 $user_id = $authenticatedUserId; // Kimlik doğrulanan kullanıcı
 
 try {
-// (Legacy query removed - optimized version is below)
+    // --- Filter: 'replies' Special Handling ---
+    // If filter is 'replies', we fetch from 'interactions' table instead of 'posts'.
+    $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
+    
+    if ($filter == 'replies') {
+        // Determine Target User ID:
+        // - If 'user_id' is passed in URL, that's the profile we are viewing.
+        // - Otherwise, default to auth user (My Profile).
+        $target_user_id = isset($_GET['user_id']) ? $_GET['user_id'] : $user_id;
+
+        $query = "SELECT 
+                    i.id, 
+                    i.content, 
+                    i.created_at, 
+                    i.user_id, 
+                    i.post_id as reply_to_post_id,
+                    'comment' as type,
+                    u.username, 
+                    u.full_name, 
+                    u.avatar_url,
+                    
+                    -- Parent Post Info (Mocking original_post structure)
+                    p.id as op_id,
+                    p.content as op_content,
+                    pu.id as op_user_id,
+                    pu.username as op_username,
+                    pu.full_name as op_full_name,
+                    pu.avatar_url as op_avatar_url,
+                    
+                    (SELECT COUNT(*) FROM comment_likes WHERE comment_id = i.id) as like_count,
+                    (SELECT COUNT(*) FROM comment_likes WHERE comment_id = i.id AND user_id = :user_id) as is_liked
+
+                  FROM interactions i
+                  JOIN users u ON i.user_id = u.id
+                  LEFT JOIN posts p ON i.post_id = p.id
+                  LEFT JOIN users pu ON p.user_id = pu.id
+                  WHERE i.user_id = :target_user_id AND i.type = 'comment'
+                  ORDER BY i.created_at DESC";
+
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':user_id', $user_id);         // Auth user for 'is_liked'
+        $stmt->bindParam(':target_user_id', $target_user_id); // Profile user for 'WHERE'
+        $stmt->execute();
+        
+        $posts = array();
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
+             $row['is_liked'] = $row['is_liked'] > 0;
+             
+             // User object
+             $row['user'] = array(
+                'id' => $row['user_id'],
+                'username' => $row['username'],
+                'full_name' => $row['full_name'],
+                'avatar_url' => $row['avatar_url']
+             );
+
+             // Mimic original_post for the parent post being replied to
+             if ($row['op_id']) {
+                 $row['original_post'] = array(
+                     'id' => $row['op_id'],
+                     'content' => $row['op_content'],
+                     'user' => array(
+                         'id' => $row['op_user_id'],
+                         'username' => $row['op_username'],
+                         'full_name' => $row['op_full_name'],
+                         'avatar_url' => $row['op_avatar_url']
+                     )
+                 );
+             }
+             
+             // Cleanup
+             unset($row['username']); unset($row['full_name']); unset($row['avatar_url']);
+             unset($row['op_id']); unset($row['op_content']); 
+             unset($row['op_user_id']); unset($row['op_username']); unset($row['op_full_name']); unset($row['op_avatar_url']);
+
+             array_push($posts, $row);
+        }
+        
+        echo json_encode($posts);
+        exit; // Stop main execution
+    }
+
 
     // --- Implicit Feedback: Calculate User Affinity Scores ---
     
@@ -179,7 +260,12 @@ try {
     // Sadece arama yapılmıyorsa geçerli.
     
     // Filter logic
+    // Filter logic
     $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
+    
+    // Default: EXCLUDE replies is implicit because we only query 'posts' table here.
+    // 'replies' case is handled above and exits early.
+    
     if ($filter == 'book') {
         $whereClause .= " AND (p.content_type = 'book' OR op.content_type = 'book')";
     } elseif ($filter == 'movie') {

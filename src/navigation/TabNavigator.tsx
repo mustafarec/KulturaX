@@ -9,10 +9,9 @@ import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
 import { NotificationScreen } from '../screens/main/NotificationScreen';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/Ionicons';
-import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
+import { Home, Search, Mail, User, Plus, Compass } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, interpolate } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
 
 const Tab = createBottomTabNavigator();
 const FeedStack = createNativeStackNavigator();
@@ -34,7 +33,7 @@ const FloatingAnimatedButton = ({ onPress, isOpen, theme }: { onPress: () => voi
     const rotation = useSharedValue(0);
 
     React.useEffect(() => {
-        rotation.value = withSpring(isOpen ? 135 : 0, { damping: 12, stiffness: 100 });
+        rotation.value = withTiming(isOpen ? 135 : 0, { duration: 250, easing: Easing.out(Easing.cubic) });
     }, [isOpen]);
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -58,97 +57,14 @@ const FloatingAnimatedButton = ({ onPress, isOpen, theme }: { onPress: () => voi
             ]}
             onPress={onPress}
         >
-            <Icon name="add" size={36} color="#FFF" />
+            <Plus size={36} color="#FFF" />
         </AnimatedTouchable>
     );
 };
 
-const PostMenuOverlay = ({ visible, onClose, theme }: { visible: boolean, onClose: () => void, theme: any }) => {
-    const navigation = useNavigation();
+import { PostCreationModal } from '../components/modals/PostCreationModal';
 
-    // Animasyon değerleri
-    const opacity = useSharedValue(0);
-    const translateY = useSharedValue(20);
-
-    React.useEffect(() => {
-        if (visible) {
-            opacity.value = withTiming(1, { duration: 200 });
-            translateY.value = withSpring(0, { damping: 15, stiffness: 100 });
-        } else {
-            opacity.value = withTiming(0, { duration: 150 });
-            translateY.value = withTiming(20, { duration: 150 });
-        }
-    }, [visible]);
-
-    const containerStyle = useAnimatedStyle(() => {
-        return {
-            opacity: opacity.value,
-            transform: [{ translateY: translateY.value }],
-        };
-    });
-
-    if (!visible && opacity.value === 0) return null;
-
-    // Menü Kartı Bileşeni
-    const MenuCard = ({ icon, title, subtitle, onPress }: any) => {
-        return (
-            <TouchableOpacity
-                style={[styles.menuCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-                onPress={onPress}
-                activeOpacity={0.7}
-            >
-                <View style={[styles.iconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
-                    <SimpleLineIcons name={icon} size={24} color={theme.colors.text} />
-                </View>
-                <View style={styles.textContainer}>
-                    <Text style={[styles.menuTitle, { color: theme.colors.text }]}>{title}</Text>
-                    <Text style={[styles.menuSubtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>
-                </View>
-                <SimpleLineIcons name="arrow-right" size={14} color={theme.colors.text} style={{ opacity: 0.3 }} />
-            </TouchableOpacity>
-        );
-    };
-
-    return (
-        <View style={StyleSheet.absoluteFill} pointerEvents={visible ? "box-none" : "none"}>
-            {/* Backdrop */}
-            {visible && (
-                <TouchableWithoutFeedback onPress={onClose}>
-                    <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' }} />
-                </TouchableWithoutFeedback>
-            )}
-
-            {/* Menu Container */}
-            <View style={styles.menuContainer} pointerEvents="box-none">
-                <Animated.View style={[styles.animatedMenuWrapper, containerStyle]}>
-
-                    <MenuCard
-                        icon="bubble"
-                        title="Düşünceni Paylaş"
-                        subtitle="Aklından geçenleri takipçilerine anlat"
-                        onPress={() => {
-                            onClose();
-                            (navigation as any).navigate('CreateQuote', { mode: 'thought' });
-                        }}
-                    />
-
-                    <View style={{ height: 16 }} />
-
-                    <MenuCard
-                        icon="book-open"
-                        title="İnceleme Yap"
-                        subtitle="Kitap, film veya müzik hakkında yaz"
-                        onPress={() => {
-                            onClose();
-                            (navigation as any).navigate('CreateQuote', { mode: 'quote' });
-                        }}
-                    />
-
-                </Animated.View>
-            </View>
-        </View>
-    );
-};
+// ... (No inline PostMenuOverlay)
 
 // --- Main Navigator ---
 
@@ -176,43 +92,27 @@ export const TabNavigator = () => {
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
-                        backgroundColor: isBlackTheme ? blackThemeBarSettings.backgroundColor : theme.colors.surface,
-                        borderTopWidth: 1,
-                        borderTopColor: isBlackTheme ? '#2A2420' : theme.colors.border,
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: 75,
-                        elevation: 8,
-                        paddingBottom: 15,
-                        paddingTop: 10,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        shadowColor: theme.shadows.default.shadowColor,
-                        shadowOffset: { width: 0, height: -2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 4,
+                        backgroundColor: isBlackTheme ? 'rgba(0,0,0,1)' : theme.colors.surface,
+                        borderTopWidth: isBlackTheme ? 0 : 1,
+                        borderTopColor: theme.colors.border,
+                        height: 60,
+                        paddingBottom: 5, // Add some padding for the icons/labels
+                        paddingTop: 5,
+                        elevation: 0,
+                        shadowOpacity: 0,
                     },
                     tabBarShowLabel: false,
                     tabBarActiveTintColor: isBlackTheme ? blackThemeBarSettings.activeColor : theme.colors.primary,
-                    tabBarInactiveTintColor: isBlackTheme ? blackThemeBarSettings.inactiveColor : theme.colors.primary,
+                    tabBarInactiveTintColor: isBlackTheme ? blackThemeBarSettings.inactiveColor : theme.colors.textSecondary,
                     tabBarItemStyle: {
                         height: 60,
                         flex: 1,
                         justifyContent: 'center',
                         alignItems: 'center',
-                        padding: 0,
-                        margin: 0,
                     },
                     tabBarIconStyle: {
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        alignSelf: 'center',
-                        width: 30,
-                        height: 30,
-                        marginTop: 5,
-                        marginBottom: 0,
+                        width: 28,
+                        height: 28,
                     }
                 }}
             >
@@ -228,7 +128,7 @@ export const TabNavigator = () => {
                     })}
                     options={{
                         tabBarIcon: ({ color, focused }) => (
-                            <Icon name={focused ? "home" : "home-outline"} size={26} color={color} />
+                            <Home size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
                         ),
                     }}
                 />
@@ -237,7 +137,7 @@ export const TabNavigator = () => {
                     component={DiscoveryScreen}
                     options={{
                         tabBarIcon: ({ color, focused }) => (
-                            <Icon name={focused ? "search" : "search-outline"} size={26} color={color} />
+                            <Compass size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
                         ),
                     }}
                 />
@@ -288,7 +188,7 @@ export const TabNavigator = () => {
                     component={MessageScreen}
                     options={{
                         tabBarIcon: ({ color, focused }) => (
-                            <Icon name={focused ? "mail" : "mail-outline"} size={26} color={color} />
+                            <Mail size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
                         ),
                     }}
                 />
@@ -308,7 +208,7 @@ export const TabNavigator = () => {
                                             style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: color }}
                                         />
                                     ) : (
-                                        <Icon name={focused ? "person" : "person-outline"} size={26} color={color} />
+                                        <User size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
                                     )}
                                     {showBadge && (
                                         <View style={{
@@ -339,7 +239,7 @@ export const TabNavigator = () => {
             </Tab.Navigator>
 
             {/* Overlay Menu */}
-            <PostMenuOverlay visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} theme={theme} />
+            <PostCreationModal visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
 
             {/* Hoisted Floating Button */}
             <FloatingAnimatedButton isOpen={isMenuOpen} onPress={toggleMenu} theme={theme} />
@@ -351,7 +251,7 @@ export const TabNavigator = () => {
 const styles = StyleSheet.create({
     floatingButtonData: {
         position: 'absolute',
-        bottom: 22, // Lowered to have only a small overlap with the top edge
+        bottom: 10, // Lowered to align with tab bar
         alignSelf: 'center',
         width: 64,
         height: 64,
@@ -362,50 +262,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4.65,
-        elevation: 8,
+        elevation: 12,
         borderWidth: 4,
-    },
-    menuContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        paddingBottom: 110, // Position menu above button
-    },
-    animatedMenuWrapper: {
-        width: '100%',
-        alignItems: 'center',
-    },
-    menuCard: {
-        width: '90%',
-        maxWidth: 360,
-        borderRadius: 20,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    textContainer: {
-        flex: 1,
-    },
-    menuTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    menuSubtitle: {
-        fontSize: 13,
     },
 });

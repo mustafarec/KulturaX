@@ -8,7 +8,7 @@ import { reviewService } from '../services/backendApi';
 interface ReviewModalProps {
     visible: boolean;
     onClose: () => void;
-    contentType: 'movie' | 'book' | 'music';
+    contentType: string;
     contentId: string;
     contentTitle?: string;
     imageUrl?: string;

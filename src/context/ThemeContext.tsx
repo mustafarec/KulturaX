@@ -28,9 +28,20 @@ export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const systemColorScheme = useColorScheme();
-    const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+
+    // Initialize with system preference to avoid flash
+    const initialScheme = Appearance.getColorScheme();
+    const [themeMode, setThemeMode] = useState<ThemeMode>(initialScheme === 'dark' ? 'dark' : 'light');
     const [darkThemeStyle, setDarkThemeStyle] = useState<DarkThemeStyle>('dim');
-    const [theme, setTheme] = useState<Theme>(defaultTheme);
+
+    const getInitialTheme = () => {
+        if (initialScheme === 'dark') {
+            return dimTheme; // Default to dim if dark
+        }
+        return lightTheme;
+    };
+
+    const [theme, setTheme] = useState<Theme>(getInitialTheme());
 
     useEffect(() => {
         loadThemePreferences();

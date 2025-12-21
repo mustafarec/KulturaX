@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
 import { messageService, userService } from '../../services/backendApi';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft, Send } from 'lucide-react-native';
 import { Image } from 'react-native';
 
 export const ChatScreen = () => {
@@ -233,7 +233,7 @@ export const ChatScreen = () => {
         >
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={20} color={theme.colors.text} />
+                    <ArrowLeft size={20} color={theme.colors.text} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
                     {chatUser.avatar_url ? (
@@ -275,7 +275,7 @@ export const ChatScreen = () => {
                     onPress={handleSend}
                     disabled={!inputText.trim()}
                 >
-                    <Icon name="paper-plane" size={20} color="#ffffff" />
+                    <Send size={20} color="#ffffff" />
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>

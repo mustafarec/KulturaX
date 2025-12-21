@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Trash2, ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { interactionService } from '../../services/backendApi';
 
@@ -220,7 +220,7 @@ export const FeedPreferencesScreen = () => {
             <View style={styles.footer}>
                 <Text style={styles.username}>@{item.username}</Text>
                 <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteButton}>
-                    <Icon name="trash-outline" size={16} color={theme.colors.error} />
+                    <Trash2 size={16} color={theme.colors.error} />
                     <Text style={styles.deleteText}>Kaldır</Text>
                 </TouchableOpacity>
             </View>
@@ -231,7 +231,7 @@ export const FeedPreferencesScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-back" size={24} color={theme.colors.text} />
+                    <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Akış Tercihleri</Text>
             </View>

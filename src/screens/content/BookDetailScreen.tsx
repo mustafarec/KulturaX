@@ -9,7 +9,8 @@ import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
 import { LibraryStatusButton } from '../../components/LibraryStatusButton';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { Plus, MessageSquareQuote, Pencil, Star, MessageCircle, Bookmark, Share2 } from 'lucide-react-native';
+import { ContentDetailLayout } from '../../components/layouts/ContentDetailLayout';
 
 export const BookDetailScreen = () => {
     const route = useRoute();
@@ -71,84 +72,27 @@ export const BookDetailScreen = () => {
             flex: 1,
             backgroundColor: theme.colors.background,
         },
-        header: {
-            flexDirection: 'row',
-            padding: theme.spacing.l,
-            backgroundColor: theme.colors.surface,
-            borderBottomLeftRadius: theme.borderRadius.xl,
-            borderBottomRightRadius: theme.borderRadius.xl,
-            ...theme.shadows.soft,
-            paddingTop: 110, // Adjust for status bar
-        },
-        backButton: {
-            position: 'absolute',
-            top: 50,
-            left: 20,
-            zIndex: 10,
-            padding: 8,
-            backgroundColor: theme.colors.surface + 'CC', // Transparent surface
-            borderRadius: 20,
-        },
-        coverImage: {
-            width: 100,
-            height: 150,
-            borderRadius: theme.borderRadius.m,
-            marginRight: theme.spacing.m,
-            ...theme.shadows.soft,
-        },
-        placeholderImage: {
-            backgroundColor: theme.colors.secondary,
-        },
-        headerInfo: {
-            flex: 1,
-            justifyContent: 'center',
-        },
-        title: {
-            fontSize: 20,
-            fontWeight: '800',
-            color: theme.colors.text,
-            marginBottom: 8,
-            letterSpacing: -0.5,
-        },
-        authorText: {
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-            marginBottom: 8,
-            fontWeight: '500',
-        },
-        dateText: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-            marginBottom: 8,
-        },
-        ratingContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-        },
-        ratingText: {
-            fontSize: 14,
-            color: theme.colors.text,
-            marginLeft: 8,
-        },
+        // ... Removed header styles as they are now in Layout
+
         tabs: {
             flexDirection: 'row',
-            backgroundColor: theme.colors.surface, // Was glass
+            backgroundColor: theme.colors.surface,
             marginHorizontal: 20,
-            marginTop: 20,
+            marginTop: 0, // Adjusted
             borderRadius: 16,
             padding: 4,
             borderWidth: 1,
-            borderColor: theme.colors.border, // Was glassBorder
-            // ...theme.shadows.glass, // Removed glass shadow
+            borderColor: theme.colors.border,
+            marginBottom: 20,
         },
         tab: {
             flex: 1,
-            paddingVertical: 12,
+            paddingVertical: 10,
             alignItems: 'center',
             borderRadius: 12,
         },
         activeTab: {
-            backgroundColor: theme.colors.primary + '15',
+            backgroundColor: theme.colors.primary, // Changed to solid primary for contrast
         },
         tabText: {
             fontSize: 13,
@@ -156,12 +100,14 @@ export const BookDetailScreen = () => {
             fontWeight: '600',
         },
         activeTabText: {
-            color: theme.colors.primary,
+            color: '#FFFFFF', // White text on active
             fontWeight: '700',
         },
         tabContent: {
-            padding: theme.spacing.l,
+            paddingHorizontal: 20, // Add padding for content
+            paddingBottom: 40,
         },
+
         sectionTitle: {
             fontSize: 18,
             fontWeight: '800',
@@ -365,14 +311,14 @@ export const BookDetailScreen = () => {
                                 style={styles.addQuoteButton}
                                 onPress={() => setShowQuoteModal(true)}
                             >
-                                <Icon name="plus" size={12} color="#fff" style={{ marginRight: 4 }} />
+                                <Plus size={12} color="#fff" style={{ marginRight: 4 }} />
                                 <Text style={styles.addQuoteButtonText}>Ekle</Text>
                             </TouchableOpacity>
                         </View>
                         {quotes.length > 0 ? (
                             quotes.map((quote) => (
                                 <View key={quote.id} style={styles.quoteCard}>
-                                    <Icon name="speech" size={24} color={theme.colors.primary} style={styles.quoteIcon} />
+                                    <MessageSquareQuote size={24} color={theme.colors.primary} style={styles.quoteIcon} />
                                     <Text style={styles.quoteText}>"{quote.content}"</Text>
                                     <View style={styles.quoteFooter}>
                                         <Text style={styles.quoteUser}>@{quote.user.username}</Text>
@@ -382,7 +328,7 @@ export const BookDetailScreen = () => {
                             ))
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="speech" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <MessageSquareQuote size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Henüz alıntı yok.</Text>
                             </View>
                         )}
@@ -397,7 +343,7 @@ export const BookDetailScreen = () => {
                                 style={styles.addReviewButton}
                                 onPress={() => setShowReviewModal(true)}
                             >
-                                <Icon name="pencil" size={12} color="#fff" style={{ marginRight: 4 }} />
+                                <Pencil size={12} color="#fff" style={{ marginRight: 4 }} />
                                 <Text style={styles.addReviewButtonText}>Yorum Yap</Text>
                             </TouchableOpacity>
                         </View>
@@ -430,7 +376,7 @@ export const BookDetailScreen = () => {
                             ))
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="pencil" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <Pencil size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Henüz yorum yok.</Text>
                             </View>
                         )}
@@ -441,9 +387,13 @@ export const BookDetailScreen = () => {
         }
     };
 
+    // ... (Imports and existing logic remain)
+
+    // ... (State and Fetch logic remains same)
+
     if (isLoading) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
                 <BookLoader />
             </View>
         );
@@ -451,77 +401,138 @@ export const BookDetailScreen = () => {
 
     if (!book) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text>Kitap bulunamadı.</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                <Text style={{ color: theme.colors.text }}>Kitap bulunamadı.</Text>
             </View>
         );
     }
 
     const coverUrl = (book.volumeInfo?.imageLinks?.thumbnail || book.imageLinks?.thumbnail || book.image || 'https://via.placeholder.com/150').replace(/^http:/, 'https:');
+    const author = book.volumeInfo?.authors ? book.volumeInfo.authors.join(', ') : (book.authors ? book.authors.join(', ') : 'Bilinmiyor');
+    const pageCount = book.volumeInfo?.pageCount || book.pageCount;
+    const publishedDate = book.volumeInfo?.publishedDate || book.publishedDate || '';
 
-    return (
-        <ScrollView style={styles.container}>
-            <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
-
-            {/* Auto-save 'visited' status and metadata on load */}
-
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-                <Image
-                    source={{ uri: coverUrl }}
-                    style={styles.coverImage}
-                />
-                <View style={styles.headerInfo}>
-                    <Text style={styles.title}>{book.title}</Text>
-                    <Text style={styles.authorText}>
-                        {book.volumeInfo?.authors ? book.volumeInfo.authors.join(', ') : (book.authors ? book.authors.join(', ') : 'Bilinmiyor')}
-                    </Text>
-                    <Text style={styles.dateText}>
-                        {book.volumeInfo?.publishedDate || book.publishedDate || ''}
-                    </Text>
-                    <View style={{ marginTop: 8 }}>
-                        <LibraryStatusButton
-                            contentType="book"
-                            contentId={bookId}
-                            contentTitle={book.title}
-                            imageUrl={coverUrl}
-                            author={book.volumeInfo?.authors ? book.volumeInfo.authors.join(', ') : (book.authors ? book.authors.join(', ') : 'Bilinmiyor')}
-                        />
-                    </View>
-                </View>
+    // Stats Component for Layout
+    const renderStats = () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            {/* Rating */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Star size={16} color="#F59E0B" fill="#F59E0B" />
+                <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 14 }}>
+                    {book.volumeInfo?.averageRating || '4.5'}
+                </Text>
             </View>
 
-            <View style={styles.tabs}>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
-                    onPress={() => setActiveTab('overview')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Hakkında</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'quotes' && styles.activeTab]}
-                    onPress={() => setActiveTab('quotes')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>Alıntılar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
-                    onPress={() => setActiveTab('reviews')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Yorumlar</Text>
-                </TouchableOpacity>
-            </View >
+            {/* Pages */}
+            {pageCount && (
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                    {pageCount} sayfa
+                </Text>
+            )}
 
-            {
-                isLoading ? (
-                    <ActivityIndicator style={{ marginTop: 20 }} color={theme.colors.primary} />
-                ) : (
-                    renderTabContent()
-                )
-            }
+            {/* Genre Tag */}
+            {book.volumeInfo?.categories && (
+                <View style={{ backgroundColor: theme.colors.secondary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                    <Text style={{ color: theme.colors.secondary, fontSize: 11, fontWeight: '600' }}>
+                        {book.volumeInfo.categories[0]}
+                    </Text>
+                </View>
+            )}
+        </View>
+    );
+
+    // Actions Component for Layout
+    const renderActions = () => (
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+            {/* Library Status Button - Reuse existing logic but style match */}
+            <View style={{ flex: 1 }}>
+                <LibraryStatusButton
+                    contentType="book"
+                    contentId={bookId}
+                    contentTitle={book.title}
+                    imageUrl={coverUrl}
+                    author={author}
+                />
+            </View>
+
+            {/* Reviews Button (Shortcut) */}
+            <TouchableOpacity
+                style={{
+                    flex: 1,
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    gap: 8,
+                    ...theme.shadows.soft
+                }}
+                onPress={() => setActiveTab('reviews')}
+            >
+                <MessageCircle size={18} color="#FFF" />
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Yorum Yap</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    // Header Actions (Bookmark/Share)
+    const renderHeaderActions = () => (
+        <>
+            <TouchableOpacity style={{
+                width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center'
+            }}>
+                <Bookmark size={20} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={{
+                width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center'
+            }}>
+                <Share2 size={20} color="#FFF" />
+            </TouchableOpacity>
+        </>
+    );
+
+
+    return (
+        <>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <ContentDetailLayout
+                title={book.title}
+                image={coverUrl}
+                subtitle={author}
+                metaText={publishedDate ? `Yayınlanma: ${publishedDate}` : ''}
+                stats={renderStats()}
+                actions={renderActions()}
+                headerActions={renderHeaderActions()}
+            >
+                {/* Tabs */}
+                <View style={styles.tabs}>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+                        onPress={() => setActiveTab('overview')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Hakkında</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'quotes' && styles.activeTab]}
+                        onPress={() => setActiveTab('quotes')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>Alıntılar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
+                        onPress={() => setActiveTab('reviews')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Yorumlar</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Content */}
+                <View style={{ minHeight: 300 }}>
+                    {renderTabContent()}
+                </View>
+            </ContentDetailLayout>
+
 
             <ReviewModal
                 visible={showReviewModal}
@@ -545,7 +556,7 @@ export const BookDetailScreen = () => {
                 initialContentType="book"
                 initialContentId={bookId}
             />
-        </ScrollView >
+        </>
     );
 };
 

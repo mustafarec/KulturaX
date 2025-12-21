@@ -21,6 +21,7 @@ $params = [
     'countryCode' => 'TR',
     'classificationName' => 'Music',
     'sort' => 'date,asc',
+    'startDateTime' => '2000-01-01T00:00:00Z', // Include past events
     'page' => $page,
     'size' => 20
 ];

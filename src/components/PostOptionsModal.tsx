@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Trash2, Pin, PinOff, Heart, EyeOff, Flag, Bookmark } from 'lucide-react-native';
 
 interface PostOptionsModalProps {
     visible: boolean;
@@ -13,9 +13,22 @@ interface PostOptionsModalProps {
     targetPosition?: { x: number; y: number; width: number; height: number } | null;
     isPinned?: boolean;
     onTogglePin?: () => void;
+    onToggleSave?: () => void;
+    isSaved?: boolean;
 }
 
-export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onClose, onDelete, isOwner, targetPosition, onFeedback, isPinned, onTogglePin }) => {
+export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({
+    visible,
+    onClose,
+    onDelete,
+    isOwner,
+    targetPosition,
+    onFeedback,
+    isPinned,
+    onTogglePin,
+    onToggleSave,
+    isSaved
+}) => {
     const { theme } = useTheme();
 
     if (!visible || !targetPosition) return null;
@@ -27,11 +40,19 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
     const top = targetPosition.y + targetPosition.height + 6;
 
     const options = [
-        // Save Option Removed
+        ...(onToggleSave ? [{
+            label: isSaved ? 'Kaydedilenlerden Çıkar' : 'Kaydet',
+            icon: Bookmark,
+            color: theme.colors.text,
+            onPress: () => {
+                onClose();
+                onToggleSave();
+            }
+        }] : []),
 
         ...(isOwner ? [{
             label: 'Sil',
-            icon: 'trash',
+            icon: Trash2,
             color: theme.colors.error,
             onPress: () => {
                 onClose();
@@ -40,7 +61,7 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
         },
         {
             label: isPinned ? 'Sabitlemeyi Kaldır' : 'Profile Sabitle',
-            icon: isPinned ? 'pricetag' : 'pricetag-outline',
+            icon: isPinned ? PinOff : Pin,
             color: theme.colors.text,
             onPress: () => {
                 onClose();
@@ -49,7 +70,7 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
         }] : [
             {
                 label: 'Bunu daha çok göster',
-                icon: 'heart-circle-outline',
+                icon: Heart,
                 color: theme.colors.primary,
                 onPress: () => {
                     onClose();
@@ -58,7 +79,7 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
             },
             {
                 label: 'İlgilenmiyorum',
-                icon: 'eye-off-outline',
+                icon: EyeOff,
                 color: theme.colors.textSecondary,
                 onPress: () => {
                     onClose();
@@ -67,7 +88,7 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
             },
             {
                 label: 'Bildir',
-                icon: 'alert-circle-outline',
+                icon: Flag,
                 color: theme.colors.error,
                 onPress: () => {
                     onClose();
@@ -110,7 +131,7 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({ visible, onC
                                     activeOpacity={0.7}
                                 >
                                     <View style={styles.itemLeft}>
-                                        <Icon name={option.icon} size={18} color={option.color} style={styles.icon} />
+                                        <option.icon size={18} color={option.color} style={styles.icon} />
                                         <Text style={[styles.menuText, { color: option.color, fontFamily: theme.fonts.main }]}>{option.label}</Text>
                                     </View>
                                 </TouchableOpacity>
@@ -130,7 +151,7 @@ const styles = StyleSheet.create({
     },
     dropdown: {
         position: 'absolute',
-        minWidth: 160,
+        minWidth: 180,
         maxWidth: 260,
         borderRadius: 12,
         borderWidth: 1,
@@ -144,7 +165,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 12,
         borderRadius: 8,
         marginBottom: 2,
@@ -159,6 +180,5 @@ const styles = StyleSheet.create({
     menuText: {
         fontSize: 14,
         fontWeight: '500',
-        // fontFamily will be applied dynamically via style prop or we can inject theme here if we move styles inside component or pass font
     },
 });

@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Switch, TouchableWithoutFeedback, Animated, Dimensions, Easing } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/Ionicons';
+
 
 const { height } = Dimensions.get('window');
 
@@ -217,8 +217,11 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
                                         onPress={() => setDarkThemeStyle('dim')}
                                     >
                                         <Text style={styles.radioLabel}>Kahverengi</Text>
-                                        <View style={[styles.radioButton, darkThemeStyle === 'dim' && styles.radioButtonSelected]}>
-                                            {darkThemeStyle === 'dim' && <View style={styles.radioButtonInner} />}
+                                        <View style={[
+                                            styles.radioButton,
+                                            darkThemeStyle === 'dim' && { borderColor: '#8B7355' } // Brown color
+                                        ]}>
+                                            {darkThemeStyle === 'dim' && <View style={[styles.radioButtonInner, { backgroundColor: '#8B7355' }]} />}
                                         </View>
                                     </TouchableOpacity>
 
@@ -227,8 +230,11 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({ visible,
                                         onPress={() => setDarkThemeStyle('black')}
                                     >
                                         <Text style={styles.radioLabel}>Işıkları kapat</Text>
-                                        <View style={[styles.radioButton, darkThemeStyle === 'black' && styles.radioButtonSelected]}>
-                                            {darkThemeStyle === 'black' && <View style={styles.radioButtonInner} />}
+                                        <View style={[
+                                            styles.radioButton,
+                                            darkThemeStyle === 'black' && { borderColor: theme.colors.text } // Use text color (white/cream) for contrast against black
+                                        ]}>
+                                            {darkThemeStyle === 'black' && <View style={[styles.radioButtonInner, { backgroundColor: theme.colors.text }]} />}
                                         </View>
                                     </TouchableOpacity>
                                 </View>

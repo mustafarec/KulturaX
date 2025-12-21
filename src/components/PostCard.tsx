@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { formatRelativeTime } from '../utils/dateUtils';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { QuoteCard } from './QuoteCard';
+import { Repeat, MoreVertical, Heart, MessageCircle, Share, Bookmark, Quote, BookOpen } from 'lucide-react-native';
+import { Avatar } from './ui/Avatar';
+import { Card } from './ui/Card';
+import { Badge } from './ui/Badge';
+import { usePostInteractions, PostUpdateFn } from '../hooks/usePostInteractions';
+import { RepostMenu } from './RepostMenu';
 
 interface PostCardProps {
     post: any;
@@ -20,6 +23,8 @@ interface PostCardProps {
     onSave?: () => void;
     isSaved?: boolean;
     onShare?: () => void;
+    onTopicPress?: (topicId: number, topicName: string) => void;
+    onUpdatePost?: PostUpdateFn; // New Prop for self-contained logic
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -35,13 +40,16 @@ export const PostCard: React.FC<PostCardProps> = ({
     onContentPress,
     onSave,
     isSaved,
-    onShare
+    onShare,
+    onTopicPress,
+    onUpdatePost
 }) => {
     const { theme } = useTheme();
-
-
-
     const optionsButtonRef = React.useRef<any>(null);
+    const [internalRepostMenuVisible, setInternalRepostMenuVisible] = useState(false);
+
+    // Initialize Hook
+    const interactions = usePostInteractions({ onUpdatePost });
 
     const handleOptionsPress = () => {
         if (onOptions && optionsButtonRef.current) {
@@ -51,194 +59,25 @@ export const PostCard: React.FC<PostCardProps> = ({
         }
     };
 
-    const styles = React.useMemo(() => StyleSheet.create({
-        container: {
-            backgroundColor: theme.colors.surface,
-            paddingVertical: 12,
-            paddingHorizontal: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-        },
-        repostHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 4,
-            marginLeft: 42,
-        },
-        pinnedHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 4,
-            marginLeft: 42,
-        },
-        repostText: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-            fontWeight: '600',
-        },
-        cardContent: {
-            flexDirection: 'row',
-        },
-        avatarContainer: {
-            marginRight: 12,
-            alignSelf: 'flex-start',
-        },
-        avatar: {
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-        },
-        avatarPlaceholder: {
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: theme.colors.secondary,
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-        avatarText: {
-            color: '#FFFFFF',
-            fontWeight: 'bold',
-            fontSize: 18,
-        },
-        mainContent: {
-            flex: 1,
-        },
-        headerRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 2,
-        },
-        userInfo: {
-            flexDirection: 'column',
-            justifyContent: 'center',
-            flex: 1,
-            marginLeft: 0,
-        },
-        userInfoRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-        },
-        name: {
-            fontWeight: '700',
-            fontSize: 15,
-            color: theme.colors.text,
-            marginBottom: 2,
-        },
-        username: {
-            color: (theme as any).id === 'dim' ? '#D6D3D1' : theme.colors.textSecondary,
-            fontSize: 13,
-            marginRight: 4,
-            fontWeight: '400',
-        },
-        dot: {
-            color: theme.colors.textSecondary,
-            fontSize: 13,
-            marginRight: 4,
-        },
-        time: {
-            color: theme.colors.textSecondary,
-            fontSize: 13,
-        },
-        content: {
-            fontSize: 15,
-            color: theme.colors.text,
-            lineHeight: 20,
-            marginTop: 6, // Added space from header
-            marginBottom: 4, // Reduced space to card
-        },
-        footer: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            paddingRight: 16,
-            marginTop: 4,
-        },
-        actionButton: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 4,
-        },
-        actionIcon: {
-            marginRight: 6,
-        },
-        actionCount: {
-            fontSize: 12,
-            color: theme.colors.primary,
-            fontWeight: '500',
-        },
-        likedText: {
-            color: theme.colors.primary,
-        },
-        repostedText: {
-            color: theme.colors.primary,
-        },
-        socialQuoteContainer: {
-            borderWidth: 2,
-            borderColor: theme.colors.primary,
-            borderRadius: 12,
-            padding: 12,
-            marginTop: 4,
-        },
-        socialQuoteHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 8,
-        },
-        socialQuoteAvatar: {
-            width: 20,
-            height: 20,
-            borderRadius: 10,
-            marginRight: 8,
-        },
-        socialQuoteAvatarPlaceholder: {
-            width: 20,
-            height: 20,
-            borderRadius: 10,
-            backgroundColor: theme.colors.secondary,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: 8,
-        },
-        socialQuoteAvatarText: {
-            color: '#FFFFFF',
-            fontWeight: 'bold',
-            fontSize: 10,
-        },
-        socialQuoteUserInfo: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            flex: 1,
-            flexWrap: 'wrap',
-        },
-        socialQuoteName: {
-            fontWeight: '700',
-            fontSize: 14,
-            color: theme.colors.text,
-            marginRight: 4,
-        },
-        socialQuoteUsername: {
-            color: theme.colors.textSecondary,
-            fontSize: 13,
-            marginRight: 4,
-        },
-        socialQuoteDot: {
-            color: theme.colors.textSecondary,
-            fontSize: 13,
-            marginRight: 4,
-        },
-        socialQuoteTime: {
-            color: theme.colors.textSecondary,
-            fontSize: 12,
-        },
-        socialQuoteContent: {
-            fontSize: 14,
-            color: theme.colors.text,
-            lineHeight: 20,
-        },
-    }), [theme]);
-    const isRepost = !!post.original_post_id;
+    // Derived Handlers (Use Prop if exists, else Hook)
+    const handleLike = onLike || (() => interactions.handleLike(post));
+    // Save uses "isSaved" prop usually, but hook gets it from item.
+    // If onSave is passed, parent manages state. If NOT passed, we use hook. 
+    // BUT hook assumes item has is_saved. 
+    // We should trust the hook if we simply want "toggle".
+    const handleSave = onSave || (() => interactions.handleToggleSave(post));
 
+    // Repost is Tricky: Prop triggers menu usually.
+    // If Prop exists -> Call it (Parent handles menu).
+    // If Prop missing -> Set internal menu visible.
+    const handleRepost = onRepost || (() => setInternalRepostMenuVisible(true));
+
+    // Content/User Press
+    const handleContent = onContentPress || interactions.handleContentPress;
+    const handleUser = onUserPress || interactions.handleUserPress;
+
+    // --- LOGIC BLOCK: PRESERVING EXISTING DATA PARSING ---
+    const isRepost = !!post.original_post_id;
     const isQuoteRepost = isRepost && post.original_post &&
         post.content !== 'Yeniden paylaşım' &&
         post.content !== post.original_post.content;
@@ -271,28 +110,11 @@ export const PostCard: React.FC<PostCardProps> = ({
                 }
             }
         } catch (e) {
+            // Fallback logic
             if (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music' || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce')) {
                 displayQuote = displayPost.content;
             } else {
                 displayComment = displayPost.content;
-            }
-        }
-    }
-
-    let originalQuote = '';
-    if (isRepost && post.original_post) {
-        if (post.original_post.quote_text != null) {
-            originalQuote = post.original_post.quote_text;
-        } else {
-            try {
-                if (post.original_post.content && post.original_post.content.startsWith('{')) {
-                    const parsed = JSON.parse(post.original_post.content);
-                    originalQuote = parsed.quote || post.original_post.content;
-                } else {
-                    originalQuote = post.original_post.content;
-                }
-            } catch (e) {
-                originalQuote = post.original_post.content;
             }
         }
     }
@@ -302,229 +124,315 @@ export const PostCard: React.FC<PostCardProps> = ({
         if (post.original_post) {
             displayUser = post.original_post.user;
         } else if (post.author) {
-            displayUser = {
-                username: post.author,
-                full_name: post.author,
-                avatar_url: null
-            };
+            displayUser = { username: post.author, full_name: post.author, avatar_url: null };
         }
     }
+    // --- END LOGIC BLOCK ---
 
-    const showQuoteCard = isQuoteRepost || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce');
+    const styles = StyleSheet.create({
+        container: {
+            marginBottom: theme.spacing.m,
+            borderBottomWidth: 0,
+        },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: theme.spacing.s,
+            paddingRight: 20,
+        },
+        optionsButton: {
+            position: 'absolute',
+            top: 12, // Aligned with typical padding
+            right: 12,
+            zIndex: 10,
+            padding: 4,
+        },
+        userInfo: {
+            flex: 1,
+            marginLeft: theme.spacing.s,
+        },
+        name: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.text,
+            fontFamily: 'Roboto-Regular',
+        },
+        meta: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 2,
+        },
+        username: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.main,
+        },
+        dot: {
+            marginHorizontal: 4,
+            color: theme.colors.textSecondary,
+            fontSize: 10,
+        },
+        time: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.main,
+        },
+        content: {
+            fontSize: 15,
+            lineHeight: 22,
+            color: theme.colors.text,
+            marginBottom: theme.spacing.m,
+            fontFamily: theme.fonts.main,
+        },
+        bookCard: {
+            backgroundColor: theme.colors.muted,
+            borderRadius: theme.borderRadius.m,
+            padding: theme.spacing.m,
+            flexDirection: 'row',
+            marginBottom: theme.spacing.m,
+        },
+        bookCover: {
+            width: 60,
+            height: 90,
+            borderRadius: theme.borderRadius.s,
+            backgroundColor: theme.colors.secondary,
+        },
+        bookInfo: {
+            flex: 1,
+            marginLeft: theme.spacing.m,
+            justifyContent: 'center',
+        },
+        bookTitle: {
+            fontSize: 16,
+            fontWeight: '700',
+            color: theme.colors.primary,
+            fontFamily: theme.fonts.headings || theme.fonts.main,
+            marginBottom: 4,
+        },
+        bookAuthor: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.main,
+        },
+        quoteBox: {
+            backgroundColor: theme.colors.background,
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.primary,
+            padding: theme.spacing.m,
+            borderRadius: theme.borderRadius.s,
+            marginBottom: theme.spacing.m,
+        },
+        quoteText: {
+            fontSize: 16,
+            fontStyle: 'italic',
+            color: theme.colors.text,
+            fontFamily: theme.fonts.quote || theme.fonts.main,
+            lineHeight: 24,
+        },
+        footer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingTop: theme.spacing.s,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+        },
+        actionBtn: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 8,
+        },
+        actionText: {
+            fontSize: 13,
+            marginLeft: 6,
+            fontWeight: '500',
+        }
+    });
 
-    // Custom Interaction Colors
-    // Lights Out (Black) mode gets the special Cool Gray inactive color.
-    // Light/Dim modes keep their textSecondary color to match the warm theme.
-    // Active colors (Like/Repost) remain the new global defaults.
-    const isBlackTheme = (theme as any).id === 'black';
+    const isBlackTheme = theme.id === 'black';
     const interactionColors = {
         inactive: isBlackTheme ? '#9ca3af' : theme.colors.textSecondary,
         like: '#f91880',
         repost: '#22c55e',
-        comment: '#EA9A65',
+        comment: theme.colors.textSecondary,
     };
 
-    const likeColor = displayPost.is_liked ? interactionColors.like : interactionColors.inactive;
-    const repostColor = displayPost.is_reposted ? interactionColors.repost : interactionColors.inactive;
-    const commentColor = interactionColors.inactive; // Keeping inactive color (theme dependent)
+    // Check internal logic for Repost Status (if passed prop is missing, we use post item)
+    const isAlreadyReposted = onRepost ? undefined : (post.is_reposted || (post.original_post && post.original_post.is_reposted));
 
     return (
-        <View style={styles.container}>
+        <Card style={styles.container} variant="default" padding="md">
+            {onOptions && (
+                <TouchableOpacity onPress={handleOptionsPress} style={styles.optionsButton}>
+                    <View ref={optionsButtonRef} collapsable={false}>
+                        <MoreVertical size={20} color={theme.colors.textSecondary} />
+                    </View>
+                </TouchableOpacity>
+            )}
+
+            {/* Repost Indicator */}
             {isRepost && !isQuoteRepost && (
-                <TouchableOpacity onPress={onReposterPress} style={styles.repostHeader}>
-                    <Icon name="loop" size={12} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
-                    <Text style={styles.repostText}>
+                <TouchableOpacity onPress={onReposterPress} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <Repeat size={12} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: '600' }}>
                         {post.user.full_name || post.user.username} yeniden gönderdi
                     </Text>
                 </TouchableOpacity>
             )}
 
-            {(post.is_pinned === 1 || post.is_pinned === true || post.is_pinned === '1') && (
-                <View style={styles.pinnedHeader}>
-                    <Ionicons name="pricetag" size={12} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
-                    <Text style={styles.repostText}>
-                        Sabitlenmiş Gönderi
-                    </Text>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => handleUser(displayUser.id)}>
+                    <Avatar
+                        src={displayUser.avatar_url}
+                        alt={displayUser.username}
+                        size="md"
+                    />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.userInfo} onPress={() => handleUser(displayUser.id)}>
+                    <Text style={styles.name}>{displayUser.full_name || displayUser.username}</Text>
+                    <View style={styles.meta}>
+                        <Text style={styles.username}>@{displayUser.username}</Text>
+                        <Text style={styles.dot}>•</Text>
+                        <Text style={styles.time}>{formatRelativeTime(post.created_at || Date.now())}</Text>
+                        {post.topic_name && (
+                            <>
+                                <Text style={styles.dot}>•</Text>
+                                <TouchableOpacity
+                                    onPress={() => onTopicPress && post.topic_id && onTopicPress(post.topic_id, post.topic_name)}
+                                    disabled={!onTopicPress || !post.topic_id}
+                                >
+                                    <Badge variant="secondary">
+                                        {post.topic_name}
+                                    </Badge>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
+                </TouchableOpacity>
+
+            </View>
+
+            {/* Content Text */}
+            {displayComment ? (
+                <TouchableOpacity onPress={onPress}>
+                    <Text style={styles.content}>{displayComment}</Text>
+                </TouchableOpacity>
+            ) : null}
+
+            {/* Book Info Card (Always shown if it's a book/movie post) */}
+            {(displayPost.content_type === 'book' || displayPost.content_type === 'movie') && (
+                <View style={{ marginBottom: theme.spacing.m }}>
+                    {/* Book Details */}
+                    <TouchableOpacity
+                        style={styles.bookCard}
+                        onPress={() => handleContent(displayPost.content_type, displayPost.content_id)}
+                    >
+                        <Image
+                            source={{ uri: displayPost.image_url || 'https://via.placeholder.com/150' }}
+                            style={styles.bookCover}
+                            resizeMode="cover"
+                        />
+                        <View style={styles.bookInfo}>
+                            <Text style={styles.bookTitle}>{displayPost.source || 'Başlık Yok'}</Text>
+                            <Text style={styles.bookAuthor}>{displayPost.author || 'Bilinmeyen'}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                <BookOpen size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Şu an okuyor</Text>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Separated Quote Card (If quote exists) */}
+                    {displayQuote ? (
+                        <View style={[styles.quoteBox, { marginTop: 0 }]}>
+                            <Quote size={32} color={theme.colors.primary} style={{ opacity: 0.2, position: 'absolute', top: 12, right: 12 }} />
+                            <TouchableOpacity onPress={onPress}>
+                                <Text style={styles.quoteText}>"{displayQuote}"</Text>
+                            </TouchableOpacity>
+
+                        </View>
+                    ) : null}
                 </View>
             )}
 
-            <View style={styles.cardContent}>
-                <TouchableOpacity onPress={() => onUserPress && onUserPress(displayUser.id)} style={styles.avatarContainer}>
-                    {displayUser.avatar_url ? (
-                        <Image source={{ uri: displayUser.avatar_url }} style={styles.avatar} />
-                    ) : (
-                        <View style={styles.avatarPlaceholder}>
-                            <Text style={styles.avatarText}>
-                                {displayUser.username ? displayUser.username.charAt(0).toUpperCase() : '?'}
-                            </Text>
-                        </View>
-                    )}
+            {/* Fallback for other content types (Music, etc.) or just image posts */}
+            {!(displayPost.content_type === 'book' || displayPost.content_type === 'movie') && displayPost.image_url && (
+                <TouchableOpacity
+                    style={styles.bookCard}
+                    onPress={() => handleContent(displayPost.content_type, displayPost.content_id)}
+                >
+                    <Image
+                        source={{ uri: displayPost.image_url || 'https://via.placeholder.com/150' }}
+                        style={styles.bookCover}
+                        resizeMode="cover"
+                    />
+                    <View style={styles.bookInfo}>
+                        <Text style={styles.bookTitle}>{displayPost.source || 'Başlık Yok'}</Text>
+                        <Text style={styles.bookAuthor}>{displayPost.author || 'Bilinmeyen'}</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
+
+            {/* Quote Only (if not book/movie specific but has quote logic e.g. from JSON) */}
+            {!(displayPost.content_type === 'book' || displayPost.content_type === 'movie') && displayQuote ? (
+                <View style={styles.quoteBox}>
+                    <TouchableOpacity onPress={onPress}>
+                        <Text style={styles.quoteText}>"{displayQuote}"</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
+
+            {/* Interactions Footer */}
+            <View style={styles.footer}>
+                <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+                    <Heart
+                        size={18}
+                        color={displayPost.is_liked ? interactionColors.like : interactionColors.inactive}
+                        fill={displayPost.is_liked ? interactionColors.like : 'transparent'}
+                    />
+                    <Text style={[styles.actionText, { color: displayPost.is_liked ? interactionColors.like : interactionColors.inactive }]}>
+                        {displayPost.like_count || 0}
+                    </Text>
                 </TouchableOpacity>
 
-                <View style={styles.mainContent}>
-                    <View style={styles.headerRow}>
-                        <TouchableOpacity onPress={() => onUserPress && onUserPress(displayUser.id)} style={styles.userInfo}>
-                            <Text style={styles.name} numberOfLines={1}>
-                                {displayUser.full_name || displayUser.username}
-                            </Text>
-                            <View style={styles.userInfoRow}>
-                                <Text style={styles.username} numberOfLines={1}>
-                                    @{displayUser.username}
-                                </Text>
-                                <Text style={styles.dot}>·</Text>
-                                <Text style={styles.time}>
-                                    {formatRelativeTime(post.created_at || Date.now())}
-                                </Text>
-                                {post.topic_name && (
-                                    <>
-                                        <Text style={styles.dot}>·</Text>
-                                        <Text style={[styles.time, { color: theme.colors.primary, fontWeight: '500' }]}>
-                                            {post.topic_name}
-                                        </Text>
-                                    </>
-                                )}
-                            </View>
-                        </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={onComment}>
+                    <MessageCircle size={18} color={interactionColors.comment} />
+                    <Text style={[styles.actionText, { color: interactionColors.inactive }]}>
+                        {displayPost.comment_count || 0}
+                    </Text>
+                </TouchableOpacity>
 
-                        {onOptions && (
-                            <TouchableOpacity
-                                ref={optionsButtonRef}
-                                onPress={handleOptionsPress}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.textSecondary} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                <TouchableOpacity style={styles.actionBtn} onPress={handleRepost}>
+                    <Repeat size={18} color={displayPost.is_reposted ? interactionColors.repost : interactionColors.inactive} />
+                    <Text style={[styles.actionText, { color: displayPost.is_reposted ? interactionColors.repost : interactionColors.inactive }]}>
+                        {displayPost.repost_count || 0}
+                    </Text>
+                </TouchableOpacity>
 
-                    {displayComment ? (
-                        <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-                            <Text style={styles.content}>{displayComment}</Text>
-                        </TouchableOpacity>
-                    ) : null}
+                <TouchableOpacity style={styles.actionBtn} onPress={handleSave}>
+                    <Bookmark
+                        size={18}
+                        color={(isSaved !== undefined ? isSaved : post.is_saved) ? theme.colors.primary : interactionColors.inactive}
+                        fill={(isSaved !== undefined ? isSaved : post.is_saved) ? theme.colors.primary : 'transparent'}
+                    />
+                </TouchableOpacity>
 
-                    {showQuoteCard && (
-                        <View style={{ marginTop: 0, marginBottom: 8 }}>
-                            {isQuoteRepost ? (
-                                <View style={styles.socialQuoteContainer}>
-                                    <TouchableOpacity onPress={() => onContentPress && post.original_post.content_id ? null : (onPress && onPress())} activeOpacity={0.9}>
-                                        <View style={styles.socialQuoteHeader}>
-                                            <TouchableOpacity
-                                                style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
-                                                onPress={() => onUserPress && onUserPress(post.original_post.user.id)}
-                                            >
-                                                {post.original_post.user.avatar_url ? (
-                                                    <Image source={{ uri: post.original_post.user.avatar_url }} style={styles.socialQuoteAvatar} />
-                                                ) : (
-                                                    <View style={styles.socialQuoteAvatarPlaceholder}>
-                                                        <Text style={styles.socialQuoteAvatarText}>
-                                                            {post.original_post.user.username ? post.original_post.user.username.charAt(0).toUpperCase() : '?'}
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                                <View style={styles.socialQuoteUserInfo}>
-                                                    <Text style={styles.socialQuoteName} numberOfLines={1}>
-                                                        {post.original_post.user.full_name || post.original_post.user.username}
-                                                    </Text>
-                                                    <Text style={styles.socialQuoteUsername} numberOfLines={1}>
-                                                        @{post.original_post.user.username}
-                                                    </Text>
-                                                    <Text style={styles.socialQuoteDot}>·</Text>
-                                                    <Text style={styles.socialQuoteTime}>
-                                                        {formatRelativeTime(post.original_post.created_at || Date.now())}
-                                                    </Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        {post.original_post.content ? (
-                                            <Text style={styles.socialQuoteContent}>{post.original_post.content.startsWith('{') ? (JSON.parse(post.original_post.content).comment || '') : post.original_post.content}</Text>
-                                        ) : null}
-                                    </TouchableOpacity>
-
-                                    {(post.original_post.content_type === 'book' || post.original_post.content_type === 'movie' || post.original_post.content_type === 'music') && (
-                                        <QuoteCard
-                                            text={originalQuote}
-                                            source={post.original_post.source}
-                                            author={post.original_post.author}
-                                            variant="compact"
-                                            imageUrl={post.original_post.image_url}
-                                            status={post.original_post.content_type === 'book' ? 'Kitabı okuyor' : undefined}
-                                            onPress={() => {
-                                                if (onContentPress && post.original_post.content_id) {
-                                                    onContentPress(post.original_post.content_type, post.original_post.content_id);
-                                                }
-                                            }}
-                                        />
-                                    )}
-                                </View>
-                            ) : (
-                                <QuoteCard
-                                    // Normal post (Direct share)
-                                    text={displayQuote}
-                                    source={displayPost.source === 'Paylaşım' ? 'Gönderi' : displayPost.source}
-                                    author={displayPost.author}
-                                    variant="compact"
-                                    imageUrl={displayPost.image_url}
-                                    status={displayPost.content_type === 'book' ? 'Kitabı okuyor' : undefined}
-                                    onPress={() => {
-                                        if (onContentPress && displayPost.content_id) {
-                                            onContentPress(displayPost.content_type, displayPost.content_id);
-                                        }
-                                    }}
-                                />
-                            )}
-                        </View>
-                    )}
-
-
-
-                    <View style={styles.footer}>
-                        <TouchableOpacity style={styles.actionButton} onPress={onComment}>
-                            <Icon name="bubble" size={16} color={commentColor} style={styles.actionIcon} />
-                            <Text style={[styles.actionCount, { color: interactionColors.inactive }]}>{displayPost.comment_count || 0}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionButton} onPress={onRepost}>
-                            <Icon
-                                name="loop"
-                                size={16}
-                                color={repostColor}
-                                style={styles.actionIcon}
-                            />
-                            <Text style={[styles.actionCount, { color: displayPost.is_reposted ? repostColor : interactionColors.inactive }]}>
-                                {displayPost.repost_count || 0}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionButton} onPress={onLike}>
-                            <Icon
-                                name={displayPost.is_liked ? "heart" : "heart"}
-                                size={16}
-                                color={likeColor}
-                                style={styles.actionIcon}
-                            />
-                            <Text style={[styles.actionCount, { color: displayPost.is_liked ? likeColor : interactionColors.inactive }]}>
-                                {displayPost.like_count || 0}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
-                            {/* Share button placeholder, keeping it generic or maybe user wants save here. Let's add Save next to it. */}
-                            <Icon name="share" size={16} color={interactionColors.inactive} style={styles.actionIcon} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionButton} onPress={onSave}>
-                            <Ionicons
-                                name={isSaved ? "bookmark" : "bookmark-outline"}
-                                size={16}
-                                color={isSaved ? theme.colors.primary : interactionColors.inactive}
-                                style={styles.actionIcon}
-                            />
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                <TouchableOpacity style={styles.actionBtn} onPress={onShare}>
+                    <Share size={18} color={interactionColors.inactive} />
+                </TouchableOpacity>
             </View>
-        </View>
+
+            {/* Internal Repost Menu */}
+            {!onRepost && (
+                <RepostMenu
+                    visible={internalRepostMenuVisible}
+                    onClose={() => setInternalRepostMenuVisible(false)}
+                    onDirectRepost={() => interactions.handleDirectRepost(post, () => setInternalRepostMenuVisible(false))}
+                    onQuoteRepost={() => interactions.handleQuoteRepost(post, () => setInternalRepostMenuVisible(false))}
+                    isReposted={!!isAlreadyReposted}
+                />
+            )}
+        </Card>
     );
 };

@@ -3,14 +3,16 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image,
 import Toast from 'react-native-toast-message';
 import ViewShot from 'react-native-view-shot';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { QuoteCard } from '../../components/QuoteCard';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { postService, libraryService, spotifyService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { tmdbApi } from '../../services/tmdbApi';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { X, Tag, XCircle, Search, User, FileText } from 'lucide-react-native';
 import { TopicSelectionModal } from '../../components/TopicSelectionModal';
 
 export const CreateQuoteScreen = () => {
@@ -45,156 +47,9 @@ export const CreateQuoteScreen = () => {
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
 
-    // Theme check
     const isDark = theme.dark;
-
-    const styles = React.useMemo(() => StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: theme.colors.background,
-        },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: Platform.OS === 'ios' ? 60 : 40,
-            paddingBottom: 16,
-            backgroundColor: theme.colors.background,
-            zIndex: 10,
-        },
-        closeButton: {
-            padding: 8,
-            borderRadius: 20,
-            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-        },
-        headerTitle: {
-            fontSize: 17,
-            fontWeight: '600',
-            color: theme.colors.text,
-            letterSpacing: -0.5,
-        },
-        shareButton: {
-            backgroundColor: theme.colors.primary,
-            paddingVertical: 10,
-            paddingHorizontal: 20,
-            borderRadius: 24,
-            elevation: 4,
-            shadowColor: theme.colors.primary,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-        },
-        shareButtonText: {
-            color: '#fff',
-            fontWeight: '600',
-            fontSize: 14,
-        },
-        content: {
-            padding: 24,
-            gap: 24,
-        },
-        mainCardContainer: {
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
-        section: {
-            gap: 12,
-        },
-        sectionTitle: {
-            fontSize: 14,
-            fontWeight: '600',
-            color: theme.colors.textSecondary,
-            marginLeft: 4,
-            textTransform: 'uppercase',
-            letterSpacing: 0.5,
-        },
-        cleanInputContainer: {
-            backgroundColor: theme.colors.surface,
-            borderRadius: 20,
-            padding: 16,
-            ...theme.shadows.soft,
-        },
-        cleanInput: {
-            fontSize: 16,
-            color: theme.colors.text,
-            minHeight: 120,
-            textAlignVertical: 'top',
-        },
-        singleInputContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: theme.colors.surface,
-            borderRadius: 16,
-            paddingHorizontal: 16,
-            height: 56,
-            ...theme.shadows.soft,
-        },
-        singleInput: {
-            flex: 1,
-            fontSize: 15,
-            color: theme.colors.text,
-            marginLeft: 12,
-        },
-        dropdown: {
-            position: 'absolute',
-            top: 70, // Below source input
-            left: 0,
-            right: 0,
-            backgroundColor: theme.colors.surface,
-            borderRadius: 16,
-            ...theme.shadows.soft,
-            zIndex: 100,
-            maxHeight: 240,
-        },
-        originalPostContainer: {
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            borderRadius: 12,
-            overflow: 'hidden',
-        },
-        dropdownItem: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 12,
-            borderBottomWidth: 0.5,
-            borderBottomColor: theme.colors.border,
-        },
-        dropdownImage: {
-            width: 40,
-            height: 40,
-            borderRadius: 8,
-            backgroundColor: theme.colors.border,
-            marginRight: 12,
-        },
-        statusScroll: {
-            paddingLeft: 4,
-        },
-        chip: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            borderRadius: 20,
-            backgroundColor: theme.colors.surface,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            marginRight: 8,
-        },
-        chipActive: {
-            backgroundColor: theme.colors.primary,
-            borderColor: theme.colors.primary,
-        },
-        chipText: {
-            fontSize: 13,
-            fontWeight: '500',
-            color: theme.colors.textSecondary,
-        },
-        chipTextActive: {
-            color: '#fff',
-        },
-    }), [theme]);
 
     const handleSearchSource = async (query: string) => {
         setSource(query);
@@ -206,7 +61,6 @@ export const CreateQuoteScreen = () => {
 
         setIsSearching(true);
         try {
-            // 1. Kitap, Film, Kişi ve Müzik araması yap
             const [books, movies, people, tracks] = await Promise.all([
                 googleBooksApi.searchBooks(query),
                 tmdbApi.searchMovies(query),
@@ -216,34 +70,29 @@ export const CreateQuoteScreen = () => {
 
             let allResults: any[] = [];
 
-            // 2. Kişi sonuçlarını işle (Yönetmen/Oyuncu)
             if (people && people.length > 0) {
-                const person = people[0]; // En iyi eşleşen kişiyi al
+                const person = people[0];
                 const credits = await tmdbApi.getPersonCredits(person.id);
-
-                // Kişinin filmlerini formatla
                 const personMovies = credits.slice(0, 10).map((movie: any) => ({
                     id: movie.id.toString(),
                     title: movie.title,
-                    subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : 'Tarih Yok'}) • ${person.name}`,
+                    subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'}) • ${person.name}`,
                     type: 'movie',
-                    author: person.name, // Yazar/Yönetmen kısmına aranan kişiyi koyuyoruz
-                    image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined
+                    author: person.name,
+                    image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
                 }));
                 allResults = [...allResults, ...personMovies];
             }
 
-            // 3. Normal film sonuçlarını formatla
             const formattedMovies = movies.slice(0, 5).map((movie: any) => ({
                 id: movie.id.toString(),
                 title: movie.title,
-                subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : 'Tarih Yok'})`,
+                subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'})`,
                 type: 'movie',
                 author: 'Film',
-                image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined
+                image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
             }));
 
-            // 4. Kitap sonuçlarını formatla
             const formattedBooks = books.slice(0, 5).map((book: any) => ({
                 id: book.id,
                 title: book.volumeInfo.title,
@@ -253,7 +102,6 @@ export const CreateQuoteScreen = () => {
                 image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:')
             }));
 
-            // 5. Müzik sonuçlarını formatla
             const formattedTracks = tracks.map((track: any) => ({
                 id: track.id,
                 title: track.title,
@@ -263,11 +111,8 @@ export const CreateQuoteScreen = () => {
                 image: track.image
             }));
 
-            // 6. Hepsini birleştir ve ID'ye göre tekrar edenleri kaldır
             allResults = [...allResults, ...formattedMovies, ...formattedBooks, ...formattedTracks];
-
             const uniqueResults = Array.from(new Map(allResults.map(item => [item.id + item.type, item])).values());
-
             setSearchResults(uniqueResults);
             setShowResults(true);
         } catch (error) {
@@ -279,32 +124,22 @@ export const CreateQuoteScreen = () => {
 
     const selectSource = async (item: any) => {
         setSource(item.title);
-
-        // Set initial author (might be 'Film' for movies found via general search)
-        if (item.author) {
-            setAuthor(item.author);
-        }
-
-        if (item.image) {
-            setSelectedImage(item.image);
-        }
+        if (item.author) setAuthor(item.author);
+        if (item.image) setSelectedImage(item.image);
         setSelectedType(item.type);
         setSelectedId(item.id);
         setShowResults(false);
         setStatus(null);
 
-        // If it's a movie and we don't have a specific author (it's just 'Film'), try to fetch the director
         if (item.type === 'movie' && item.author === 'Film') {
             try {
                 const credits = await tmdbApi.getMovieCredits(item.id);
                 if (credits && credits.crew) {
                     const director = credits.crew.find((person: any) => person.job === 'Director');
-                    if (director) {
-                        setAuthor(director.name);
-                    }
+                    if (director) setAuthor(director.name);
                 }
             } catch (error) {
-                console.error('Error fetching director:', error);
+                console.error(error);
             }
         }
     };
@@ -314,7 +149,6 @@ export const CreateQuoteScreen = () => {
             Toast.show({ type: 'error', text1: 'Hata', text2: 'Lütfen bir alıntı yazın.' });
             return;
         }
-
         if (!originalPost && mode !== 'thought' && (!source)) {
             Toast.show({ type: 'error', text1: 'Hata', text2: 'Lütfen kaynak belirtin.' });
             return;
@@ -324,32 +158,12 @@ export const CreateQuoteScreen = () => {
         try {
             if (user) {
                 if (originalPost) {
-                    await postService.create(
-                        user.id,
-                        '', // Quote is empty for reposts
-                        comment || '', // Comment
-                        'Paylaşım',
-                        originalPost.user.username,
-                        originalPost.id
-                    );
+                    await postService.create(user.id, '', comment || '', 'Paylaşım', originalPost.user.username, originalPost.id);
                 } else {
-                    // Thought mode defaults
                     const finalSource = mode === 'thought' ? 'Düşünce' : source;
                     const finalAuthor = mode === 'thought' ? user.username : author;
-
-                    // Thought mode: quote is empty, text goes to comment
-                    // Quote mode: quote is quoteText, comment is comment
                     const quotePayload = mode === 'thought' ? '' : (quoteText || '');
                     const commentPayload = mode === 'thought' ? (quoteText || '') : (comment || '');
-
-                    console.log('DEBUG: handleShare', {
-                        selectedType,
-                        initialType,
-                        finalSource,
-                        finalAuthor,
-                        quotePayload,
-                        commentPayload
-                    });
 
                     await postService.create(
                         user.id,
@@ -360,16 +174,14 @@ export const CreateQuoteScreen = () => {
                         undefined,
                         selectedType || initialType || undefined,
                         selectedId || initialId || undefined,
-                        selectedImage || initialImage, // Use the cover image directly
-                        selectedTopic?.id // Pass topic_id
+                        selectedImage || initialImage,
+                        selectedTopic?.id
                     );
 
-                    // Update library status if selected
                     if (status && selectedType && selectedId) {
                         await libraryService.updateStatus(user.id, selectedType, selectedId, status);
                     }
                 }
-
                 Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Paylaşıldı!' });
                 navigation.goBack();
             } else {
@@ -383,59 +195,185 @@ export const CreateQuoteScreen = () => {
         }
     };
 
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            paddingTop: insets.top + 10,
+            paddingBottom: 16,
+        },
+        headerTitle: {
+            fontSize: 20,
+            fontFamily: theme.fonts.headings,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+        },
+        backButton: {
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            backgroundColor: theme.colors.surface,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        scrollContent: {
+            padding: 24,
+            paddingBottom: 100, // Extra space for keyboard
+        },
+        sectionTitle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: theme.colors.textSecondary,
+            marginBottom: 8,
+            marginTop: 24,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+        },
+        textInputContainer: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.soft,
+        },
+        textInput: {
+            fontSize: 16,
+            color: theme.colors.text,
+            fontFamily: theme.fonts.main,
+            minHeight: 100,
+            textAlignVertical: 'top',
+        },
+        singleInputContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            paddingHorizontal: 16,
+            height: 56,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginBottom: 12,
+        },
+        singleInput: {
+            flex: 1,
+            fontSize: 15,
+            color: theme.colors.text,
+            marginLeft: 12,
+        },
+        dropdown: {
+            position: 'absolute',
+            top: 60,
+            left: 0,
+            right: 0,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            maxHeight: 250,
+            zIndex: 1000,
+            elevation: 10,
+        },
+        dropdownItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border + '50',
+        },
+        dropdownImage: {
+            width: 40,
+            height: 60,
+            borderRadius: 4,
+            backgroundColor: theme.colors.border,
+            marginRight: 12,
+        },
+        chip: {
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginRight: 8,
+            backgroundColor: theme.colors.surface,
+        },
+        chipActive: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+        },
+        chipText: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+            fontWeight: '600'
+        },
+        chipTextActive: {
+            color: '#fff',
+        },
+    }), [theme, insets.top]);
+
     const getStatusOptions = () => {
-        const opts = {
+        const opts: any = {
             book: [
-                { label: 'Okudum', value: 'read', icon: 'checkmark-circle-outline' },
-                { label: 'Okuyorum', value: 'reading', icon: 'glasses-outline' },
-                { label: 'İstek', value: 'want_to_read', icon: 'bookmark-outline' },
-                { label: 'Yarım', value: 'dropped', icon: 'close-circle-outline' },
+                { label: 'Okudum', value: 'read' },
+                { label: 'Okuyorum', value: 'reading' },
+                { label: 'İstek', value: 'want_to_read' },
             ],
             movie: [
-                { label: 'İzledim', value: 'read', icon: 'checkmark-circle-outline' },
-                { label: 'İzliyorum', value: 'reading', icon: 'glasses-outline' },
-                { label: 'İstek', value: 'want_to_read', icon: 'bookmark-outline' },
-                { label: 'Yarım', value: 'dropped', icon: 'close-circle-outline' },
+                { label: 'İzledim', value: 'read' },
+                { label: 'İzliyorum', value: 'reading' },
+                { label: 'İstek', value: 'want_to_read' },
             ],
             music: [
-                { label: 'Dinledim', value: 'read', icon: 'musical-notes-outline' },
-                { label: 'Dinliyorum', value: 'reading', icon: 'headset-outline' },
-                { label: 'İstek', value: 'want_to_read', icon: 'bookmark-outline' },
-                { label: 'Yarım', value: 'dropped', icon: 'close-circle-outline' },
+                { label: 'Dinledim', value: 'read' },
+                { label: 'Dinliyorum', value: 'reading' },
+                { label: 'İstek', value: 'want_to_read' },
             ]
         };
-        return selectedType ? (opts as any)[selectedType] || [] : [];
+        return selectedType ? opts[selectedType] || [] : [];
     };
 
     return (
         <View style={styles.container}>
-            {/* Minimal Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
-                    <Ionicons name="close" size={24} color={theme.colors.text} />
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <X size={20} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
                     {originalPost ? 'Alıntıyı Paylaş' : (mode === 'thought' ? 'Düşünceni Paylaş' : 'Yeni Paylaşım')}
                 </Text>
-                <TouchableOpacity style={styles.shareButton} onPress={handleShare} disabled={isSharing}>
-                    {isSharing ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.shareButtonText}>Paylaş</Text>}
-                </TouchableOpacity>
+                <View style={{ width: 80 }}>
+                    <Button
+                        onPress={handleShare}
+                        loading={isSharing}
+                        size="sm"
+                    >
+                        Paylaş
+                    </Button>
+                </View>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
-                    {/* 1. Preview Card Area */}
-                    <View style={styles.mainCardContainer}>
-                        {/* TODO: If originalPost, render repost preview here cleanly */}
+                    {/* Preview / Quote Card */}
+                    <View style={{ marginBottom: 24, alignItems: 'center' }}>
                         {originalPost ? (
-                            <View style={[styles.cleanInputContainer, { width: '100%', padding: 0, overflow: 'hidden' }]}>
-                                <View style={styles.originalPostContainer}>
-                                    {/* Simplified Original Post Display for Preview */}
-                                    <Text style={{ padding: 16, color: theme.colors.textSecondary }}>Alıntılanan içerik...</Text>
-                                    {/* In a real scenario, reuse PostCard logic or extract a component */}
-                                </View>
-                            </View>
+                            <Card variant="glass" style={{ padding: 16, width: '100%' }}>
+                                <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
+                                    "{originalPost.content}"
+                                </Text>
+                                <Text style={{ marginTop: 8, fontWeight: 'bold', color: theme.colors.text }}>
+                                    — {originalPost.user.username}
+                                </Text>
+                            </Card>
                         ) : (
                             <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
                                 <QuoteCard
@@ -443,35 +381,34 @@ export const CreateQuoteScreen = () => {
                                     source={source || (mode === 'thought' ? 'Düşünce' : 'Kaynak')}
                                     author={author || user?.username}
                                     imageUrl={selectedImage}
-                                    variant="default" // Use default for big impact
-                                    status={status === 'reading' ? 'Okuyor' : undefined}
+                                    variant="default" // Using default visual style
                                 />
                             </ViewShot>
                         )}
                     </View>
 
-                    {/* 2. Form Inputs */}
-                    <View style={styles.section}>
-                        {/* Main Text Input */}
-                        {!originalPost && (
-                            <View style={styles.cleanInputContainer}>
-                                <TextInput
-                                    style={styles.cleanInput}
-                                    placeholder={mode === 'thought' ? "Ne düşünüyorsun?" : "Alıntıyı buraya yaz..."}
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                    value={quoteText}
-                                    onChangeText={setQuoteText}
-                                    multiline
-                                    autoFocus={mode === 'thought'}
-                                />
-                            </View>
-                        )}
+                    {/* Main Input */}
+                    {!originalPost && (
+                        <View style={styles.textInputContainer}>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder={mode === 'thought' ? "Ne düşünüyorsun?" : "Alıntıyı buraya yaz..."}
+                                placeholderTextColor={theme.colors.textSecondary}
+                                value={quoteText}
+                                onChangeText={setQuoteText}
+                                multiline
+                                autoFocus={mode === 'thought'}
+                            />
+                        </View>
+                    )}
 
-                        {/* Extra Comment for Quote Mode */}
-                        {(mode === 'quote' || originalPost) && (
-                            <View style={styles.cleanInputContainer}>
+                    {/* Comment Input */}
+                    {(mode === 'quote' || originalPost) && (
+                        <>
+                            <Text style={styles.sectionTitle}>Yorumun</Text>
+                            <View style={styles.textInputContainer}>
                                 <TextInput
-                                    style={[styles.cleanInput, { minHeight: 80 }]}
+                                    style={[styles.textInput, { minHeight: 80 }]}
                                     placeholder="Bu konuda eklemek istediklerin..."
                                     placeholderTextColor={theme.colors.textSecondary}
                                     value={comment}
@@ -479,34 +416,33 @@ export const CreateQuoteScreen = () => {
                                     multiline
                                 />
                             </View>
+                        </>
+                    )}
+
+                    {/* Topic Selector */}
+                    <TouchableOpacity
+                        style={[styles.singleInputContainer, { marginTop: 16 }]}
+                        onPress={() => setTopicModalVisible(true)}
+                    >
+                        <Tag size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                        <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
+                            {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
+                        </Text>
+                        {selectedTopic && (
+                            <TouchableOpacity onPress={() => setSelectedTopic(null)}>
+                                <XCircle size={20} color={theme.colors.textSecondary} />
+                            </TouchableOpacity>
                         )}
+                    </TouchableOpacity>
 
-                        {/* Topic Selection Button */}
-                        <TouchableOpacity
-                            style={styles.singleInputContainer}
-                            onPress={() => setTopicModalVisible(true)}
-                        >
-                            <Ionicons name="pricetag-outline" size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
-                            <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
-                                {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
-                            </Text>
-                            {selectedTopic && (
-                                <TouchableOpacity onPress={() => setSelectedTopic(null)}>
-                                    <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
-                                </TouchableOpacity>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* 3. Metadata Inputs (Source/Author) - Only for Quotes/Reviews */}
+                    {/* Metadata Section (Search + Status) */}
                     {!originalPost && mode !== 'thought' && (
-                        <View style={styles.section}>
+                        <View style={{ marginTop: 24, zIndex: 100 }}>
                             <Text style={styles.sectionTitle}>Detaylar</Text>
 
-                            {/* Source Search */}
                             <View style={{ zIndex: 200 }}>
                                 <View style={styles.singleInputContainer}>
-                                    <Icon name="magnifier" size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                                    <Search size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
                                     <TextInput
                                         style={styles.singleInput}
                                         placeholder="Kitap, Film veya Müzik Ara..."
@@ -519,18 +455,18 @@ export const CreateQuoteScreen = () => {
 
                                 {showResults && searchResults.length > 0 && (
                                     <View style={styles.dropdown}>
-                                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+                                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 250 }}>
                                             {searchResults.map((item) => (
                                                 <TouchableOpacity key={item.id + item.type} style={styles.dropdownItem} onPress={() => selectSource(item)}>
                                                     {item.image ? (
-                                                        <Image source={{ uri: item.image }} style={styles.dropdownImage} />
+                                                        <Image source={{ uri: item.image }} style={styles.dropdownImage} resizeMode="cover" />
                                                     ) : (
                                                         <View style={[styles.dropdownImage, { alignItems: 'center', justifyContent: 'center' }]}>
-                                                            <Icon name="doc" size={20} color={theme.colors.textSecondary} />
+                                                            <FileText size={20} color={theme.colors.textSecondary} />
                                                         </View>
                                                     )}
                                                     <View style={{ flex: 1 }}>
-                                                        <Text style={{ color: theme.colors.text, fontWeight: '600' }} numberOfLines={1}>{item.title}</Text>
+                                                        <Text style={{ color: theme.colors.text, fontWeight: 'bold' }} numberOfLines={1}>{item.title}</Text>
                                                         <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{item.subtitle}</Text>
                                                     </View>
                                                 </TouchableOpacity>
@@ -540,9 +476,8 @@ export const CreateQuoteScreen = () => {
                                 )}
                             </View>
 
-                            {/* Author Input */}
                             <View style={styles.singleInputContainer}>
-                                <Icon name="user" size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                                <User size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
                                 <TextInput
                                     style={styles.singleInput}
                                     placeholder="Yazar / Yönetmen / Sanatçı"
@@ -552,16 +487,14 @@ export const CreateQuoteScreen = () => {
                                 />
                             </View>
 
-                            {/* Status Chips */}
                             {selectedType && (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                                     {getStatusOptions().map((opt: any) => (
                                         <TouchableOpacity
                                             key={opt.value}
                                             style={[styles.chip, status === opt.value && styles.chipActive]}
                                             onPress={() => setStatus(status === opt.value ? null : opt.value)}
                                         >
-                                            <Ionicons name={opt.icon} size={16} color={status === opt.value ? '#fff' : theme.colors.textSecondary} style={{ marginRight: 6 }} />
                                             <Text style={[styles.chipText, status === opt.value && styles.chipTextActive]}>{opt.label}</Text>
                                         </TouchableOpacity>
                                     ))}
@@ -578,6 +511,6 @@ export const CreateQuoteScreen = () => {
                 onClose={() => setTopicModalVisible(false)}
                 onSelect={(topic) => setSelectedTopic(topic)}
             />
-        </View >
+        </View>
     );
 };

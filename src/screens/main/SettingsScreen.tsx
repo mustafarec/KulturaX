@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, ActivityIndicator, StatusBar } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft, Sliders, Ban } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { API_URL } from '../../services/backendApi';
@@ -117,7 +117,7 @@ export const SettingsScreen = () => {
             <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
+                    <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Ayarlar</Text>
             </View>
@@ -130,7 +130,7 @@ export const SettingsScreen = () => {
                     style={styles.connectButton}
                     onPress={() => (navigation as any).navigate('FeedPreferences')}
                 >
-                    <Icon name="equalizer" style={[styles.buttonIcon, { color: theme.colors.primary }]} />
+                    <Sliders size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
                     <Text style={[styles.buttonText, { color: theme.colors.text }]}>Akış Tercihleri</Text>
                 </TouchableOpacity>
 
@@ -138,7 +138,7 @@ export const SettingsScreen = () => {
                     style={styles.connectButton}
                     onPress={() => (navigation as any).navigate('BlockedUsers')}
                 >
-                    <Icon name="ban" style={[styles.buttonIcon, { color: theme.colors.error }]} />
+                    <Ban size={20} color={theme.colors.error} style={{ marginRight: 8 }} />
                     <Text style={[styles.buttonText, { color: theme.colors.text }]}>Engellenen Kullanıcılar</Text>
                 </TouchableOpacity>
             </View>

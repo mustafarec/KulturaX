@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } fr
 import { useTheme } from '../context/ThemeContext';
 import { libraryService } from '../services/backendApi';
 import { useAuth } from '../context/AuthContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { Check, Glasses, Clock, X, Plus } from 'lucide-react-native';
 
 interface LibraryStatusButtonProps {
     contentType: 'movie' | 'book' | 'music';
@@ -32,10 +32,10 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
     const labels = getLabels();
 
     const statusOptions = [
-        { label: labels.read, value: 'read', icon: 'check' },
-        { label: labels.reading, value: 'reading', icon: 'eyeglass' }, // Maybe change icon for music? Keep for now.
-        { label: labels.want, value: 'want_to_read', icon: 'clock' },
-        { label: 'Yarım Bıraktım', value: 'dropped', icon: 'close' },
+        { label: labels.read, value: 'read', icon: Check },
+        { label: labels.reading, value: 'reading', icon: Glasses }, // Maybe change icon for music? Keep for now.
+        { label: labels.want, value: 'want_to_read', icon: Clock },
+        { label: 'Yarım Bıraktım', value: 'dropped', icon: X },
     ];
 
     useEffect(() => {
@@ -77,7 +77,7 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
 
     const getStatusIcon = () => {
         const option = statusOptions.find(opt => opt.value === status);
-        return option ? option.icon : 'plus';
+        return option ? option.icon : Plus;
     };
 
     const styles = React.useMemo(() => StyleSheet.create({
@@ -154,7 +154,7 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
                 style={[styles.button, status ? styles.activeButton : null]}
                 onPress={() => setShowModal(true)}
             >
-                <Icon name={getStatusIcon()} size={14} color={status ? '#fff' : theme.colors.primary} style={{ marginRight: 6 }} />
+                {React.createElement(getStatusIcon(), { size: 14, color: status ? '#fff' : theme.colors.primary, style: { marginRight: 6 } })}
                 <Text style={[styles.buttonText, status ? styles.activeButtonText : null]}>
                     {getStatusLabel()}
                 </Text>
@@ -180,7 +180,7 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
                                 onPress={() => handleStatusUpdate(option.value)}
                             >
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Icon name={option.icon} size={16} color={status === option.value ? '#fff' : theme.colors.text} style={{ marginRight: 10 }} />
+                                    {React.createElement(option.icon, { size: 16, color: status === option.value ? '#fff' : theme.colors.text, style: { marginRight: 10 } })}
                                     <Text style={[styles.optionText, status === option.value && styles.selectedOptionText]}>
                                         {option.label}
                                     </Text>

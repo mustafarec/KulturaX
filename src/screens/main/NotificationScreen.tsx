@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { notificationService } from '../../services/backendApi';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '../../context/NotificationContext';
+import { Heart, MessageCircle, UserPlus, BookOpen, Calendar, Sparkles, BellRing, Film, Quote, Trash2 } from 'lucide-react-native';
 
 interface Notification {
     id: number;
@@ -29,42 +30,43 @@ export const NotificationScreen = () => {
     const navigation = useNavigation();
     const { fetchUnreadCount, decrementUnreadCount } = useNotification();
 
-    const [activeFilter, setActiveFilter] = useState<'all' | 'like' | 'follow' | 'comment' | 'mention'>('all');
+    const [activeFilter, setActiveFilter] = useState<'Tümü' | 'Beğeniler' | 'Yorumlar' | 'Takip' | 'Öneriler' | 'Bahsetmeler'>('Tümü');
 
     const fetchNotifications = async () => {
         if (!user) return;
-        // Sadece manuel yenileme veya ilk yüklemede loading göster, 
-        // otomatik yenilemede (socket/event) kullanıcıyı rahatsız etme
         if (!refreshing && notifications.length === 0) setIsLoading(true);
 
         try {
             const data = await notificationService.getNotifications(user.id);
-            // Ensure data is an array and filter out message notifications
             const validData = Array.isArray(data) ? data : [];
             const mappedData = validData.map((n: any) => ({
                 ...n,
                 is_read: n.is_read == 1 || n.is_read === '1' || n.is_read === true
             }));
-            const filteredData = mappedData.filter(n => n.type !== 'message');
+            // Filter out direct messages if they are handled elsewhere
+            const filteredData = mappedData.filter((n: any) => n.type !== 'message');
             setNotifications(filteredData);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
             setIsLoading(false);
             setRefreshing(false);
+            fetchUnreadCount(); // Sync global badge count
         }
     };
 
     const getFilteredNotifications = () => {
         switch (activeFilter) {
-            case 'like':
+            case 'Beğeniler':
                 return notifications.filter(n => n.type === 'like');
-            case 'comment':
+            case 'Yorumlar':
                 return notifications.filter(n => n.type === 'comment' || n.type === 'reply');
-            case 'follow':
+            case 'Takip':
                 return notifications.filter(n => n.type === 'follow');
-            case 'mention':
+            case 'Bahsetmeler':
                 return notifications.filter(n => n.type === 'quote' || n.type === 'repost');
+            case 'Öneriler':
+                return notifications.filter(n => n.type === 'recommendation' || n.type === 'event' || n.type === 'system');
             default:
                 return notifications;
         }
@@ -80,9 +82,7 @@ export const NotificationScreen = () => {
             fetchNotifications();
         });
 
-        // OneSignal'dan bildirim geldiğinde listeyi güncelle
         const subscription = DeviceEventEmitter.addListener('notificationReceived', () => {
-            console.log('Notification received event, refreshing list...');
             fetchNotifications();
         });
 
@@ -108,45 +108,31 @@ export const NotificationScreen = () => {
         if (!item.is_read && user) {
             try {
                 await notificationService.markAsRead(user.id, item.id);
-                // Update local state
                 setNotifications(prev =>
                     prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
                 );
-                // Update global unread count
                 decrementUnreadCount();
-                // Also fetch to be sure (optional, maybe delayed)
-                // fetchUnreadCount();
             } catch (error) {
                 console.error('Failed to mark as read:', error);
             }
         }
 
-        // Navigate based on type
         try {
             let data: any = null;
             if (typeof item.data === 'string') {
                 try {
                     data = JSON.parse(item.data);
-                } catch (e) {
-                    // console.error('JSON parse error:', e);
-                }
+                } catch (e) { }
             } else {
                 data = item.data;
             }
 
             if (item.type === 'like' || item.type === 'comment' || item.type === 'reply' || item.type === 'repost' || item.type === 'quote') {
-                if (data && data.post_id) {
+                const targetPostId = data?.post_id || data?.id; // Handle possible data structures
+                if (targetPostId) {
                     (navigation as any).navigate('PostDetail', {
-                        postId: data.post_id,
+                        postId: targetPostId,
                         autoFocusComment: false
-                    });
-                }
-            } else if (item.type === 'message') {
-                if (data && data.sender_id) {
-                    (navigation as any).navigate('Chat', {
-                        otherUserId: data.sender_id,
-                        otherUserName: item.sender_username,
-                        avatarUrl: item.sender_avatar
                     });
                 }
             } else if (item.type === 'follow') {
@@ -159,192 +145,16 @@ export const NotificationScreen = () => {
         }
     };
 
-
-    const styles = React.useMemo(() => StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: theme.colors.background,
-        },
-        header: {
-            paddingTop: 30,
-            paddingBottom: 10,
-            paddingHorizontal: 20,
-            backgroundColor: theme.colors.background,
-            // borderBottomWidth: 1, // Removed border here to merge with filters
-            // borderBottomColor: theme.colors.border,
-        },
-        headerTitle: {
-            fontSize: 28,
-            fontWeight: '700',
-            color: theme.colors.text,
-            letterSpacing: 0.5,
-        },
-        filtersContainer: {
-            paddingHorizontal: 16,
-            paddingBottom: 12,
-            backgroundColor: theme.colors.background,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-        },
-        filterChip: {
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: 20,
-            marginRight: 8,
-            backgroundColor: theme.colors.surface,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-        },
-        activeFilterChip: {
-            backgroundColor: theme.colors.text,
-            borderColor: theme.colors.text,
-        },
-        filterText: {
-            fontSize: 14,
-            fontWeight: '600',
-            color: theme.colors.text,
-        },
-        activeFilterText: {
-            color: theme.colors.background, // Invert color for active state
-        },
-        list: {
-            padding: 16,
-            paddingBottom: 120,
-        },
-        loadingContainer: {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-        item: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 16,
-            backgroundColor: theme.colors.surface,
-            borderRadius: 16,
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-        },
-        shadowIOS: {
-            shadowColor: theme.shadows.default.shadowColor,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-        },
-        shadowAndroid: {
-            elevation: 3,
-        },
-        unreadItem: {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.primary + '30',
-            borderWidth: 1,
-        },
-        iconContainer: {
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: 16,
-        },
-        contentContainer: {
-            flex: 1,
-        },
-        headerRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 4,
-        },
-        title: {
-            fontSize: 16,
-            fontWeight: '600',
-            color: theme.colors.text,
-            flex: 1,
-            marginRight: 8,
-        },
-        unreadText: {
-            color: theme.colors.text,
-            fontWeight: '700',
-        },
-        message: {
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-            lineHeight: 20,
-        },
-        unreadMessage: {
-            color: theme.colors.text,
-            fontWeight: '500',
-        },
-        time: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-            fontWeight: '500',
-        },
-        dot: {
-            width: 10,
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: theme.colors.primary,
-            marginLeft: 12,
-        },
-        emptyContainer: {
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingTop: 100,
-        },
-        emptyIcon: {
-            fontSize: 64,
-            marginBottom: 16,
-            opacity: 0.8,
-            color: theme.colors.textSecondary,
-        },
-        emptyTitle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: theme.colors.text,
-            marginBottom: 8,
-        },
-        emptyText: {
-            fontSize: 15,
-            color: theme.colors.textSecondary,
-            textAlign: 'center',
-            maxWidth: '70%',
-            lineHeight: 22,
-        },
-        avatar: {
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-        },
-        deleteButtonContainer: {
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: 80,
-            marginBottom: 12,
-            marginRight: 16,
-            borderRadius: 16,
-            overflow: 'hidden',
-        },
-        deleteButton: {
-            backgroundColor: theme.colors.error,
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '100%',
-            height: '100%',
-            borderRadius: 16,
-        },
-        deleteButtonText: {
-            color: 'white',
-            fontWeight: 'bold',
-        },
-    }), [theme]);
-
     const handleDelete = async (id: number) => {
-        // Optimistic update
         const previousNotifications = [...notifications];
+        const notificationToDelete = notifications.find(n => n.id === id);
+
         setNotifications(prev => prev.filter(n => n.id !== id));
+
+        // If deleting an unread notification, decrement global count
+        if (notificationToDelete && !notificationToDelete.is_read) {
+            decrementUnreadCount();
+        }
 
         try {
             if (user) {
@@ -352,47 +162,239 @@ export const NotificationScreen = () => {
             }
         } catch (error) {
             console.error('Failed to delete notification:', error);
-            // Revert on error
             setNotifications(previousNotifications);
         }
     };
+
+    const getNotificationIcon = (type: string) => {
+        const isDark = theme.dark;
+        switch (type) {
+            case 'like': return <Heart size={16} color={isDark ? "#f87171" : "#e11d48"} fill={isDark ? "#f87171" : "#e11d48"} />;
+            case 'comment': return <MessageCircle size={16} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />;
+            case 'reply': return <MessageCircle size={16} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />;
+            case 'follow': return <UserPlus size={16} color={isDark ? "#4ade80" : "#16a34a"} fill={isDark ? "#4ade80" : "#16a34a"} />;
+            case 'quote': return <Quote size={16} color={isDark ? "#c084fc" : "#9333ea"} fill={isDark ? "#c084fc" : "#9333ea"} />;
+            case 'repost': return <Quote size={16} color={isDark ? "#c084fc" : "#9333ea"} fill={isDark ? "#c084fc" : "#9333ea"} />;
+            case 'recommendation': return <Sparkles size={16} color={isDark ? "#fbbf24" : "#d97706"} fill={isDark ? "#fbbf24" : "#d97706"} />;
+            case 'event': return <Calendar size={16} color={isDark ? "#2dd4bf" : "#0d9488"} fill={isDark ? "#2dd4bf" : "#0d9488"} />;
+            case 'system': return <BellRing size={16} color={isDark ? "#fb923c" : "#ea580c"} fill={isDark ? "#fb923c" : "#ea580c"} />;
+            default: return <BellRing size={16} color={theme.colors.textSecondary} />;
+        }
+    };
+
+    const getIconBgColor = (type: string) => {
+        if (theme.dark) {
+            switch (type) {
+                case 'like': return 'rgba(248, 113, 113, 0.2)';
+                case 'comment':
+                case 'reply': return 'rgba(96, 165, 250, 0.2)';
+                case 'follow': return 'rgba(74, 222, 128, 0.2)';
+                case 'quote':
+                case 'repost': return 'rgba(192, 132, 252, 0.2)';
+                case 'recommendation': return 'rgba(251, 191, 36, 0.2)';
+                case 'event': return 'rgba(45, 212, 191, 0.2)';
+                default: return theme.colors.surface;
+            }
+        }
+        switch (type) {
+            case 'like': return '#fef2f2';
+            case 'comment':
+            case 'reply': return '#eff6ff';
+            case 'follow': return '#f0fdf4';
+            case 'quote':
+            case 'repost': return '#faf5ff';
+            case 'recommendation': return '#fffbeb';
+            case 'event': return '#f0fdfa';
+            default: return '#f4f4f5';
+        }
+    };
+
+    const styles = React.useMemo(() => StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        header: {
+            paddingTop: Platform.OS === 'ios' ? 60 : 30, // Safe area
+            paddingBottom: 16,
+            paddingHorizontal: 16,
+        },
+        headerTitleRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 4,
+        },
+        headerTitle: {
+            fontSize: 28,
+            fontWeight: '700',
+            color: theme.colors.text,
+            fontFamily: Platform.OS === 'ios' ? 'Playfair Display' : 'serif',
+        },
+        badge: {
+            backgroundColor: theme.colors.primary,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 12,
+        },
+        badgeText: {
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: '600',
+        },
+        subtitle: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+        },
+        filtersContainer: {
+            paddingHorizontal: 16,
+            paddingBottom: 16,
+        },
+        filterChip: {
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 20,
+            marginRight: 8,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+        },
+        activeFilterChip: {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 4,
+        },
+        filterText: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: theme.colors.textSecondary,
+        },
+        activeFilterText: {
+            color: '#fff',
+        },
+        list: {
+            paddingHorizontal: 16,
+            paddingBottom: 100,
+        },
+        card: {
+            flexDirection: 'row',
+            padding: 16,
+            borderRadius: 16,
+            marginBottom: 12,
+            borderWidth: 1,
+            alignItems: 'flex-start',
+        },
+        cardUnread: {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.primary + '30',
+        },
+        cardRead: {
+            backgroundColor: theme.colors.background, // or theme.colors.card
+            borderColor: theme.colors.border,
+        },
+        avatarContainer: {
+            position: 'relative',
+            marginRight: 12,
+        },
+        avatar: {
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: theme.colors.border,
+        },
+        iconBadge: {
+            position: 'absolute',
+            bottom: -4,
+            right: -4,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: theme.colors.surface,
+        },
+        contentContainer: {
+            flex: 1,
+            marginRight: 8,
+        },
+        messageText: {
+            fontSize: 14,
+            lineHeight: 20,
+            color: theme.colors.text,
+            marginBottom: 4,
+        },
+        senderName: {
+            fontWeight: '700',
+        },
+        timeText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+        },
+        unreadDot: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: theme.colors.primary,
+            marginTop: 6,
+        },
+        deleteButtonContainer: {
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: 70,
+            marginBottom: 12,
+            borderRadius: 16,
+        },
+        deleteButton: {
+            backgroundColor: theme.colors.error,
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: 50,
+            height: 50,
+            borderRadius: 25,
+        },
+        emptyContainer: {
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 80,
+        },
+        emptyIcon: {
+            marginBottom: 16,
+            color: theme.colors.textSecondary,
+        },
+        emptyTitle: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: theme.colors.text,
+            marginBottom: 8,
+        },
+        emptyText: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+            textAlign: 'center',
+        },
+    }), [theme]);
 
     const renderRightActions = (progress: any, dragX: any, id: number) => {
         return (
             <TouchableOpacity onPress={() => handleDelete(id)} style={styles.deleteButtonContainer}>
                 <View style={styles.deleteButton}>
-                    <Text style={styles.deleteButtonText}>Sil</Text>
+                    <Trash2 size={24} color="#fff" />
                 </View>
             </TouchableOpacity>
         );
     };
 
     const renderItem = ({ item }: { item: Notification }) => {
-        let icon = '🔔';
-        let bgColor: string = theme.colors.primary;
+        const iconBg = getIconBgColor(item.type);
 
-        switch (item.type) {
-            case 'like':
-                icon = '❤️';
-                bgColor = '#FF6B6B';
-                break;
-            case 'comment':
-                icon = '💬';
-                bgColor = '#4ECDC4';
-                break;
-            case 'follow':
-                icon = '👤';
-                bgColor = '#45B7D1';
-                break;
-            case 'message':
-                icon = '✉️';
-                bgColor = '#96CEB4';
-                break;
-            case 'system':
-                icon = '📢';
-                bgColor = '#FFEEAD';
-                break;
-        }
+        const cardStyle = item.is_read ? styles.cardRead : styles.cardUnread;
+        const bgStyle = item.is_read ? { backgroundColor: theme.colors.background } : { backgroundColor: theme.colors.surface };
 
         return (
             <Swipeable
@@ -400,81 +402,88 @@ export const NotificationScreen = () => {
                 overshootRight={false}
             >
                 <TouchableOpacity
-                    style={[
-                        styles.item,
-                        !item.is_read && styles.unreadItem,
-                        Platform.OS === 'ios' ? styles.shadowIOS : styles.shadowAndroid
-                    ]}
-                    activeOpacity={0.7}
-                    delayPressIn={150} // Prevent accidental opacity change during swipe
+                    style={[styles.card, cardStyle, bgStyle]}
                     onPress={() => handleNotificationPress(item)}
+                    activeOpacity={0.7}
                 >
-                    <View style={[styles.iconContainer, { backgroundColor: item.is_read ? '#f0f0f0' : bgColor + '20' }]}>
+                    <View style={styles.avatarContainer}>
                         {item.sender_avatar ? (
                             <Image source={{ uri: item.sender_avatar }} style={styles.avatar} />
                         ) : (
-                            <Text style={{ fontSize: 24 }}>{icon}</Text>
+                            <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                                <UserPlus size={24} color={theme.colors.textSecondary} />
+                            </View>
                         )}
+                        <View style={[styles.iconBadge, { backgroundColor: iconBg }]}>
+                            {getNotificationIcon(item.type)}
+                        </View>
                     </View>
 
                     <View style={styles.contentContainer}>
-                        <View style={styles.headerRow}>
-                            <Text style={[styles.title, !item.is_read && styles.unreadText]}>
-                                {item.sender_username ? (
-                                    <Text style={{ fontWeight: 'bold' }}>{item.sender_username} </Text>
-                                ) : null}
-                                {item.title}
-                            </Text>
-                            <Text style={styles.time}>{formatTimeAgo(item.created_at)}</Text>
-                        </View>
-
-                        <Text style={[styles.message, !item.is_read && styles.unreadMessage]} numberOfLines={2}>
-                            {item.message}
+                        <Text style={styles.messageText} numberOfLines={3}>
+                            {item.sender_username && <Text style={styles.senderName}>{item.sender_username} </Text>}
+                            <Text style={{ color: theme.colors.textSecondary }}>{item.message}</Text>
                         </Text>
+                        <Text style={styles.timeText}>{formatTimeAgo(item.created_at)}</Text>
                     </View>
 
-                    {!item.is_read && <View style={styles.dot} />}
+                    {!item.is_read && <View style={styles.unreadDot} />}
                 </TouchableOpacity>
             </Swipeable>
         );
     };
 
-    const FilterChip = ({ id, label }: { id: typeof activeFilter, label: string }) => (
-        <TouchableOpacity
-            style={[styles.filterChip, activeFilter === id && styles.activeFilterChip]}
-            onPress={() => setActiveFilter(id)}
-        >
-            <Text style={[styles.filterText, activeFilter === id && styles.activeFilterText]}>
-                {label}
-            </Text>
-        </TouchableOpacity>
-    );
+    const unreadCount = notifications.filter(n => !n.is_read).length;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Bildirimler</Text>
+                <View style={styles.headerTitleRow}>
+                    <Text style={styles.headerTitle}>Bildirimler</Text>
+                    {unreadCount > 0 && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{unreadCount} yeni</Text>
+                        </View>
+                    )}
+                </View>
+                <Text style={styles.subtitle}>Son aktivitelerinizi ve güncellemeleri takip edin</Text>
             </View>
 
-            <View style={{ marginBottom: 4 }}>
+            <View style={{ height: 60 }}>
                 <FlatList
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.filtersContainer}
                     data={[
-                        { id: 'all', label: 'Hepsi' },
-                        { id: 'like', label: 'Beğeniler' },
-                        { id: 'comment', label: 'Yorumlar' },
-                        { id: 'mention', label: 'Bahsetmeler' },
-                        { id: 'follow', label: 'Yeni takipçiler' },
+                        { label: 'Tümü', key: 'Tümü' },
+                        { label: 'Beğeniler', key: 'Beğeniler' },
+                        { label: 'Yorumlar', key: 'Yorumlar' },
+                        { label: 'Bahsetmeler', key: 'Bahsetmeler' },
+                        { label: 'Takip', key: 'Takip' },
+                        { label: 'Öneriler', key: 'Öneriler' },
                     ]}
-                    keyExtractor={item => item.id}
-                    renderItem={({ item }) => <FilterChip id={item.id as any} label={item.label} />}
+                    keyExtractor={item => item.key}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={[
+                                styles.filterChip,
+                                activeFilter === item.key && styles.activeFilterChip
+                            ]}
+                            onPress={() => setActiveFilter(item.key as any)}
+                        >
+                            <Text style={[
+                                styles.filterText,
+                                activeFilter === item.key && styles.activeFilterText
+                            ]}>
+                                {item.label}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 />
             </View>
 
             {isLoading && !refreshing ? (
-                <View style={styles.loadingContainer}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
             ) : (
@@ -486,10 +495,10 @@ export const NotificationScreen = () => {
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyIcon}>📭</Text>
+                            <BellRing size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                             <Text style={styles.emptyTitle}>Bildirim Yok</Text>
                             <Text style={styles.emptyText}>
-                                {activeFilter === 'all'
+                                {activeFilter === 'Tümü'
                                     ? 'Henüz size ulaşan bir bildirim bulunmuyor.'
                                     : 'Bu filtreye uygun bildirim bulunmuyor.'}
                             </Text>

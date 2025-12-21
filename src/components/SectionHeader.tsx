@@ -24,6 +24,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, onViewAll }
             fontWeight: '800',
             color: theme.colors.text,
             letterSpacing: -0.5,
+            fontFamily: theme.fonts.headings,
         },
         viewAll: {
             fontSize: 14,

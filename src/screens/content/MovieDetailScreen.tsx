@@ -9,7 +9,8 @@ import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
 import { LibraryStatusButton } from '../../components/LibraryStatusButton';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { Plus, MessageSquare, Star, Bookmark, Share2, MessageCircle, Pencil } from 'lucide-react-native';
+import { ContentDetailLayout } from '../../components/layouts/ContentDetailLayout';
 
 export const MovieDetailScreen = () => {
     const route = useRoute();
@@ -73,79 +74,27 @@ export const MovieDetailScreen = () => {
             flex: 1,
             backgroundColor: theme.colors.background,
         },
-        header: {
-            flexDirection: 'row',
-            padding: theme.spacing.l,
-            backgroundColor: theme.colors.surface,
-            borderBottomLeftRadius: theme.borderRadius.xl,
-            borderBottomRightRadius: theme.borderRadius.xl,
-            ...theme.shadows.soft,
-            paddingTop: 110, // Adjust for status bar
-        },
-        backButton: {
-            position: 'absolute',
-            top: 50,
-            left: 20,
-            zIndex: 10,
-            padding: 8,
-            backgroundColor: theme.colors.surface + 'CC', // Transparent surface
-            borderRadius: 20,
-        },
-        posterImage: {
-            width: 100,
-            height: 150,
-            borderRadius: theme.borderRadius.m,
-            marginRight: theme.spacing.m,
-            ...theme.shadows.soft,
-        },
-        placeholderImage: {
-            backgroundColor: theme.colors.secondary,
-        },
-        headerInfo: {
-            flex: 1,
-            justifyContent: 'center',
-        },
-        title: {
-            fontSize: 20,
-            fontWeight: '800',
-            color: theme.colors.text,
-            marginBottom: 8,
-            letterSpacing: -0.5,
-        },
-        directorText: {
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-            marginBottom: 8,
-            fontWeight: '500',
-        },
-        ratingContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-        },
-        ratingText: {
-            fontSize: 14,
-            color: theme.colors.text,
-            marginLeft: 8,
-        },
+        // ... Removed header styles as they are now in Layout
+
         tabs: {
             flexDirection: 'row',
-            backgroundColor: theme.colors.surface, // Was glass
+            backgroundColor: theme.colors.surface,
             marginHorizontal: 20,
-            marginTop: 20,
+            marginTop: 0,
             borderRadius: 16,
             padding: 4,
             borderWidth: 1,
-            borderColor: theme.colors.border, // Was glassBorder
-            // ...theme.shadows.glass, // Removed glass shadow
+            borderColor: theme.colors.border,
+            marginBottom: 20,
         },
         tab: {
             flex: 1,
-            paddingVertical: 12,
+            paddingVertical: 10, // Slightly reduced
             alignItems: 'center',
             borderRadius: 12,
         },
         activeTab: {
-            backgroundColor: theme.colors.primary + '15',
+            backgroundColor: theme.colors.primary,
         },
         tabText: {
             fontSize: 13,
@@ -153,12 +102,14 @@ export const MovieDetailScreen = () => {
             fontWeight: '600',
         },
         activeTabText: {
-            color: theme.colors.primary,
+            color: '#FFFFFF',
             fontWeight: '700',
         },
         tabContent: {
-            padding: theme.spacing.l,
+            paddingHorizontal: 20,
+            paddingBottom: 40,
         },
+
         sectionTitle: {
             fontSize: 18,
             fontWeight: '800',
@@ -411,14 +362,14 @@ export const MovieDetailScreen = () => {
                                 style={styles.addQuoteButton}
                                 onPress={() => setShowQuoteModal(true)}
                             >
-                                <Icon name="plus" size={12} color="#fff" style={{ marginRight: 4 }} />
+                                <Plus size={12} color="#fff" style={{ marginRight: 4 }} />
                                 <Text style={styles.addQuoteButtonText}>Ekle</Text>
                             </TouchableOpacity>
                         </View>
                         {quotes.length > 0 ? (
                             quotes.map((quote) => (
                                 <View key={quote.id} style={styles.quoteCard}>
-                                    <Icon name="speech" size={24} color={theme.colors.primary} style={styles.quoteIcon} />
+                                    <MessageSquare size={24} color={theme.colors.primary} style={styles.quoteIcon} />
                                     <Text style={styles.quoteText}>"{quote.content}"</Text>
                                     <View style={styles.quoteFooter}>
                                         <TouchableOpacity
@@ -447,7 +398,7 @@ export const MovieDetailScreen = () => {
                             ))
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="speech" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <MessageSquare size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Henüz alıntı yok.</Text>
                             </View>
                         )}
@@ -462,7 +413,7 @@ export const MovieDetailScreen = () => {
                                 style={styles.addReviewButton}
                                 onPress={() => setShowReviewModal(true)}
                             >
-                                <Icon name="pencil" size={12} color="#fff" style={{ marginRight: 4 }} />
+                                <Pencil size={12} color="#fff" style={{ marginRight: 4 }} />
                                 <Text style={styles.addReviewButtonText}>Yorum Yap</Text>
                             </TouchableOpacity>
                         </View>
@@ -497,7 +448,7 @@ export const MovieDetailScreen = () => {
                             ))
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="pencil" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <Pencil size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Henüz yorum yok.</Text>
                             </View>
                         )}
@@ -508,9 +459,13 @@ export const MovieDetailScreen = () => {
         }
     };
 
+    // ... New Imports
+
+    // ...
+
     if (isLoading) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
                 <BookLoader />
             </View>
         );
@@ -518,8 +473,8 @@ export const MovieDetailScreen = () => {
 
     if (!movie) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text>Film bulunamadı.</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                <Text style={{ color: theme.colors.text }}>Film bulunamadı.</Text>
             </View>
         );
     }
@@ -527,63 +482,104 @@ export const MovieDetailScreen = () => {
     const posterUrl = movie.poster_path
         ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
         : (movie.image || 'https://via.placeholder.com/150');
-    console.log('MovieDetailScreen Render. Movie:', movie?.title, 'PosterPath:', movie?.poster_path, 'PosterUrl:', posterUrl); // Detailed debug
+
+    const director = movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Yönetmen Bilinmiyor';
+    const year = movie.release_date ? new Date(movie.release_date).getFullYear() : '';
+
+    // Stats
+    const renderStats = () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Star size={16} color="#F59E0B" />
+                <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 14 }}>
+                    {movie.vote_average ? movie.vote_average.toFixed(1) : '0.0'}
+                </Text>
+            </View>
+
+            {movie.runtime && (
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                    {movie.runtime} dk
+                </Text>
+            )}
+
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                {year}
+            </Text>
+        </View>
+    );
+
+    // Actions
+    const renderActions = () => (
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+                <LibraryStatusButton
+                    contentType="movie"
+                    contentId={String(movieId)}
+                    contentTitle={movie.title}
+                    imageUrl={posterUrl}
+                    author={director}
+                    summary={movie.overview || ''}
+                />
+            </View>
+            <TouchableOpacity
+                style={{
+                    flex: 1,
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    gap: 8,
+                    ...theme.shadows.soft
+                }}
+                onPress={() => setActiveTab('reviews')}
+            >
+                <MessageCircle size={18} color="#FFF" />
+                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Yorum Yap</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    const renderHeaderActions = () => (
+        <>
+            <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                <Bookmark size={20} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                <Share2 size={20} color="#FFF" />
+            </TouchableOpacity>
+        </>
+    );
 
     return (
-        <ScrollView style={styles.container}>
-            <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-                <Image
-                    source={{ uri: posterUrl }}
-                    style={styles.posterImage}
-                />
-                <View style={styles.headerInfo}>
-                    <Text style={styles.title}>{movie.title}</Text>
-                    <Text style={styles.directorText}>
-                        {movie.release_date ? new Date(movie.release_date).toLocaleDateString('tr-TR') : ''} • {movie.runtime} dk
-                    </Text>
-                    <View style={{ marginTop: 8 }}>
-                        <LibraryStatusButton
-                            contentType="movie"
-                            contentId={String(movieId)}
-                            contentTitle={movie.title}
-                            imageUrl={posterUrl}
-                            author={movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Bilinmiyor'}
-                            summary={movie.overview || ''}
-                        />
-                    </View>
+        <>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <ContentDetailLayout
+                title={movie.title}
+                image={posterUrl}
+                subtitle={director}
+                metaText={movie.genres ? movie.genres.map((g: any) => g.name).join(', ') : ''}
+                stats={renderStats()}
+                actions={renderActions()}
+                headerActions={renderHeaderActions()}
+            >
+                <View style={styles.tabs}>
+                    <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.activeTab]} onPress={() => setActiveTab('overview')}>
+                        <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Hakkında</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tab, activeTab === 'quotes' && styles.activeTab]} onPress={() => setActiveTab('quotes')}>
+                        <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>Alıntılar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tab, activeTab === 'reviews' && styles.activeTab]} onPress={() => setActiveTab('reviews')}>
+                        <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Yorumlar</Text>
+                    </TouchableOpacity>
                 </View>
-            </View>
 
-            <View style={styles.tabs}>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
-                    onPress={() => setActiveTab('overview')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Hakkında</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'quotes' && styles.activeTab]}
-                    onPress={() => setActiveTab('quotes')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>Alıntılar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
-                    onPress={() => setActiveTab('reviews')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Yorumlar</Text>
-                </TouchableOpacity>
-            </View>
-
-            {isLoading ? (
-                <ActivityIndicator style={{ marginTop: 20 }} color={theme.colors.primary} />
-            ) : (
-                renderTabContent()
-            )}
+                <View style={{ minHeight: 400 }}>
+                    {renderTabContent()}
+                </View>
+            </ContentDetailLayout>
 
             <ReviewModal
                 visible={showReviewModal}
@@ -600,14 +596,14 @@ export const MovieDetailScreen = () => {
                 visible={showQuoteModal}
                 onClose={() => setShowQuoteModal(false)}
                 source={movie.title}
-                author={movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Bilinmiyor'}
+                author={director}
                 bookCover={posterUrl}
                 userId={user?.id || 0}
                 onQuoteAdded={fetchData}
                 initialContentType="movie"
                 initialContentId={movie.id}
             />
-        </ScrollView>
+        </>
     );
 };
 

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/backendApi';
 import { UserCard } from '../../components/UserCard';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WeeklyLeadersModal } from '../../components/WeeklyLeadersModal';
 
@@ -132,7 +132,7 @@ export const PopularUsersScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+                    <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Popüler Kullanıcılar</Text>
             </View>

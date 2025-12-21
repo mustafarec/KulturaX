@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndi
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/backendApi';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft, UserX } from 'lucide-react-native';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import Toast from 'react-native-toast-message';
 
@@ -164,7 +164,7 @@ export const BlockedUsersScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
+                    <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Engellenen Kullanıcılar</Text>
             </View>
@@ -181,7 +181,7 @@ export const BlockedUsersScreen = () => {
                     contentContainerStyle={styles.listContainer}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Icon name="user-following" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+                            <UserX size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
                             <Text style={styles.emptyText}>Engellenen kullanıcı bulunmuyor.</Text>
                         </View>
                     }

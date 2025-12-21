@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Repeat } from 'lucide-react-native';
 
 interface SharedPostMessageProps {
     post: any;
@@ -143,7 +143,7 @@ export const SharedPostMessage: React.FC<SharedPostMessageProps> = ({ post, comm
                     {/* Header: Repost Indicator */}
                     {isRepost && !isQuoteRepost && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, opacity: 0.8 }}>
-                            <Icon name="repeat" size={11} color={isMyMessage ? 'rgba(255,255,255,0.7)' : theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                            <Repeat size={11} color={isMyMessage ? 'rgba(255,255,255,0.7)' : theme.colors.textSecondary} style={{ marginRight: 4 }} />
                             <Text style={{ fontSize: 11, fontWeight: '600', color: isMyMessage ? 'rgba(255,255,255,0.7)' : theme.colors.textSecondary }}>
                                 {reposterName} yeniden gönderdi
                             </Text>

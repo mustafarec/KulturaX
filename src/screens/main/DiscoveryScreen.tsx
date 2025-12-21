@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image, RefreshControl, Platform, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+// Removed SimpleLineIcons import
+import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import backendApi, { spotifyService, ticketmasterService, topicService } from '../../services/backendApi';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Search, ArrowUp, ArrowDown, Check } from 'lucide-react-native';
 import { SectionHeader } from '../../components/SectionHeader';
 import { HorizontalList } from '../../components/HorizontalList';
 import { EventCard } from '../../components/EventCard';
 import { theme } from '../../theme/theme';
+import { SkeletonDiscovery } from '../../components/ui/SkeletonDiscovery';
 
 export const DiscoveryScreen = () => {
     // Helper for event images
@@ -463,16 +465,31 @@ export const DiscoveryScreen = () => {
             fontSize: 12,
             color: theme.colors.textSecondary,
         },
+        topicGradientCard: {
+            width: 140,
+            paddingVertical: 16,
+            paddingHorizontal: 16,
+            borderRadius: 16,
+            marginRight: 12,
+            justifyContent: 'center',
+            ...theme.shadows.soft,
+        },
+        topicNameLight: {
+            fontSize: 15,
+            fontWeight: '700',
+            color: '#FFFFFF',
+            marginBottom: 4,
+            fontFamily: theme.fonts.main,
+        },
+        topicStatsLight: {
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.8)',
+            fontFamily: theme.fonts.main,
+        },
         topicCard: {
+            // Deprecated
             width: 140,
             height: 100,
-            backgroundColor: theme.colors.surface,
-            borderRadius: 12,
-            marginRight: 12,
-            padding: 12,
-            justifyContent: 'space-between',
-            borderWidth: 1,
-            borderColor: theme.colors.border,
         },
         topicName: {
             fontSize: 14,
@@ -542,26 +559,40 @@ export const DiscoveryScreen = () => {
 
 
 
+    const getTopicGradient = (index: number) => {
+        const gradients = [
+            ['#3D2817', '#8B7355'], // Primary -> Secondary
+            ['#8B7355', '#D4C5B0'], // Secondary -> Accent
+            ['#D4C5B0', '#3D2817'], // Accent -> Primary
+            ['#3D2817', '#D4C5B0'], // Primary -> Accent
+        ];
+        return gradients[index % gradients.length];
+    };
+
     const renderDashboard = () => (
         <ScrollView
             contentContainerStyle={styles.dashboardContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
             showsVerticalScrollIndicator={false}
         >
-            {/* 0. Popular Topics */}
-            <SectionHeader title="Popüler Konular" />
+            {/* 0. Popular Topics (Gradient Pills) */}
+            <SectionHeader title="Trend Konular" />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-                {dashboardData.topics && dashboardData.topics.slice(0, 10).map((topic: any) => (
+                {dashboardData.topics && dashboardData.topics.slice(0, 10).map((topic: any, index: number) => (
                     <TouchableOpacity
                         key={topic.id}
-                        style={styles.topicCard}
                         onPress={() => (navigation as any).navigate('TopicDetail', { topic })}
+                        activeOpacity={0.9}
                     >
-                        <Ionicons name={topic.icon || 'cube-outline'} size={24} color={theme.colors.primary} />
-                        <View>
-                            <Text style={styles.topicName} numberOfLines={1}>{topic.name}</Text>
-                            <Text style={styles.topicStats}>{topic.post_count} gönderi</Text>
-                        </View>
+                        <LinearGradient
+                            colors={getTopicGradient(index)}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.topicGradientCard}
+                        >
+                            <Text style={styles.topicNameLight} numberOfLines={1}>{topic.name}</Text>
+                            <Text style={styles.topicStatsLight}>{topic.post_count} gönderi</Text>
+                        </LinearGradient>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
@@ -591,7 +622,7 @@ export const DiscoveryScreen = () => {
             />
 
             {/* 4. Yaklaşan Etkinlikler */}
-            <SectionHeader title="Yaklaşan Etkinlikler" onViewAll={() => setActiveTab('events')} />
+            <SectionHeader title="Güncel Etkinlikler" onViewAll={() => setActiveTab('events')} />
             <View style={{ marginBottom: 20 }}>
                 {dashboardData.events.length > 0 ? (
                     dashboardData.events.slice(0, 5).map((event: any) => (
@@ -623,7 +654,7 @@ export const DiscoveryScreen = () => {
                             <Text style={styles.dropdownButtonText}>
                                 {filterCity ? filterCity : 'Tüm Şehirler'}
                             </Text>
-                            <Icon name={dropdownVisible ? "arrow-up" : "arrow-down"} size={16} color={theme.colors.text} />
+                            <ArrowDown size={16} color={theme.colors.text} />
                         </TouchableOpacity>
 
                         {dropdownVisible && (
@@ -636,7 +667,7 @@ export const DiscoveryScreen = () => {
                                     }}
                                 >
                                     <Text style={[styles.dropdownItemText, !filterCity && styles.activeDropdownText]}>Tüm Şehirler</Text>
-                                    {!filterCity && <Icon name="check" size={16} color={theme.colors.primary} />}
+                                    {!filterCity && <Check size={16} color={theme.colors.primary} />}
                                 </TouchableOpacity>
                                 {availableCities.map(city => (
                                     <TouchableOpacity
@@ -648,7 +679,7 @@ export const DiscoveryScreen = () => {
                                         }}
                                     >
                                         <Text style={[styles.dropdownItemText, filterCity === city && styles.activeDropdownText]}>{city}</Text>
-                                        {filterCity === city && <Icon name="check" size={16} color={theme.colors.primary} />}
+                                        {filterCity === city && <Check size={16} color={theme.colors.primary} />}
                                     </TouchableOpacity>
                                 ))}
                             </View>
@@ -695,7 +726,7 @@ export const DiscoveryScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <View style={styles.searchContainer}>
-                    <Icon name="magnifier" size={18} color={theme.colors.primary} style={styles.searchIcon} />
+                    <Search size={18} color={theme.colors.primary} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Kitap, film, müzik veya etkinlik ara..."
@@ -734,7 +765,7 @@ export const DiscoveryScreen = () => {
 
             {isLoading && !refreshing ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                    <SkeletonDiscovery />
                 </View>
             ) : (
                 activeTab === 'dashboard' ? renderDashboard() : renderCategoryContent()

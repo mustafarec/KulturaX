@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { MessageCircle, BookOpen } from 'lucide-react-native';
 
 export const PostSelectionScreen = () => {
     const { theme } = useTheme();
@@ -20,7 +20,7 @@ export const PostSelectionScreen = () => {
                                 (navigation as any).navigate('CreateQuote', { mode: 'thought' });
                             }}
                         >
-                            <Icon name="bubble" size={24} color={theme.colors.primary} style={{ marginRight: 16 }} />
+                            <MessageCircle size={24} color={theme.colors.primary} style={{ marginRight: 16 }} />
                             <Text style={[styles.text, { color: theme.colors.text }]}>Düşünceni paylaş</Text>
                         </TouchableOpacity>
 
@@ -33,7 +33,7 @@ export const PostSelectionScreen = () => {
                                 (navigation as any).navigate('CreateQuote', { mode: 'quote' });
                             }}
                         >
-                            <Icon name="book-open" size={24} color={theme.colors.primary} style={{ marginRight: 16 }} />
+                            <BookOpen size={24} color={theme.colors.primary} style={{ marginRight: 16 }} />
                             <Text style={[styles.text, { color: theme.colors.text }]}>Alıntı/İnceleme yap</Text>
                         </TouchableOpacity>
                     </View>

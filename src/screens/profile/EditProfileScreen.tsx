@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image,
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft, Camera } from 'lucide-react-native';
 import ImagePicker from 'react-native-image-crop-picker';
 import { userService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
@@ -228,7 +228,7 @@ export const EditProfileScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={20} color={theme.colors.text} />
+                    <ArrowLeft size={20} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Profili Düzenle</Text>
                 <TouchableOpacity onPress={handleSave} disabled={isLoading}>
@@ -248,7 +248,7 @@ export const EditProfileScreen = () => {
                         style={styles.headerImage}
                     />
                     <View style={styles.overlay}>
-                        <Icon name="camera" size={24} color="#FFF" />
+                        <Camera size={24} color="#FFF" />
                     </View>
                 </TouchableOpacity>
 
@@ -260,7 +260,7 @@ export const EditProfileScreen = () => {
                             style={styles.avatar}
                         />
                         <View style={styles.avatarOverlay}>
-                            <Icon name="camera" size={20} color="#FFF" />
+                            <Camera size={20} color="#FFF" />
                         </View>
                     </TouchableOpacity>
                     <Text style={styles.changePhotoText}>Profil Fotoğrafını Değiştir</Text>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, ScrollView, Dimensions } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Trophy, Medal, Award, Star, PenTool, Heart, MessageCircle, Eye } from 'lucide-react-native';
 
 interface LeaderUser {
     id: number;
@@ -48,10 +48,10 @@ export const WeeklyLeadersModal: React.FC<WeeklyLeadersModalProps> = ({ visible,
 
     const getRankIcon = (index: number) => {
         switch (index) {
-            case 0: return 'trophy';
-            case 1: return 'medal';
-            case 2: return 'ribbon';
-            default: return 'star';
+            case 0: return Trophy;
+            case 1: return Medal;
+            case 2: return Award;
+            default: return Star;
         }
     };
 
@@ -197,7 +197,7 @@ export const WeeklyLeadersModal: React.FC<WeeklyLeadersModalProps> = ({ visible,
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Ionicons name="podium" size={48} color={theme.colors.primary} style={{ marginBottom: 10 }} />
+                        <Trophy size={48} color={theme.colors.primary} style={{ marginBottom: 10 }} />
                         <Text style={styles.title}>Geçen Haftanın Liderleri</Text>
                         <Text style={styles.subtitle}>Geçen hafta en çok etkileşimi alan ve topluluğa değer katan kullanıcılarımız.</Text>
                     </View>
@@ -206,7 +206,7 @@ export const WeeklyLeadersModal: React.FC<WeeklyLeadersModalProps> = ({ visible,
                         {topUsers.map((user, index) => (
                             <View key={user.id} style={[styles.card, { borderColor: getRankColor(index) }]}>
                                 <View style={[styles.rankBadge, { backgroundColor: getRankColor(index) }]}>
-                                    <Ionicons name={getRankIcon(index)} size={16} color="#FFF" />
+                                    {React.createElement(getRankIcon(index), { size: 16, color: "#FFF" })}
                                 </View>
 
                                 <View style={styles.userInfo}>
@@ -226,19 +226,19 @@ export const WeeklyLeadersModal: React.FC<WeeklyLeadersModalProps> = ({ visible,
                                 <View style={styles.statsGrid}>
                                     <View style={styles.statItem}>
                                         <Text style={styles.statValue}>{formatNumber(user.post_count)}</Text>
-                                        <Ionicons name="create-outline" size={14} color={theme.colors.textSecondary} />
+                                        <PenTool size={14} color={theme.colors.textSecondary} />
                                     </View>
                                     <View style={styles.statItem}>
                                         <Text style={styles.statValue}>{formatNumber(user.total_likes)}</Text>
-                                        <Ionicons name="heart-outline" size={14} color={theme.colors.textSecondary} />
+                                        <Heart size={14} color={theme.colors.textSecondary} />
                                     </View>
                                     <View style={styles.statItem}>
                                         <Text style={styles.statValue}>{formatNumber(user.total_comments)}</Text>
-                                        <Ionicons name="chatbubble-outline" size={14} color={theme.colors.textSecondary} />
+                                        <MessageCircle size={14} color={theme.colors.textSecondary} />
                                     </View>
                                     <View style={styles.statItem}>
                                         <Text style={[styles.statValue, { color: theme.colors.primary }]}>{formatNumber(user.total_views)}</Text>
-                                        <Ionicons name="eye-outline" size={14} color={theme.colors.textSecondary} />
+                                        <Eye size={14} color={theme.colors.textSecondary} />
                                     </View>
                                 </View>
                             </View>

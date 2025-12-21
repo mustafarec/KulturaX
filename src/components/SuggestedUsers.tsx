@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/backendApi';
 import { useAuth } from '../context/AuthContext';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { X } from 'lucide-react-native';
 
 
 
@@ -189,7 +189,7 @@ export const SuggestedUsers = () => {
             <View style={styles.headerRow}>
                 <Text style={styles.headerText}>Kimi takip etmeli</Text>
                 <TouchableOpacity onPress={handleHide} style={styles.closeButton}>
-                    <Icon name="close" size={20} color={theme.colors.textSecondary} />
+                    <X size={20} color={theme.colors.textSecondary} />
                 </TouchableOpacity>
             </View>
             <FlatList

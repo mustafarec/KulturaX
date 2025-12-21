@@ -2,28 +2,31 @@ import { View, StyleSheet, Text, Image, Platform } from 'react-native';
 
 export const lightTheme = {
     fonts: {
-        main: Platform.select({ ios: 'System', android: 'Roboto' }),
-        quote: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        main: Platform.select({ ios: 'Roboto-Regular', android: 'Roboto-Regular' }),
+        quote: Platform.select({ ios: 'NotoSerifGeorgian-Regular', android: 'NotoSerifGeorgian-Regular' }),
+        headings: Platform.select({ ios: 'PlayfairDisplay-Bold', android: 'PlayfairDisplay-Bold' }),
     },
     id: 'light', // Unique identifier
     colors: {
-        primary: '#5A3E2B', // Custom Brown
-        secondary: '#5A3E2B', // Custom Brown
-        accent: '#5A3E2B', // Custom Brown
-        background: '#f3efe7', // Light Warm Beige/Pink
-        surface: '#f3efe7',
-        text: '#381808', // Very Dark Brown
-        textSecondary: '#583828', // Medium Brown
-        border: 'rgba(120, 56, 8, 0.2)', // Brownish border
-        error: '#EF4444',
+        primary: '#3D2817', // --primary
+        secondary: '#8B7355', // --secondary
+        accent: '#A08968', // --accent
+        background: '#FAF8F5', // --background
+        surface: '#FFFFFF', // --card
+        text: '#3D2817', // --foreground
+        textSecondary: '#6B5D4F', // --muted-foreground
+        border: 'rgba(61, 40, 23, 0.1)', // --border
+        error: '#d4183d', // --destructive
         success: '#10B981',
         warning: '#F59E0B',
         glass: 'rgba(255, 255, 255, 0.75)',
         glassBorder: 'rgba(248, 232, 232, 0.8)',
-        glassShadow: 'rgba(184, 120, 56, 0.15)', // Brownish shadow
-        gradientStart: '#5A3E2B',
-        gradientEnd: '#5A3E2B',
-        icon: '#381808',
+        glassShadow: 'rgba(184, 120, 56, 0.15)',
+        gradientStart: '#3D2817',
+        gradientEnd: '#3D2817',
+        icon: '#3D2817',
+        inputBackground: '#F3F1ED', // --input-background
+        muted: '#E8E4DD', // --muted
     },
     spacing: {
         xs: 4, s: 8, m: 16, l: 24, xl: 32, liquid: 20,
@@ -33,21 +36,21 @@ export const lightTheme = {
     },
     shadows: {
         default: {
-            shadowColor: "#381808",
+            shadowColor: "#3D2817",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.1,
             shadowRadius: 4,
             elevation: 3,
         },
         soft: {
-            shadowColor: "#5A3E2B",
+            shadowColor: "#3D2817",
             shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.1,
+            shadowOpacity: 0.05,
             shadowRadius: 20,
-            elevation: 10,
+            elevation: 5,
         },
         glass: {
-            shadowColor: "#381808",
+            shadowColor: "#3D2817",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.05,
             shadowRadius: 10,
@@ -55,11 +58,11 @@ export const lightTheme = {
         }
     },
     typography: {
-        h1: { fontSize: 32, fontWeight: '800', letterSpacing: -1 } as const,
-        h2: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5 } as const,
-        h3: { fontSize: 20, fontWeight: '600' } as const,
-        body: { fontSize: 16, lineHeight: 24 } as const,
-        caption: { fontSize: 12, color: '#583828' } as const,
+        h1: { fontSize: 32, fontWeight: '800', letterSpacing: -1, fontFamily: 'PlayfairDisplay-Bold' } as const,
+        h2: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'PlayfairDisplay-Bold' } as const,
+        h3: { fontSize: 20, fontWeight: '600', fontFamily: 'PlayfairDisplay-Bold' } as const,
+        body: { fontSize: 16, lineHeight: 24, fontFamily: 'Roboto-Regular' } as const,
+        caption: { fontSize: 12, color: '#6B5D4F', fontFamily: 'Roboto-Regular' } as const,
     },
     dark: false,
 };
@@ -71,19 +74,21 @@ export const dimTheme = {
     colors: {
         ...lightTheme.colors,
         background: '#1C1917', // Stone 900
-        surface: '#1F1B18', // User requested #1F1B18
-        text: '#E7E5E4', // User requested #E7E5E4
-        textSecondary: '#A8A29E', // Stone 400 - Adjusted for harmony with #E7E5E4
-        border: '#38444D',
-        glass: 'rgba(21, 32, 43, 0.85)',
-        glassBorder: '#38444D',
+        surface: '#292524', // Stone 800 - From CSS
+        text: '#E7E5E4', // Stone 200 - From CSS
+        textSecondary: '#A8A29E', // Stone 400
+        border: '#44403C', // Stone 700 - From CSS
+        glass: 'rgba(28, 25, 23, 0.85)', // Adapted from background
+        glassBorder: '#44403C',
         glassShadow: 'rgba(0, 0, 0, 0.3)',
-        icon: '#FFFFFF',
-        primary: '#EA9A65', // User requested accents
-        secondary: '#EA9A65',
-        accent: '#EA9A65',
+        icon: '#E7E5E4',
+        primary: '#EA9A65',
+        secondary: '#44403C', // Stone 700 - From CSS
+        accent: '#44403C', // Stone 700 - From CSS
         gradientStart: '#EA9A65',
         gradientEnd: '#EA9A65',
+        muted: '#44403C', // Stone 700 - From CSS
+        inputBackground: '#44403C', // Stone 700 - From CSS
     },
     shadows: {
         ...lightTheme.shadows,
@@ -125,7 +130,8 @@ export const blackTheme = {
         accent: '#EA9A65',
         gradientStart: '#EA9A65',
         gradientEnd: '#EA9A65',
-
+        muted: '#1C1917', // Darker background for muted cards in black mode
+        inputBackground: '#1C1917', // Consistent with muted
     },
     shadows: {
         ...lightTheme.shadows,
@@ -148,7 +154,7 @@ export const blackTheme = {
 };
 
 // Default export for backward compatibility (will be managed by context)
-export const darkTheme = blackTheme;
+export const darkTheme = dimTheme;
 export const theme = lightTheme;
 
 export type Theme = typeof lightTheme;

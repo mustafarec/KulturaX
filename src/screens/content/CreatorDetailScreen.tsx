@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft } from 'lucide-react-native';
 
 export const CreatorDetailScreen = ({ route }: any) => {
     const { id, name, type } = route.params; // type: 'person' (TMDB) or 'author' (Google Books)
@@ -195,7 +195,7 @@ export const CreatorDetailScreen = ({ route }: any) => {
             <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
+                    <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 {details?.profile_path ? (
                     <Image

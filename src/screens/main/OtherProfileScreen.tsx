@@ -7,11 +7,12 @@ import { useAuth } from '../../context/AuthContext';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
 import { ReviewCard } from '../../components/ReviewCard';
-import { RepostMenu } from '../../components/RepostMenu';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import Toast from 'react-native-toast-message';
 import { ThemedDialog } from '../../components/ThemedDialog';
+import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil } from 'lucide-react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
@@ -24,7 +25,16 @@ if (Platform.OS === 'android') {
 export const OtherProfileScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
-    const { userId } = route.params as { userId: number };
+    const params = route.params as { userId?: number } | undefined;
+    const userId = params?.userId;
+
+    if (!userId) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text>Kullanıcı ID bulunamadı.</Text>
+            </View>
+        );
+    }
     const { user: currentUser } = useAuth();
     const { theme } = useTheme();
 
@@ -40,7 +50,7 @@ export const OtherProfileScreen = () => {
             backgroundColor: theme.colors.background,
         },
         headerImageContainer: {
-            height: 180,
+            height: 192,
             width: '100%',
             position: 'relative',
         },
@@ -50,11 +60,7 @@ export const OtherProfileScreen = () => {
             resizeMode: 'cover',
         },
         headerGradient: {
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 100,
+            ...StyleSheet.absoluteFillObject,
         },
         backButton: {
             position: 'absolute',
@@ -105,234 +111,167 @@ export const OtherProfileScreen = () => {
             fontWeight: '600',
         },
 
-        profileInfoContainer: {
-            marginTop: -50, // Overlap header image
-            paddingBottom: 10,
+        profileHeaderContent: {
+            marginTop: -64,
+            paddingHorizontal: 16,
+            paddingBottom: 12,
         },
         avatarRow: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'flex-end',
-            paddingHorizontal: 20,
-            marginBottom: 12,
+            marginBottom: 16,
+        },
+        avatarContainer: {
+            position: 'relative',
         },
         avatar: {
-            width: 100,
-            height: 100,
-            borderRadius: 50,
+            width: 120,
+            height: 120,
+            borderRadius: 60,
             borderWidth: 4,
             borderColor: theme.colors.background,
-            ...theme.shadows.soft,
         },
-        actionButtons: {
+        headerActions: {
             flexDirection: 'row',
-            marginBottom: 10,
+            gap: 8,
+            paddingBottom: 12,
         },
-        messageButton: {
-            backgroundColor: theme.colors.primary,
-            padding: 8,
-            borderRadius: 20,
-            width: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 8,
+        iconBtn: {
+            padding: 10,
+            borderRadius: 12,
             borderWidth: 1,
-            borderColor: theme.colors.primary,
-            ...theme.shadows.soft,
-        },
-        messageButtonText: {
-            fontSize: 14,
-            fontWeight: '600',
-            color: '#FFFFFF',
-        },
-        followButton: {
-            backgroundColor: theme.colors.text,
-            paddingVertical: 8,
-            paddingHorizontal: 20,
-            borderRadius: 20,
-            marginRight: 8,
-            ...theme.shadows.soft,
-        },
-        followingButton: {
             backgroundColor: theme.colors.surface,
-            borderWidth: 1,
             borderColor: theme.colors.border,
-        },
-        followButtonText: {
-            fontSize: 14,
-            fontWeight: '600',
-            color: theme.colors.background,
-        },
-        followingButtonText: {
-            color: theme.colors.text,
-        },
-        shareButton: {
-            backgroundColor: theme.colors.surface,
-            padding: 8,
-            borderRadius: 20,
-            width: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            ...theme.shadows.soft,
-        },
-        shareButtonText: {
-            color: theme.colors.text,
-            fontWeight: 'bold',
-            fontSize: 16,
         },
         userInfo: {
-            paddingHorizontal: 20,
             marginBottom: 20,
         },
         nameRow: {
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 8,
             marginBottom: 4,
         },
         name: {
             fontSize: 24,
             fontWeight: '800',
             color: theme.colors.text,
-            marginRight: 8,
-        },
-        badge: {
-            backgroundColor: theme.colors.surface,
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-        },
-        badgeText: {
-            fontSize: 10,
-            fontWeight: '700',
-            color: theme.colors.textSecondary,
         },
         username: {
             fontSize: 15,
-            color: theme.colors.textSecondary,
             fontWeight: '500',
+            color: theme.colors.textSecondary,
             marginBottom: 12,
         },
         bio: {
             fontSize: 15,
-            color: theme.colors.text,
             lineHeight: 22,
+            color: theme.colors.text,
             marginBottom: 12,
         },
-        metaInfo: {
+        metaRow: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 16,
+        },
+        metaItem: {
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 6,
         },
         metaText: {
             fontSize: 13,
             color: theme.colors.textSecondary,
-            marginLeft: 4,
         },
-        listeningContainer: {
-            marginHorizontal: 20,
-            marginBottom: 20,
+        statsGrid: {
+            gap: 12,
+            marginBottom: 12,
+        },
+        socialStatsRow: {
+            flexDirection: 'row',
+            gap: 12,
+        },
+        statCard: {
+            flex: 1,
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: 'rgba(29, 185, 84, 0.1)', // Spotify green tint
             padding: 12,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: 'rgba(29, 185, 84, 0.2)',
+            gap: 12,
         },
-        listeningLabel: {
-            fontSize: 10,
-            color: '#1DB954',
-            fontWeight: '700',
-            textTransform: 'uppercase',
-        },
-        listeningTrack: {
-            fontSize: 14,
-            fontWeight: '700',
-            color: theme.colors.text,
-        },
-        listeningArtist: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-        },
-        albumArt: {
-            width: 48,
-            height: 48,
-            borderRadius: 8,
-        },
-        statsScroll: {
-            marginBottom: 20,
-        },
-        statsContent: {
-            paddingHorizontal: 20,
-        },
-        statItem: {
-            marginRight: 24,
+        statIconCircle: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            justifyContent: 'center',
             alignItems: 'center',
         },
-        statNumber: {
+        statValue: {
             fontSize: 18,
-            fontWeight: '800',
+            fontWeight: '700',
             color: theme.colors.text,
         },
         statLabel: {
             fontSize: 12,
             color: theme.colors.textSecondary,
-            marginTop: 2,
         },
-        tabsContainer: {
+        activityStatsRow: {
+            flexDirection: 'row',
+            gap: 12,
+        },
+        activityCard: {
+            flex: 1,
+            padding: 12,
+            borderRadius: 16,
+            borderWidth: 1,
+        },
+        tabContainer: {
             flexDirection: 'row',
             borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-            paddingHorizontal: 20,
+            marginBottom: 16,
         },
-        tab: {
-            marginRight: 24,
+        tabItem: {
+            flex: 1,
             paddingVertical: 12,
+            alignItems: 'center',
             borderBottomWidth: 2,
             borderBottomColor: 'transparent',
         },
-        activeTab: {
-            borderBottomColor: theme.colors.primary,
-        },
         tabText: {
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: '600',
-            color: theme.colors.textSecondary,
         },
-        activeTabText: {
-            color: theme.colors.primary,
-            fontWeight: '700',
+        contentArea: {
+            minHeight: 200,
         },
-        filterContainer: {
+        gridContainer: {
             flexDirection: 'row',
-            marginBottom: 16,
+            flexWrap: 'wrap',
+            gap: 8,
+            padding: 16,
         },
-        filterChip: {
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: 20,
-            backgroundColor: theme.colors.glass,
-            marginRight: 8,
-            borderWidth: 1,
-            borderColor: theme.colors.glassBorder,
+        gridItem: {
+            width: (Dimensions.get('window').width - 32 - 16) / 3, // 3 columns, minus padding and gap
+            aspectRatio: 2 / 3,
+            borderRadius: 8,
+            overflow: 'hidden',
+            backgroundColor: theme.colors.surface, // Fixed dark mode issue
+            marginBottom: 8,
         },
-        activeFilterChip: {
+        gridImage: {
+            width: '100%',
+            height: '100%',
+            resizeMode: 'cover',
+        },
+        readingBadge: {
+            position: 'absolute',
+            top: 4,
+            right: 4,
             backgroundColor: theme.colors.primary,
-            borderColor: theme.colors.primary,
-        },
-        filterText: {
-            fontSize: 13,
-            color: theme.colors.text,
-            fontWeight: '600',
-        },
-        activeFilterText: {
-            color: '#FFFFFF',
-        },
-        contentContainer: {
-            padding: 20,
+            padding: 4,
+            borderRadius: 4,
         },
         libraryItemCard: {
             backgroundColor: theme.colors.glass,
@@ -404,6 +343,8 @@ export const OtherProfileScreen = () => {
     const [profile, setProfile] = useState<any>(null);
     const [activeTab, setActiveTab] = useState('posts');
     const [userPosts, setUserPosts] = useState<any[]>([]);
+    const [userReplies, setUserReplies] = useState<any[]>([]);
+    const [isRepliesLoading, setIsRepliesLoading] = useState(false);
     const [userReviews, setUserReviews] = useState<any[]>([]);
     const [libraryItems, setLibraryItems] = useState<any[]>([]);
     const [libraryFilter, setLibraryFilter] = useState<'all' | 'book' | 'movie' | 'music'>('all');
@@ -414,8 +355,6 @@ export const OtherProfileScreen = () => {
 
     // Interaction State
     const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-    const [repostMenuVisible, setRepostMenuVisible] = useState(false);
-    const [selectedRepostPost, setSelectedRepostPost] = useState<any>(null);
 
     // Block Dialog State
     const [blockDialogVisible, setBlockDialogVisible] = useState(false);
@@ -427,59 +366,89 @@ export const OtherProfileScreen = () => {
     const headerImage = profile?.header_image_url || 'https://images.unsplash.com/photo-1507842217121-9e96e4430330?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
 
     const [isFollowing, setIsFollowing] = useState(false);
-    const fetchProfileData = async () => {
+
+
+
+    const fetchUserProfile = async () => {
+        if (!userId) return;
         if (!refreshing) setIsLoading(true);
-
-        console.log('Fetching profile for userId:', userId);
-
         try {
-            try {
-                // Fetch profile and check follow status
-                const profileData = await userService.getUserProfile(userId, currentUser?.id);
-                setProfile(profileData);
+            const profileData = await userService.getUserProfile(userId, currentUser?.id);
+            setProfile(profileData);
+        } catch (profileError) {
+            console.error('Error fetching profile:', profileError);
+        }
+    };
 
-                if (profileData.is_following !== undefined) {
-                    setIsFollowing(profileData.is_following);
-                }
-            } catch (profileError) {
-                console.error('Error fetching profile:', profileError);
-            }
-
-            try {
-                const postsData = await postService.getFeed(userId);
-                if (Array.isArray(postsData)) {
-                    const filteredPosts = postsData
-                        .filter((post: any) => post.user.id == userId)
-                        .sort((a: any, b: any) => {
-                            const pinA = (a.is_pinned === 1 || a.is_pinned === '1' || a.is_pinned === true) ? 1 : 0;
-                            const pinB = (b.is_pinned === 1 || b.is_pinned === '1' || b.is_pinned === true) ? 1 : 0;
-                            return pinB - pinA;
-                        });
-                    setUserPosts(filteredPosts);
-                }
-            } catch (postError) {
-                console.error('Error fetching user posts:', postError);
-            }
-
-            try {
-                const libraryData = await libraryService.getUserLibrary(userId);
-                setLibraryItems(libraryData);
-            } catch (libraryError) {
-                console.error('Error fetching library:', libraryError);
-            }
-
-            try {
-                const reviewsData = await reviewService.getUserReviews(userId);
-                setUserReviews(reviewsData);
-            } catch (reviewError) {
-                console.error('Error fetching reviews:', reviewError);
-            }
-
+    const checkFollowStatus = async () => {
+        if (!currentUser || !profile) return;
+        try {
+            const status = await userService.checkFollowStatus(currentUser.id, profile.id);
+            setIsFollowing(status.is_following);
         } catch (error) {
-            console.error('General error in fetchProfileData:', error);
+            console.error('Error checking follow status:', error);
+        }
+    };
+
+    const fetchUserPosts = async () => {
+        if (!userId) return;
+        if (!refreshing) setIsLoading(true);
+        try {
+            const data = await postService.getFeed(userId);
+            // Filter posts for this user
+            const myPosts = data
+                .filter((post: any) => {
+                    const postOwnerId = post.user.id;
+                    // Check if it's the user's post or a repost by the user
+                    // For reposts, the structure usually has a 'user' field indicating who posted/reposted
+                    return postOwnerId === userId;
+                })
+                .sort((a: any, b: any) => {
+                    const pinA = (a.is_pinned === 1 || a.is_pinned === '1' || a.is_pinned === true) ? 1 : 0;
+                    const pinB = (b.is_pinned === 1 || b.is_pinned === '1' || b.is_pinned === true) ? 1 : 0;
+                    return pinB - pinA;
+                });
+
+            setUserPosts(myPosts);
+        } catch (error) {
+            console.error('Posts fetch error:', error);
         } finally {
             setIsLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    const fetchUserReplies = async () => {
+        if (!userId) return;
+        setIsRepliesLoading(true);
+        try {
+            // NOTE: Assuming getFeed supports 'replies' filter to return comments/replies of the user
+            const data = await postService.getFeed(userId, 'replies');
+            setUserReplies(data);
+        } catch (error) {
+            console.error('Replies fetch error:', error);
+        } finally {
+            setIsRepliesLoading(false);
+        }
+    };
+
+    const fetchLibraryItems = async () => {
+        if (!userId) return;
+        try {
+            const libraryData = await libraryService.getUserLibrary(userId);
+            setLibraryItems(libraryData);
+        } catch (libraryError) {
+            console.error('Error fetching library:', libraryError);
+        }
+    };
+
+    const fetchUserReviews = async () => {
+        if (!userId) return;
+        try {
+            const reviewsData = await reviewService.getUserReviews(userId);
+            setUserReviews(reviewsData);
+        } catch (reviewError) {
+            console.error('Error fetching reviews:', reviewError);
         }
     };
 
@@ -538,8 +507,48 @@ export const OtherProfileScreen = () => {
         }
     };
 
+    // Initial load: Fetch main data once when userId changes
     useEffect(() => {
-        fetchProfileData();
+        if (userId) {
+            fetchUserProfile();
+            fetchUserPosts();
+            fetchLibraryItems();
+            fetchUserReviews();
+            if (currentUser) {
+                checkFollowStatus();
+            }
+        }
+    }, [userId, currentUser]);
+
+    // Tab switch: Fetch data only if needed (Lazy Loading)
+    useEffect(() => {
+        if (userId) {
+            if (activeTab === 'replies' && userReplies.length === 0) {
+                fetchUserReplies();
+            }
+        }
+    }, [activeTab, userId]);
+
+    // Animation Value for Tab Slide
+    const translateX = useSharedValue(0);
+    const tabOrder = ['posts', 'replies', 'book', 'movie', 'music', 'reviews'];
+
+    const getTabIndex = (tab: string) => {
+        return tabOrder.indexOf(tab);
+    };
+
+    // Tab changed animation
+    useEffect(() => {
+        const index = getTabIndex(activeTab);
+        if (index !== -1) {
+            const config = { damping: 30, stiffness: 250, mass: 1 };
+            translateX.value = withSpring(-index * width, config);
+        }
+    }, [activeTab]);
+
+    const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+
+    useEffect(() => {
         fetchNowPlaying();
         const interval = setInterval(fetchNowPlaying, 30000);
         return () => clearInterval(interval);
@@ -547,9 +556,15 @@ export const OtherProfileScreen = () => {
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
-        fetchProfileData();
-        fetchNowPlaying();
-    }, []);
+        fetchUserPosts();
+        if (activeTab === 'replies') fetchUserReplies();
+        fetchLibraryItems();
+        fetchUserProfile();
+        fetchUserReviews();
+        if (currentUser) {
+            checkFollowStatus();
+        }
+    }, [userId, currentUser, activeTab]);
 
     const handleMessagePress = () => {
         if (!profile) return;
@@ -563,7 +578,8 @@ export const OtherProfileScreen = () => {
     if (isLoading && !profile) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <SkeletonPost />
+                <SkeletonPost />
             </View>
         );
     }
@@ -597,67 +613,7 @@ export const OtherProfileScreen = () => {
         }
     };
 
-    const handleLike = async (post: any) => {
-        if (!currentUser) return;
-        try {
-            const isLiked = post.is_liked;
-            const currentLikeCount = typeof post.like_count === 'string' ? parseInt(post.like_count, 10) : post.like_count;
-            const newLikeCount = isLiked ? currentLikeCount - 1 : currentLikeCount + 1;
-
-            const updatedPosts = userPosts.map(p => {
-                if (p.id === post.id) {
-                    return { ...p, is_liked: !isLiked, like_count: newLikeCount };
-                }
-                return p;
-            });
-            setUserPosts(updatedPosts);
-
-            const response = await interactionService.toggleLike(currentUser.id, post.id);
-
-            if (response && typeof response.count === 'number') {
-                const updatedPosts = userPosts.map(p => {
-                    if (p.id === post.id) {
-                        return { ...p, is_liked: response.liked, like_count: response.count };
-                    }
-                    return p;
-                });
-                setUserPosts(updatedPosts);
-            }
-        } catch (error) {
-            console.error(error);
-            fetchProfileData();
-        }
-    };
-
-    const handleRepost = (post: any) => {
-        setSelectedRepostPost(post);
-        setRepostMenuVisible(true);
-    };
-
-    const handleDirectRepost = async () => {
-        if (!currentUser || !selectedRepostPost) return;
-        try {
-            await postService.create(
-                currentUser.id,
-                '', // quote
-                'Yeniden paylaşım', // comment
-                'App',
-                currentUser.username,
-                selectedRepostPost.id
-            );
-            setRepostMenuVisible(false);
-            Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Yeniden gönderildi!' });
-        } catch (error) {
-            console.error(error);
-            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem başarısız.' });
-        }
-    };
-
-    const handleQuoteRepost = () => {
-        if (!selectedRepostPost) return;
-        setRepostMenuVisible(false);
-        (navigation as any).navigate('CreateQuote', { originalPost: selectedRepostPost });
-    };
+    // Interaction logic moved to PostCard internal hook
 
     const handleBlockUser = async () => {
         if (!currentUser) return;
@@ -682,23 +638,9 @@ export const OtherProfileScreen = () => {
         }
     };
 
-    // Helper Components (Moved inside to access styles and theme)
-    const StatItem = ({ number, label, onPress }: { number: number, label: string, onPress?: () => void }) => (
-        <TouchableOpacity style={styles.statItem} onPress={onPress} disabled={!onPress}>
-            <Text style={styles.statNumber}>{number}</Text>
-            <Text style={styles.statLabel}>{label}</Text>
-        </TouchableOpacity>
-    );
-
-    const TabButton = ({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
-        <TouchableOpacity style={[styles.tab, active && styles.activeTab]} onPress={onPress}>
-            <Text style={[styles.tabText, active && styles.activeTabText]}>{title}</Text>
-        </TouchableOpacity>
-    );
-
-    const EmptyState = ({ icon, text }: { icon: string, text: string }) => (
+    const EmptyState = ({ icon: IconComponent, text }: { icon: any, text: string }) => (
         <View style={styles.emptyContainer}>
-            <Icon name={icon} size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+            <IconComponent size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
             <Text style={styles.emptyText}>{text}</Text>
         </View>
     );
@@ -718,9 +660,18 @@ export const OtherProfileScreen = () => {
         }
     };
 
-    const renderTabContent = () => {
-        switch (activeTab) {
+    const renderTabContent = (currentTab: string) => {
+        switch (currentTab) {
             case 'posts':
+                if (isLoading && !refreshing) {
+                    return (
+                        <View>
+                            <SkeletonPost />
+                            <SkeletonPost />
+                            <SkeletonPost />
+                        </View>
+                    );
+                }
                 return userPosts.filter(p => p.type !== 'quote').length > 0 ? (
                     userPosts.filter(p => p.type !== 'quote').map((post) => (
                         <PostCard
@@ -735,13 +686,75 @@ export const OtherProfileScreen = () => {
                                 }
                             }}
                             onContentPress={handleContentPress}
-                            onLike={() => handleLike(post)}
                             onComment={() => (navigation as any).navigate('PostDetail', { postId: post.id, autoFocusComment: true })}
-                            onRepost={() => handleRepost(post)}
+                            onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+                            onShare={async () => {
+                                try {
+                                    await Share.share({
+                                        message: `KültüraX'ta bu gönderiye bak: ${post.content || 'İçerik'}`,
+                                        url: `https://kulturax.app/p/${post.id}`
+                                    });
+                                } catch (e) { }
+                            }}
+                            onUpdatePost={(updater) => setUserPosts(prev => prev.map(updater))}
                         />
                     ))
                 ) : (
-                    <EmptyState icon="social-dropbox" text="Henüz gönderi yok." />
+                    <EmptyState icon={Package} text="Henüz gönderi yok." />
+                );
+            case 'replies':
+                if (isRepliesLoading && !refreshing) {
+                    return (
+                        <View>
+                            <SkeletonPost />
+                            <SkeletonPost />
+                            <SkeletonPost />
+                        </View>
+                    );
+                }
+
+                // Use userReplies state if available, otherwise fallback to filtering userPosts
+                const sourceData = userReplies.length > 0 ? userReplies : userPosts;
+                const repliesOnly = sourceData.filter(p => p.reply_to_post_id || p.type === 'comment');
+
+                // Ensure we filter sourceData regardless of where it came from
+                const dataToShow = repliesOnly;
+
+                return dataToShow.length > 0 ? (
+                    dataToShow.map((post) => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            onPress={() => { }}
+                            onUserPress={(userId) => {
+                                const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
+                                const finalUserId = userId || targetUserId;
+                                if (finalUserId !== userId) {
+                                    (navigation as any).navigate('OtherProfile', { userId: finalUserId });
+                                }
+                            }}
+                            onContentPress={handleContentPress}
+                            onComment={() => {
+                                const targetId = post.type === 'comment' && post.reply_to_post_id ? post.reply_to_post_id : post.id;
+                                (navigation as any).navigate('PostDetail', { postId: targetId, autoFocusComment: true });
+                            }}
+                            onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+                            onShare={async () => {
+                                try {
+                                    await Share.share({
+                                        message: `KültüraX'ta bu gönderiye bak: ${post.content || 'İçerik'}`,
+                                        url: `https://kulturax.app/p/${post.id}`
+                                    });
+                                } catch (e) { }
+                            }}
+                            onUpdatePost={(updater) => {
+                                setUserPosts(prev => prev.map(updater));
+                                setUserReplies(prev => prev.map(updater));
+                            }}
+                        />
+                    ))
+                ) : (
+                    <EmptyState icon={MessageSquare} text="Henüz yanıt yok." />
                 );
             case 'quotes':
                 const quotePosts = userPosts.filter(p =>
@@ -764,136 +777,54 @@ export const OtherProfileScreen = () => {
                                 }
                             }}
                             onContentPress={handleContentPress}
-                            onLike={() => handleLike(post)}
                             onComment={() => (navigation as any).navigate('PostDetail', { postId: post.id, autoFocusComment: true })}
-                            onRepost={() => handleRepost(post)}
+                            onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+                            onUpdatePost={(updater) => setUserPosts(prev => prev.map(updater))}
                         />
                     ))
                 ) : (
-                    <EmptyState icon="speech" text="Henüz alıntı yok." />
+                    <EmptyState icon={MessageSquare} text="Henüz alıntı yok." />
                 );
-            case 'library':
-                const filteredLibrary = libraryItems.filter(item => {
-                    const matchesType = libraryFilter === 'all' ? true : item.content_type === libraryFilter;
-                    const matchesSub = subFilter === 'all' ? true : item.status === subFilter;
-                    return matchesType && matchesSub;
+
+            case 'book':
+            case 'movie':
+            case 'music':
+                // Filter items based on the active tab
+                const filteredItems = libraryItems.filter(item => {
+                    if (activeTab === 'book') return item.content_type === 'book';
+                    if (activeTab === 'movie') return item.content_type === 'movie';
+                    if (activeTab === 'music') return item.content_type === 'music';
+                    return false;
                 });
 
-                const handleFilterChange = (filter: 'all' | 'book' | 'movie' | 'music') => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setLibraryFilter(filter);
-                    setSubFilter('all');
-                };
-
-                const getSubFilters = () => {
-                    if (libraryFilter === 'book') {
-                        return [
-                            { label: 'Tümü', value: 'all' },
-                            { label: 'Okudum', value: 'read' },
-                            { label: 'Okuyorum', value: 'reading' },
-                            { label: 'Okuyacağım', value: 'want_to_read' },
-                            { label: 'Yarım Bıraktım', value: 'dropped' },
-                        ];
-                    } else if (libraryFilter === 'movie') {
-                        return [
-                            { label: 'Tümü', value: 'all' },
-                            { label: 'İzledim', value: 'read' },
-                            { label: 'İzliyorum', value: 'reading' },
-                            { label: 'İzleyeceğim', value: 'want_to_read' },
-                            { label: 'Yarım Bıraktım', value: 'dropped' },
-                        ];
-                    } else if (libraryFilter === 'music') {
-                        return [
-                            { label: 'Tümü', value: 'all' },
-                            { label: 'Dinledim', value: 'read' },
-                            { label: 'Dinliyorum', value: 'reading' },
-                            { label: 'Dinleyeceğim', value: 'want_to_read' },
-                            { label: 'Yarım Bıraktım', value: 'dropped' },
-                        ];
-                    }
-                    return [];
-                };
+                if (filteredItems.length === 0) {
+                    const emptyText = activeTab === 'book' ? 'Henüz kitap eklememiş.' : activeTab === 'movie' ? 'Henüz film eklememiş.' : 'Henüz müzik eklememiş.';
+                    const EmptyIcon = activeTab === 'book' ? BookOpen : activeTab === 'movie' ? Film : Music;
+                    return <EmptyState icon={EmptyIcon} text={emptyText} />;
+                }
 
                 return (
-                    <View>
-                        {/* Ana Filtreler */}
-                        <View style={[styles.filterContainer, { marginBottom: 8 }]}>
+                    <View style={styles.gridContainer}>
+                        {filteredItems.map((item) => (
                             <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'all' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('all')}
+                                key={item.id}
+                                style={styles.gridItem}
+                                onPress={() => handleContentPress(item.content_type || 'book', item.content_id)}
                             >
-                                <Text style={[styles.filterText, libraryFilter === 'all' && styles.activeFilterText]}>Tümü</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'book' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('book')}
-                            >
-                                <Text style={[styles.filterText, libraryFilter === 'book' && styles.activeFilterText]}>Kitaplar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'movie' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('movie')}
-                            >
-                                <Text style={[styles.filterText, libraryFilter === 'movie' && styles.activeFilterText]}>Filmler</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.filterChip, libraryFilter === 'music' && styles.activeFilterChip]}
-                                onPress={() => handleFilterChange('music')}
-                            >
-                                <Text style={[styles.filterText, libraryFilter === 'music' && styles.activeFilterText]}>Müzikler</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Alt Filtreler (Animasyonlu) */}
-                        {libraryFilter !== 'all' && (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, paddingHorizontal: 4 }}>
-                                {getSubFilters().map((sub) => (
-                                    <TouchableOpacity
-                                        key={sub.value}
-                                        style={[
-                                            styles.filterChip,
-                                            { backgroundColor: subFilter === sub.value ? theme.colors.primary : theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, marginRight: 6, paddingVertical: 4, paddingHorizontal: 12 }
-                                        ]}
-                                        onPress={() => {
-                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                            setSubFilter(sub.value as any);
-                                        }}
-                                    >
-                                        <Text style={[styles.filterText, { fontSize: 11, color: subFilter === sub.value ? '#fff' : theme.colors.text }]}>{sub.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        )}
-
-                        {filteredLibrary.length > 0 ? (
-                            filteredLibrary.map((item) => (
-                                <TouchableOpacity key={item.id} style={styles.libraryItemCard} onPress={() => handleContentPress(item.content_type || 'book', item.content_id)}>
-                                    {item.image_url ? (
-                                        <Image source={{ uri: item.image_url }} style={styles.libraryBookCover} />
-                                    ) : (
-                                        <View style={[styles.libraryBookCover, { justifyContent: 'center', alignItems: 'center', backgroundColor: item.content_type === 'movie' ? '#E50914' : theme.colors.secondary }]}>
-                                            <Icon name={item.content_type === 'movie' ? 'film' : 'book-open'} size={24} color="#FFF" />
-                                        </View>
-                                    )}
-                                    <View style={styles.libraryItemContent}>
-                                        <View>
-                                            <Text style={styles.libraryItemTitle} numberOfLines={2}>{item.content_title || 'İsimsiz Eser'}</Text>
-                                            {item.author && <Text style={styles.libraryItemAuthor} numberOfLines={1}>{item.author}</Text>}
-                                        </View>
-                                        <View style={styles.libraryMetaRow}>
-                                            <View style={[styles.statusBadge, { backgroundColor: item.status === 'read' ? '#4CAF50' : item.status === 'reading' ? '#2196F3' : '#FFC107' }]}>
-                                                <Text style={styles.statusText}>
-                                                    {getStatusText(item.status, item.content_type)}
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.libraryItemDate}>{new Date(item.updated_at).toLocaleDateString()} güncellendi</Text>
-                                        </View>
+                                {item.image_url ? (
+                                    <Image source={{ uri: item.image_url }} style={styles.gridImage} resizeMode="cover" />
+                                ) : (
+                                    <View style={[styles.gridImage, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                                        {item.content_type === 'movie' ? <Film size={24} color={theme.colors.textSecondary} /> : item.content_type === 'music' ? <Music size={24} color={theme.colors.textSecondary} /> : <BookOpen size={24} color={theme.colors.textSecondary} />}
                                     </View>
-                                </TouchableOpacity>
-                            ))
-                        ) : (
-                            <EmptyState icon="book-open" text={libraryFilter === 'all' ? "Kütüphaneniz boş." : "Bu kategoride içerik yok."} />
-                        )}
+                                )}
+                                {item.status === 'reading' && (
+                                    <View style={styles.readingBadge}>
+                                        <BookOpen size={10} color="#FFF" />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 );
             case 'reviews':
@@ -902,7 +833,7 @@ export const OtherProfileScreen = () => {
                         <ReviewCard key={review.id} review={review} />
                     ))
                 ) : (
-                    <EmptyState icon="pencil" text="Henüz inceleme yok." />
+                    <EmptyState icon={Pencil} text="Henüz inceleme yok." />
                 );
             default:
                 return null;
@@ -925,18 +856,13 @@ export const OtherProfileScreen = () => {
                     style={styles.headerImage}
                 />
                 <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.3)', theme.colors.background]}
+                    colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)']}
                     style={styles.headerGradient}
                 />
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color="#FFF" />
+                    <ArrowLeft size={24} color="#FFF" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.optionsButton}
-                    onPress={() => setMenuVisible(!menuVisible)}
-                >
-                    <Icon name="options-vertical" size={20} color="#FFF" />
-                </TouchableOpacity>
+
 
                 {/* Dropdown Menu */}
                 {menuVisible && (
@@ -960,115 +886,208 @@ export const OtherProfileScreen = () => {
                 )}
             </View>
 
-            {/* Profile Info Area */}
-            <View style={styles.profileInfoContainer}>
+            {/* Profile Header Content (Overlapping) */}
+            <View style={styles.profileHeaderContent}>
+                {/* Avatar & Action Button Row */}
                 <View style={styles.avatarRow}>
-                    <Image
-                        key={profile.avatar_url}
-                        source={{ uri: profile.avatar_url || 'https://via.placeholder.com/150' }}
-                        style={styles.avatar}
-                    />
-                    <View style={styles.actionButtons}>
+                    <View style={styles.avatarContainer}>
+                        <Image
+                            source={{ uri: profile.avatar_url || 'https://via.placeholder.com/150' }}
+                            style={styles.avatar}
+                        />
+                    </View>
+
+                    <View style={styles.headerActions}>
                         {/* Mesaj Gönder Butonu */}
                         {currentUser && currentUser.id !== profile.id && (
                             <>
                                 <TouchableOpacity
-                                    style={[styles.followButton, isFollowing ? styles.followingButton : {}]}
+                                    style={[
+                                        styles.iconBtn,
+                                        {
+                                            backgroundColor: isFollowing ? theme.colors.surface : theme.colors.primary,
+                                            borderColor: isFollowing ? theme.colors.border : 'transparent',
+                                            paddingHorizontal: 20,
+                                        }
+                                    ]}
                                     onPress={handleFollow}
                                 >
-                                    <Text style={[styles.followButtonText, isFollowing ? styles.followingButtonText : {}]}>
+                                    <Text style={{
+                                        color: isFollowing ? theme.colors.text : '#FFF',
+                                        fontWeight: '600'
+                                    }}>
                                         {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
                                     </Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={styles.messageButton} onPress={handleMessagePress}>
-                                    <Icon name="bubble" size={20} color="#FFFFFF" />
+                                <TouchableOpacity
+                                    style={styles.iconBtn}
+                                    onPress={handleMessagePress}
+                                >
+                                    <MessageCircle size={20} color={theme.colors.primary} />
                                 </TouchableOpacity>
                             </>
                         )}
 
                         {/* Paylaş Butonu */}
-                        <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile}>
-                            <Icon name="share" size={18} color={theme.colors.text} />
+                        <TouchableOpacity style={styles.iconBtn} onPress={handleShareProfile}>
+                            <Share2 size={20} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.iconBtn}
+                            onPress={() => setMenuVisible(!menuVisible)}
+                        >
+                            <MoreVertical size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
                     </View>
+                    {/* Dropdown Menu Overlay was here but moved to dialog or modal logic ideally. Keeping layout same as design */}
                 </View>
 
+                {/* User Info */}
                 <View style={styles.userInfo}>
                     <View style={styles.nameRow}>
                         <Text style={styles.name}>{profile.full_name || profile.username}</Text>
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>Okur</Text>
-                        </View>
                     </View>
                     <Text style={styles.username}>@{profile.username}</Text>
 
                     {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
-                    <View style={styles.metaInfo}>
-                        <Icon name="location-pin" size={14} color={theme.colors.textSecondary} />
-                        <Text style={styles.metaText}>{profile.location || 'İstanbul'}</Text>
-                        <Icon name="calendar" size={14} color={theme.colors.textSecondary} style={{ marginLeft: 12 }} />
-                        <Text style={styles.metaText}>Katılım: Kasım 2025</Text>
-                    </View>
-                </View>
-
-                {/* Spotify Status */}
-                {nowPlaying && (
-                    <View style={styles.listeningContainer}>
-                        <Image source={{ uri: nowPlaying.image }} style={styles.albumArt} />
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Icon name="music-tone-alt" size={12} color="#1DB954" style={{ marginRight: 4 }} />
-                                <Text style={styles.listeningLabel}>Dinliyor</Text>
-                            </View>
-                            <Text style={styles.listeningTrack} numberOfLines={1}>{nowPlaying.track}</Text>
-                            <Text style={styles.listeningArtist} numberOfLines={1}>{nowPlaying.artist}</Text>
+                    <View style={styles.metaRow}>
+                        <View style={styles.metaItem}>
+                            <MapPin size={14} color={theme.colors.textSecondary} />
+                            <Text style={styles.metaText}>{profile.location || 'İstanbul'}</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                            <Calendar size={14} color={theme.colors.textSecondary} />
+                            <Text style={styles.metaText}>Katılım: {profile.created_at ? new Date(profile.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}</Text>
                         </View>
                     </View>
-                )}
+                </View>
 
-                {/* Stats Scroll */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsContent}>
-                    <StatItem number={userPosts.length} label="Gönderi" />
-                    <StatItem number={libraryItems.filter(i => (i.content_type === 'book' || !i.content_type) && i.status === 'read').length} label="Kitap" />
-                    <StatItem number={libraryItems.filter(i => i.content_type === 'movie' && i.status === 'read').length} label="Film" />
-                    <StatItem
-                        number={profile?.follower_count || 0}
-                        label="Takipçi"
-                        onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'followers' })}
-                    />
-                    <StatItem
-                        number={profile?.following_count || 0}
-                        label="Takip"
-                        onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'following' })}
-                    />
-                    <StatItem number={userReviews.length} label="İnceleme" onPress={() => setActiveTab('reviews')} />
-                </ScrollView>
+                {/* Stats Grid */}
+                <View style={styles.statsGrid}>
+                    {/* Followers/Following */}
+                    <View style={styles.socialStatsRow}>
+                        <TouchableOpacity
+                            style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                            onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'followers' })}
+                        >
+                            <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
+                                <Users size={16} color={theme.colors.primary} />
+                            </View>
+                            <View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>{profile.follower_count || 0}</Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Takipçi</Text>
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                            onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'following' })}
+                        >
+                            <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
+                                <UserPlus size={16} color={theme.colors.secondary} />
+                            </View>
+                            <View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>{profile.following_count || 0}</Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Takip</Text>
+                            </View>
+                        </TouchableOpacity>
+                        <View style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                            <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
+                                <MessageSquare size={16} color={theme.colors.primary} />
+                            </View>
+                            <View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>{userPosts.length || 0}</Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Gönderi</Text>
+                            </View>
+                        </View>
+                    </View>
 
-                {/* Tabs */}
-                <View style={styles.tabsContainer}>
-                    <TabButton title="Gönderiler" active={activeTab === 'posts'} onPress={() => setActiveTab('posts')} />
-                    <TabButton title="Alıntılar" active={activeTab === 'quotes'} onPress={() => setActiveTab('quotes')} />
-                    <TabButton title="Kütüphane" active={activeTab === 'library'} onPress={() => setActiveTab('library')} />
-                    <TabButton title="İncelemeler" active={activeTab === 'reviews'} onPress={() => setActiveTab('reviews')} />
+                    {/* Activity Stats */}
+                    <View style={styles.activityStatsRow}>
+                        <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <BookOpen size={14} color={theme.colors.primary} />
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Kitap</Text>
+                            </View>
+                            <Text
+                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                adjustsFontSizeToFit
+                                numberOfLines={1}
+                            >
+                                {libraryItems.filter(i => (i.content_type === 'book' || !i.content_type) && i.status === 'read').length}
+                            </Text>
+                        </View>
+                        <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <Film size={14} color={theme.colors.primary} />
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Film</Text>
+                            </View>
+                            <Text
+                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                adjustsFontSizeToFit
+                                numberOfLines={1}
+                            >
+                                {libraryItems.filter(i => i.content_type === 'movie' && i.status === 'read').length}
+                            </Text>
+                        </View>
+                        <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <Calendar size={14} color={theme.colors.primary} />
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Etkinlik</Text>
+                            </View>
+                            <Text
+                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                adjustsFontSizeToFit
+                                numberOfLines={1}
+                            >
+                                {libraryItems.filter(i => ['music', 'event', 'theater', 'concert'].includes(i.content_type) && i.status === 'read').length}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
             </View>
 
-            <View style={styles.contentContainer}>
-                {renderTabContent()}
+            {/* Tabs */}
+            <View style={[styles.tabContainer, { borderBottomColor: theme.colors.border }]}>
+                {['posts', 'replies', 'book', 'movie', 'music', 'reviews'].map((tab) => (
+                    <TouchableOpacity
+                        key={tab}
+                        style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.colors.primary }]}
+                        onPress={() => {
+                            if (tab === 'replies' && userReplies.length === 0) {
+                                setIsRepliesLoading(true);
+                            }
+                            setActiveTab(tab);
+                        }}
+                    >
+                        <Text style={[styles.tabText, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
+                            {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : tab === 'music' ? 'Müzik' : 'İncelemeler'}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
             </View>
 
-            <View style={{ height: 100 }} />
+            {/* Content Section */}
+            <View style={[styles.contentArea, { overflow: 'hidden' }]}>
+                <Animated.View style={[
+                    { flexDirection: 'row', width: width * 6 },
+                    animatedStyle
+                ]}>
+                    <View style={{ width, paddingHorizontal: 20, paddingBottom: 20 }}>{renderTabContent('posts')}</View>
+                    <View style={{ width, paddingHorizontal: 20, paddingBottom: 20 }}>{renderTabContent('replies')}</View>
+                    <View style={{ width }}>{renderTabContent('book')}</View>
+                    <View style={{ width }}>{renderTabContent('movie')}</View>
+                    <View style={{ width }}>{renderTabContent('music')}</View>
+                    <View style={{ width }}>{renderTabContent('reviews')}</View>
+                </Animated.View>
+            </View>
+
+
 
             <View style={{ height: 100 }} />
 
-            <RepostMenu
-                visible={repostMenuVisible}
-                onClose={() => setRepostMenuVisible(false)}
-                onDirectRepost={handleDirectRepost}
-                onQuoteRepost={handleQuoteRepost}
-            />
+            <View style={{ height: 100 }} />
 
             <ThemedDialog
                 visible={blockDialogVisible}
@@ -1091,6 +1110,7 @@ export const OtherProfileScreen = () => {
         </ScrollView >
     );
 };
+
 
 
 

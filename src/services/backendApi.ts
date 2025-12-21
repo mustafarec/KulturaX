@@ -435,6 +435,14 @@ export const interactionService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
+    deleteComment: async (userId: number, commentId: number) => {
+        try {
+            const response = await backendApi.post('/interactions/delete_comment.php', { user_id: userId, comment_id: commentId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
     likeComment: async (userId: number, commentId: number) => {
         try {
             const response = await backendApi.post('/interactions/like_comment.php', { user_id: userId, comment_id: commentId });
@@ -496,7 +504,7 @@ export const interactionService = {
 };
 
 export const reviewService = {
-    addReview: async (userId: number, contentType: 'movie' | 'book' | 'music', contentId: string, rating: number, reviewText: string, contentTitle?: string, imageUrl?: string) => {
+    addReview: async (userId: number, contentType: string, contentId: string, rating: number, reviewText: string, contentTitle?: string, imageUrl?: string) => {
         console.log('BackendApi addReview Payload:', { user_id: userId, content_type: contentType, content_id: contentId, rating, review_text: reviewText, content_title: contentTitle, image_url: imageUrl }); // Debug log
         try {
             const response = await backendApi.post('/interactions/add_review.php', {
@@ -513,7 +521,7 @@ export const reviewService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    getReviews: async (contentType: 'movie' | 'book' | 'music', contentId: string) => {
+    getReviews: async (contentType: string, contentId: string) => {
         try {
             const response = await backendApi.get(`/interactions/get_reviews.php?content_type=${contentType}&content_id=${contentId}`);
             return response.data;
@@ -573,6 +581,15 @@ export const userService = {
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    checkFollowStatus: async (followerId: number, followedId: number) => {
+        try {
+            const response = await backendApi.post('/users/check_follow.php', { follower_id: followerId, followed_id: followedId });
+            return response.data;
+        } catch (error: any) {
+            // Return false if check fails to not block UI
+            return { is_following: false };
         }
     },
     savePreference: async (userId: number, key: string, value: string, expiresInHours?: number) => {
@@ -717,6 +734,15 @@ export const ticketmasterService = {
             return response.data;
         } catch (error: any) {
             console.error('Ticketmaster Search Error:', error);
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    getEventDetails: async (id: string) => {
+        try {
+            const response = await backendApi.get(`/integrations/ticketmaster_event.php?id=${id}`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Ticketmaster Detail Error:', error);
             throw error.response ? error.response.data : new Error('Network Error');
         }
     }

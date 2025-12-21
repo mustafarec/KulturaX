@@ -32,7 +32,7 @@ export const HorizontalList: React.FC<HorizontalListProps> = ({ data, onItemPres
         imageContainer: {
             width: variant === 'portrait' ? 120 : variant === 'circle' ? 90 : 120,
             height: variant === 'portrait' ? 180 : variant === 'circle' ? 90 : 120,
-            borderRadius: variant === 'circle' ? 50 : 16,
+            borderRadius: variant === 'circle' ? 50 : 12, // Figma uses rounded-xl (~12px)
             backgroundColor: theme.colors.surface,
             marginBottom: 12,
             overflow: 'hidden',
@@ -65,12 +65,14 @@ export const HorizontalList: React.FC<HorizontalListProps> = ({ data, onItemPres
             color: theme.colors.text,
             marginBottom: 4,
             textAlign: variant === 'circle' ? 'center' : 'left',
+            fontFamily: theme.fonts.headings,
         },
         subtitle: {
-            fontSize: 12,
+            fontSize: 11,
             color: theme.colors.textSecondary,
             fontWeight: '500',
             textAlign: variant === 'circle' ? 'center' : 'left',
+            fontFamily: theme.fonts.main,
         },
         playIcon: {
             position: 'absolute',

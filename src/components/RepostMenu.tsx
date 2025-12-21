@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Dimensions } from 'react-native';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { Repeat, Pencil } from 'lucide-react-native';
 import { theme } from '../theme/theme';
 
 interface RepostMenuProps {
@@ -8,10 +8,10 @@ interface RepostMenuProps {
     onClose: () => void;
     onDirectRepost: () => void;
     onQuoteRepost: () => void;
-    postId?: number; // Optional postId if needed for internal logic, though callbacks handle it
+    isReposted?: boolean;
 }
 
-export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDirectRepost, onQuoteRepost }) => {
+export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDirectRepost, onQuoteRepost, isReposted }) => {
     return (
         <Modal
             animationType="slide"
@@ -26,12 +26,14 @@ export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDire
                             <View style={styles.handle} />
 
                             <TouchableOpacity style={styles.option} onPress={onDirectRepost}>
-                                <Icon name="loop" size={20} color={theme.colors.text} style={styles.icon} />
-                                <Text style={styles.optionText}>Yeniden gönder</Text>
+                                <Repeat size={20} color={isReposted ? theme.colors.error : theme.colors.text} style={styles.icon} />
+                                <Text style={[styles.optionText, isReposted && { color: theme.colors.error }]}>
+                                    {isReposted ? 'Yeniden gönderiyi geri al' : 'Yeniden gönder'}
+                                </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.option} onPress={onQuoteRepost}>
-                                <Icon name="pencil" size={20} color={theme.colors.text} style={styles.icon} />
+                                <Pencil size={20} color={theme.colors.text} style={styles.icon} />
                                 <Text style={styles.optionText}>Alıntı</Text>
                             </TouchableOpacity>
 

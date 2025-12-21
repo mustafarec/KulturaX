@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { interactionService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft, Bookmark } from 'lucide-react-native';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import Toast from 'react-native-toast-message';
@@ -72,11 +72,12 @@ export const SavedPostsScreen = () => {
         <PostCard
             post={item}
             onPress={() => (navigation as any).navigate('PostDetail', { postId: item.id })}
-            onLike={() => { /* Simplified: Likes handled in Feed, maybe add robust toggle here too */ }}
             onComment={() => (navigation as any).navigate('PostDetail', { postId: item.id })}
             onOptions={(pos) => handleOptionsPress(item, pos)}
             onUserPress={(userId) => (navigation as any).navigate('OtherProfile', { userId: userId || item.user.id })}
             currentUserId={user?.id}
+            onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+            onUpdatePost={(updater) => setPosts(prev => prev.map(updater))}
         />
     );
 
@@ -119,7 +120,7 @@ export const SavedPostsScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={20} color={theme.colors.text} />
+                    <ArrowLeft size={20} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Kaydedilenler</Text>
             </View>
@@ -137,7 +138,7 @@ export const SavedPostsScreen = () => {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
                     ListEmptyComponent={
                         <View style={styles.center}>
-                            <Icon name="bookmark" size={48} color={theme.colors.textSecondary} />
+                            <Bookmark size={48} color={theme.colors.textSecondary} />
                             <Text style={styles.emptyText}>Henüz kaydedilmiş gönderi yok.</Text>
                         </View>
                     }

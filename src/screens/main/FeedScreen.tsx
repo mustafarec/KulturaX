@@ -18,10 +18,9 @@ import { SuggestedUsers } from '../../components/SuggestedUsers';
 import { useSideMenu } from '../../context/SideMenuContext';
 import { useMessage } from '../../context/MessageContext';
 import { useNotification } from '../../context/NotificationContext';
-import { RepostMenu } from '../../components/RepostMenu';
 import { SharePostModal } from '../../components/SharePostModal';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
-import ThemeIcon from 'react-native-vector-icons/Ionicons';
+import { SkeletonPost } from '../../components/ui/SkeletonPost';
+import { Search, Bell, Ghost, ChevronDown, ChevronUp } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FEEDBACK_STORAGE_KEY = '@last_feedback_time';
@@ -114,7 +113,7 @@ export const FeedScreen = () => {
 
     const [activeMainTab, setActiveMainTab] = useState<'forYou' | 'following'>('forYou');
     const [activeSubTab, setActiveSubTab] = useState<'trend' | 'movie' | 'book' | 'music'>('trend');
-    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+    const [isSubCategoriesVisible, setIsSubCategoriesVisible] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -127,9 +126,6 @@ export const FeedScreen = () => {
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [selectedPostForOptions, setSelectedPostForOptions] = useState<any>(null);
     const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-
-    const [repostMenuVisible, setRepostMenuVisible] = useState(false);
-    const [selectedPostForRepost, setSelectedPostForRepost] = useState<any>(null);
 
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
@@ -177,64 +173,75 @@ export const FeedScreen = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingHorizontal: 20,
-            paddingTop: 30,
+            paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight! + 10 : 60,
             paddingBottom: 5,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: 'rgba(255,255,255,0)', // Transparent, handled by content or blur if needed
             zIndex: 10,
+        },
+        headerTitle: {
+            fontSize: 28,
+            fontFamily: theme.fonts.headings,
+            color: theme.colors.primary,
+            textAlign: 'center',
         },
         searchContainer: {
             paddingHorizontal: 20,
             backgroundColor: theme.colors.surface,
             zIndex: 9,
             overflow: 'hidden',
+            justifyContent: 'center',
+            marginTop: -10, // Pull it closer to header
         },
         searchInputContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: theme.colors.background,
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            height: 40,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            marginBottom: 10,
+            backgroundColor: theme.colors.inputBackground,
+            borderRadius: theme.borderRadius.l,
+            paddingHorizontal: 16,
+            height: 48,
+            borderWidth: 0,
         },
         searchInput: {
             flex: 1,
             marginLeft: 8,
-            fontSize: 14,
+            fontSize: 15,
             color: theme.colors.text,
             height: '100%',
             paddingVertical: 0,
+            fontFamily: theme.fonts.main,
         },
         tabsContainer: {
-            backgroundColor: theme.colors.surface,
-            paddingVertical: 0,
-            shadowColor: theme.dark ? "#000" : "#000",
-            shadowOffset: { width: 0, height: 4 }, // Shadow below the line
-            shadowOpacity: theme.dark ? 0.3 : 0.05, // Subtle on light, stronger on dark
-            shadowRadius: 3,
-            elevation: 3, // Android shadow
+            flexDirection: 'row',
+            backgroundColor: theme.colors.background,
+            paddingHorizontal: 20,
+            paddingVertical: 10,
             zIndex: 9,
-            marginBottom: 1, // Ensure shadow is visible
+            gap: 12,
         },
         tab: {
-            marginRight: 24,
-            paddingVertical: 12,
-            alignItems: 'center',
-            minWidth: 50, // Minimum clickable area
+            paddingVertical: 8,
+            paddingHorizontal: 20,
+            borderRadius: 20,
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderColor: 'transparent',
         },
         activeTab: {
-            borderBottomWidth: 3,
-            borderBottomColor: theme.colors.primary,
+            backgroundColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 4,
         },
         tabText: {
-            fontSize: 14,
+            fontSize: 15,
             color: theme.colors.textSecondary,
             fontWeight: '600',
+            fontFamily: theme.fonts.main,
         },
         activeTabText: {
-            color: theme.colors.text,
+            color: '#FFFFFF', // White text on primary pill
             fontWeight: '700',
         },
         headerLeft: {
@@ -243,16 +250,18 @@ export const FeedScreen = () => {
         headerRight: {
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 12,
         },
         pageTitleContainer: {
             alignItems: 'center',
             justifyContent: 'center',
-            height: 50,
+            flex: 1,
         },
         headerLogo: {
             width: 150,
-            height: 36,
+            height: 40,
             resizeMode: 'contain',
+            tintColor: theme.colors.primary, // Tint it to match the theme!
         },
         contentWrapper: {
             flexDirection: 'row',
@@ -264,8 +273,9 @@ export const FeedScreen = () => {
             flex: 1,
         },
         listContainer: {
-            paddingBottom: 160,
+            paddingBottom: 100, // Extra padding for floating tab bar
             paddingTop: 8,
+            paddingHorizontal: 16, // Add horizontal padding for cards
         },
         loadingContainer: {
             flex: 1,
@@ -280,6 +290,8 @@ export const FeedScreen = () => {
         emptyText: {
             fontSize: 16,
             color: theme.colors.textSecondary,
+            fontFamily: theme.fonts.main,
+            marginTop: 16,
         },
     }), [theme]);
 
@@ -427,136 +439,8 @@ export const FeedScreen = () => {
         setMusicFeed(updateFn);
     };
 
-    const handleLike = async (item: any) => {
-        if (!user) return;
-        const isRepost = !!item.original_post_id;
-        const isQuoteRepost = isRepost && item.original_post &&
-            item.content !== 'Yeniden paylaşım' &&
-            item.content !== item.original_post.content;
-        const targetPostId = (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id;
-
-        const syncUpdate = (feedList: any[]) => feedList.map(post => {
-            const isTargetPost = post.id === targetPostId;
-            const isDirectRepostOfTarget = post.original_post && post.original_post.id === targetPostId &&
-                (!post.content || post.content === 'Yeniden paylaşım' || post.content === post.original_post.content);
-
-            if (isTargetPost || isDirectRepostOfTarget) {
-                const postToUpdate = isTargetPost ? post : post.original_post;
-                const currentCount = parseInt(postToUpdate.like_count || '0', 10);
-                const newIsLiked = !postToUpdate.is_liked;
-                const newCount = newIsLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
-
-                if (isTargetPost) {
-                    return {
-                        ...post,
-                        is_liked: newIsLiked,
-                        like_count: newCount
-                    };
-                } else {
-                    return {
-                        ...post,
-                        original_post: {
-                            ...post.original_post,
-                            is_liked: newIsLiked,
-                            like_count: newCount
-                        }
-                    };
-                }
-            }
-            return post;
-        });
-
-        updateAllFeeds(syncUpdate);
-
-        try {
-            await interactionService.toggleLike(user.id, targetPostId);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const handleRepostPress = (item: any) => {
-        const isDirectRepost = item.original_post_id && item.original_post &&
-            (item.content === 'Yeniden paylaşım' || item.content === item.original_post.content);
-        const targetItem = isDirectRepost ? item.original_post : item;
-        setSelectedPostForRepost(targetItem);
-        setRepostMenuVisible(true);
-    };
-
-    const handleDirectRepost = async () => {
-        if (!selectedPostForRepost || !user) return;
-        setRepostMenuVisible(false);
-        const item = selectedPostForRepost;
-
-        // Optimistic Update
-        const content = item.content;
-        const newSource = 'Paylaşım';
-        const newAuthor = item.user.username;
-        const originalPostId = item.id;
-
-        const optimisticPost = {
-            id: Date.now(),
-            user: {
-                id: user.id,
-                username: user.username,
-                full_name: user.name ? `${user.name} ${user.surname}` : user.username,
-                avatar_url: user.avatar_url
-            },
-            content: 'Yeniden paylaşım',
-            created_at: new Date().toISOString(),
-            original_post_id: originalPostId,
-            original_post: item,
-            like_count: 0,
-            comment_count: 0,
-            repost_count: 0,
-            is_liked: false,
-            is_reposted: false,
-            type: 'post'
-        };
-
-        const syncUpdate = (feedList: any[]) => {
-            const updated = feedList.map(post => {
-                if (post.id === item.id) {
-                    return { ...post, repost_count: (parseInt(post.repost_count || 0) + 1).toString(), is_reposted: true };
-                }
-                if (post.original_post && post.original_post.id === item.id) {
-                    return {
-                        ...post,
-                        original_post: {
-                            ...post.original_post,
-                            repost_count: (parseInt(post.original_post.repost_count || 0) + 1).toString(),
-                            is_reposted: true
-                        }
-                    };
-                }
-                return post;
-            });
-            return [optimisticPost, ...updated];
-        };
-
-        // Only update current feed with the new post at top, but update counts everywhere
-        // Actually, prepending the new post only makes sense in the list it belongs to? 
-        // Or "Trend" and "Following" if it's my post? 
-        // For simplicity: Prepend to Trend and Following (if my post shows there), 
-        // but since we don't know for sure, let's just prepend to the currently Active Tab list, 
-        // and update counts on all.
-
-        // Simpler strategy: Just fetchFeed() after success to be accurate, but optimistic count update is nice.
-        updateAllFeeds(syncUpdate);
-
-        try {
-            await postService.create(user.id, '', content, newSource, newAuthor, originalPostId);
-        } catch (error: any) {
-            console.error('Repost error:', error);
-            Toast.show({ type: 'error', text1: 'Hata', text2: error.message || 'Paylaşılamadı.' });
-            fetchFeed(undefined, true);
-        }
-    };
-
-    const handleQuoteRepost = () => {
-        if (!selectedPostForRepost) return;
-        setRepostMenuVisible(false);
-        (navigation as any).navigate('CreateQuote', { originalPost: selectedPostForRepost });
+    const handlePostUpdate = (updater: (post: any) => any) => {
+        updateAllFeeds((list) => list.map(updater));
     };
 
     const handleOptionsPress = React.useCallback((item: any, position: { x: number; y: number; width: number; height: number }) => {
@@ -671,17 +555,20 @@ export const FeedScreen = () => {
             <PostCard
                 post={item}
                 onPress={() => setSelectedPostId(interactionId)}
-                onLike={() => handleLike(item)}
+                // onLike replaced by internal hook
                 onComment={() => (navigation as any).navigate('PostDetail', { postId: interactionId, autoFocusComment: false })}
-                onRepost={() => handleRepostPress(item)}
+                // onRepost replaced by internal hook
                 onOptions={(pos) => handleOptionsPress(item, pos)}
                 onUserPress={(userId) => (navigation as any).navigate('OtherProfile', { userId: userId || item.user.id })}
                 onReposterPress={() => (navigation as any).navigate('OtherProfile', { userId: item.user.id })}
                 currentUserId={user?.id}
                 onContentPress={handleContentPress}
-                onSave={() => handleToggleSave(item)}
+                // onSave replaced by internal hook (if we trust it, or use handlePostUpdate for optimistic)
+                // We passed handleToggleSave previously. New hook can handle it if we pass onUpdatePost.
                 isSaved={!!item.is_saved}
                 onShare={() => handleShare(item)}
+                onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+                onUpdatePost={handlePostUpdate}
             />
         );
     };
@@ -773,8 +660,10 @@ export const FeedScreen = () => {
     const renderList = (data: any[], loading: boolean) => {
         if (loading) {
             return (
-                <View style={[styles.loadingContainer, { flex: 1 }]}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                <View style={[styles.listContainer, { paddingTop: 0 }]}>
+                    <SkeletonPost />
+                    <SkeletonPost />
+                    <SkeletonPost />
                 </View>
             );
         }
@@ -792,7 +681,7 @@ export const FeedScreen = () => {
                 viewabilityConfig={viewabilityConfig}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Icon name="ghost" size={40} color={theme.colors.textSecondary} />
+                        <Ghost size={40} color={theme.colors.textSecondary} />
                         <Text style={styles.emptyText}>Henüz içerik yok</Text>
                     </View>
                 }
@@ -802,7 +691,7 @@ export const FeedScreen = () => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
+            <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} translucent />
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <AnimatedMenuButton />
@@ -813,19 +702,18 @@ export const FeedScreen = () => {
                         style={styles.headerLogo}
                     />
                 </View>
-                <View style={[styles.headerRight, { flexDirection: 'row', alignItems: 'center' }]}>
+                <View style={[styles.headerRight]}>
                     <TouchableOpacity
                         onPress={() => setIsSearchVisible(!isSearchVisible)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={{ marginRight: 16 }}
                     >
-                        <ThemeIcon name="search" size={24} color={theme.colors.text} />
+                        <Search size={24} color={theme.colors.text} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => (navigation as any).navigate('Notifications')}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                        <ThemeIcon name="notifications-outline" size={24} color={theme.colors.text} />
+                        <Bell size={24} color={theme.colors.text} />
                         <NotificationBadge />
                     </TouchableOpacity>
                 </View>
@@ -848,7 +736,7 @@ export const FeedScreen = () => {
                 }
             ]}>
                 <View style={styles.searchInputContainer}>
-                    <ThemeIcon name="search" size={16} color={theme.colors.textSecondary} />
+                    <Search size={16} color={theme.colors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Kullanıcı veya gönderi ara..."
@@ -859,111 +747,93 @@ export const FeedScreen = () => {
                 </View>
             </RNAnimated.View>
 
-            {/* Modified Tabs Header */}
-            <View style={[styles.tabsContainer, { zIndex: 20 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            {/* Modified Tabs Header - Pill Style */}
+            <View style={[styles.tabsContainer, { zIndex: 1, paddingBottom: 0 }]}>
+                {/* Trendler / Size Özel Tab */}
+                <TouchableOpacity
+                    onPress={() => {
+                        if (activeMainTab === 'forYou') {
+                            setIsSubCategoriesVisible(!isSubCategoriesVisible);
+                        } else {
+                            setActiveMainTab('forYou');
+                            setIsSubCategoriesVisible(true);
+                        }
+                    }}
+                    style={[
+                        styles.tab,
+                        activeMainTab === 'forYou' && styles.activeTab,
+                        { flexDirection: 'row', alignItems: 'center', gap: 4 }
+                    ]}
+                >
+                    <Text style={[styles.tabText, activeMainTab === 'forYou' && styles.activeTabText]}>
+                        Trendler
+                    </Text>
+                    {activeMainTab === 'forYou' ? (
+                        isSubCategoriesVisible ? (
+                            <ChevronUp size={16} color="#FFFFFF" />
+                        ) : (
+                            <ChevronDown size={16} color="#FFFFFF" />
+                        )
+                    ) : (
+                        <ChevronDown size={16} color={theme.colors.textSecondary} />
+                    )}
+                </TouchableOpacity>
 
-                    {/* Size Özel Tab (with Dropdown) */}
-                    <View style={{ flex: 1, position: 'relative', zIndex: 20, alignItems: 'center' }}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (activeMainTab === 'forYou') {
-                                    setIsDropdownVisible(!isDropdownVisible);
-                                } else {
-                                    setActiveMainTab('forYou');
-                                    setIsDropdownVisible(false);
-                                }
-                            }}
-                            style={[
-                                styles.tab,
-                                { flexDirection: 'row', alignItems: 'center', marginRight: 0, paddingVertical: 12 },
-                                activeMainTab === 'forYou' && styles.activeTab
-                            ]}
-                        >
-                            <Text style={[styles.tabText, activeMainTab === 'forYou' && styles.activeTabText, { marginRight: 4 }]}>
-                                {activeSubTab === 'trend' ? 'Size Özel' :
-                                    activeSubTab === 'movie' ? 'Film' :
-                                        activeSubTab === 'book' ? 'Kitap' : 'Müzik'}
-                            </Text>
-                            <ThemeIcon name="chevron-down" size={12} color={activeMainTab === 'forYou' ? theme.colors.text : theme.colors.textSecondary} />
-                        </TouchableOpacity>
-
-                        {/* Dropdown Menu */}
-                        {isDropdownVisible && (
-                            <View style={{
-                                position: 'absolute',
-                                top: 45,
-                                alignSelf: 'center',
-                                width: 150,
-                                backgroundColor: theme.colors.surface,
-                                borderRadius: 12,
-                                padding: 8,
-                                shadowColor: "#000",
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.2,
-                                shadowRadius: 8,
-                                elevation: 5,
-                                borderWidth: 1,
-                                borderColor: theme.colors.border,
-                                zIndex: 100
-                            }}>
-                                {[
-                                    { id: 'trend', label: 'Trendler' },
-                                    { id: 'movie', label: 'Film' },
-                                    { id: 'book', label: 'Kitap' },
-                                    { id: 'music', label: 'Müzik' }
-                                ].map((item) => (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        style={{
-                                            paddingVertical: 10,
-                                            paddingHorizontal: 12,
-                                            backgroundColor: activeSubTab === item.id ? theme.colors.border : 'transparent',
-                                            borderRadius: 8,
-                                            marginBottom: 4
-                                        }}
-                                        onPress={() => {
-                                            setActiveSubTab(item.id as any);
-                                            setIsDropdownVisible(false);
-                                            setActiveMainTab('forYou');
-                                        }}
-                                    >
-                                        <Text style={{
-                                            color: activeSubTab === item.id ? theme.colors.primary : theme.colors.text,
-                                            fontWeight: activeSubTab === item.id ? '700' : '500'
-                                        }}>
-                                            {item.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Takip Tab */}
-                    <View style={{ flex: 1, alignItems: 'center' }}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                setActiveMainTab('following');
-                                setIsDropdownVisible(false); // Close dropdown if open
-                            }}
-                            style={[styles.tab, { marginRight: 0 }, activeMainTab === 'following' && styles.activeTab]}
-                        >
-                            <Text style={[styles.tabText, activeMainTab === 'following' && styles.activeTabText]}>Takip</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                </View>
+                {/* Takip Tab */}
+                <TouchableOpacity
+                    onPress={() => {
+                        setActiveMainTab('following');
+                    }}
+                    style={[styles.tab, activeMainTab === 'following' && styles.activeTab]}
+                >
+                    <Text style={[styles.tabText, activeMainTab === 'following' && styles.activeTabText]}>Takip</Text>
+                </TouchableOpacity>
             </View>
+
+            {/* Sub-Category List (Horizontal Scroll) */}
+            {activeMainTab === 'forYou' && isSubCategoriesVisible && (
+                <View style={{ paddingVertical: 10 }}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+                    >
+                        {[
+                            { id: 'trend', label: 'Tümü' },
+                            { id: 'movie', label: 'Film' },
+                            { id: 'book', label: 'Kitap' },
+                            { id: 'music', label: 'Müzik' }
+                        ].map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                onPress={() => setActiveSubTab(item.id as any)}
+                                style={{
+                                    paddingVertical: 6,
+                                    paddingHorizontal: 16,
+                                    backgroundColor: activeSubTab === item.id ? theme.colors.primary : theme.colors.surface,
+                                    borderRadius: 20,
+                                    borderWidth: 1,
+                                    borderColor: activeSubTab === item.id ? theme.colors.primary : theme.colors.border,
+                                }}
+                            >
+                                <Text style={{
+                                    color: activeSubTab === item.id ? '#FFF' : theme.colors.text,
+                                    fontSize: 13,
+                                    fontWeight: activeSubTab === item.id ? '600' : '400',
+                                    fontFamily: theme.fonts.main
+                                }}>
+                                    {item.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* Close dropdown when tapping backdrop if needed - managed via visible state toggle mostly,
                  but can add a transparent absolute view to close it if desired.
                  For now, clicking the header toggles it, checking other interactions. */}
-            {isDropdownVisible && (
-                <TouchableWithoutFeedback onPress={() => setIsDropdownVisible(false)}>
-                    <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 10 }} />
-                </TouchableWithoutFeedback>
-            )}
+
 
             {/* Animated Content Wrapper - only 2 pages now */}
             <Animated.View style={[styles.contentWrapper, { width: SCREEN_WIDTH * 2 }, animatedStyle]}>
@@ -976,13 +846,6 @@ export const FeedScreen = () => {
                     {renderList(followingFeed, loadingStates.following)}
                 </View>
             </Animated.View>
-
-            <RepostMenu
-                visible={repostMenuVisible}
-                onClose={() => setRepostMenuVisible(false)}
-                onDirectRepost={handleDirectRepost}
-                onQuoteRepost={handleQuoteRepost}
-            />
 
             <SharePostModal
                 visible={shareModalVisible}

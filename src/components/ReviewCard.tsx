@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { Film, BookOpen, Star } from 'lucide-react-native';
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -96,7 +96,7 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onUserPress }) =
                 <Image source={{ uri: review.image_url }} style={styles.coverImage} />
             ) : (
                 <View style={[styles.coverImage, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <Icon name={review.content_type === 'movie' ? 'film' : 'book-open'} size={24} color="#FFF" />
+                    {review.content_type === 'movie' ? <Film size={24} color="#FFF" /> : <BookOpen size={24} color="#FFF" />}
                 </View>
             )}
 
@@ -107,7 +107,7 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onUserPress }) =
                             {review.content_title || 'Bilinmeyen İçerik'}
                         </Text>
                         <View style={styles.ratingBadge}>
-                            <Icon name="star" size={10} color="#FFFFFF" style={{ marginRight: 4 }} />
+                            <Star size={10} color="#FFFFFF" style={{ marginRight: 4 }} />
                             <Text style={styles.ratingText}>{review.rating}</Text>
                         </View>
                     </View>

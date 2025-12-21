@@ -2,11 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Animated, Dimensions, Modal, TouchableWithoutFeedback, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { User, Search, MessageCircle, Star, Settings, Moon, Sun, Bookmark, LogOut, Crown } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { ThemeSelectorModal } from './ThemeSelectorModal';
+import { PremiumModal } from './PremiumModal';
+import LinearGradient from 'react-native-linear-gradient';
 
 const { width } = Dimensions.get('window');
 const MENU_WIDTH = width * 0.75;
@@ -26,6 +27,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
     // Internal state to keep Modal visible during closing animation (only for non-drawer mode)
     const [isVisible, setIsVisible] = React.useState(visible);
     const [themeModalVisible, setThemeModalVisible] = React.useState(false);
+    const [premiumModalVisible, setPremiumModalVisible] = React.useState(false);
 
     const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -182,13 +184,9 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
         }
     };
 
-    const MenuItem = ({ icon, label, onPress, color, iconFamily }: { icon: string, label: string, onPress: () => void, color?: string, iconFamily?: 'SimpleLineIcons' | 'Ionicons' }) => (
+    const MenuItem = ({ IconComponent, label, onPress, color }: { IconComponent: any, label: string, onPress: () => void, color?: string }) => (
         <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-            {iconFamily === 'Ionicons' ? (
-                <Ionicons name={icon} size={20} color={color || theme.colors.text} style={styles.menuIcon} />
-            ) : (
-                <Icon name={icon} size={20} color={color || theme.colors.text} style={styles.menuIcon} />
-            )}
+            <IconComponent size={20} color={color || theme.colors.text} style={styles.menuIcon} />
             <Text style={[styles.menuLabel, color && { color }]}>{label}</Text>
         </TouchableOpacity>
     );
@@ -218,28 +216,42 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             <View style={styles.divider} />
 
             <View style={styles.menuItems}>
-                <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
-                <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
-                <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
-                <MenuItem icon="star" label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
-                <MenuItem icon="settings" label="Ayarlar" onPress={() => handleNavigation('Settings')} />
+                <TouchableOpacity onPress={() => setPremiumModalVisible(true)} style={{ marginBottom: 15, marginHorizontal: 20 }}>
+                    <LinearGradient
+                        colors={['#10b981', '#0d9488']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 }}
+                    >
+                        <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                            <Crown size={20} color="#fcd34d" fill="#fcd34d" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Premium'a Geç</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Özel ayrıcalıklardan yararlan</Text>
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+                <MenuItem IconComponent={User} label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
+                <MenuItem IconComponent={Search} label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} />
+                <MenuItem IconComponent={MessageCircle} label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
+                <MenuItem IconComponent={Star} label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
+                <MenuItem IconComponent={Settings} label="Ayarlar" onPress={() => handleNavigation('Settings')} />
                 <MenuItem
-                    icon={themeMode === 'dark' ? 'moon' : 'sunny'}
+                    IconComponent={themeMode === 'dark' ? Moon : Sun}
                     label="Görünüm"
                     onPress={() => setThemeModalVisible(true)}
-                    iconFamily="Ionicons"
                 />
                 <MenuItem
-                    icon="bookmark-outline"
+                    IconComponent={Bookmark}
                     label="Kaydedilenler"
                     onPress={() => handleNavigation('SavedPosts')}
-                    iconFamily="Ionicons"
                 />
 
             </View>
 
             <View style={styles.footer}>
-                <MenuItem icon="logout" label="Çıkış Yap" onPress={handleLogout} color={theme.colors.error} />
+                <MenuItem IconComponent={LogOut} label="Çıkış Yap" onPress={handleLogout} color={theme.colors.error} />
             </View>
         </View >
     );
@@ -249,6 +261,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             <View style={{ flex: 1, paddingTop: insets.top }}>
                 {MenuContent}
                 <ThemeSelectorModal visible={themeModalVisible} onClose={() => setThemeModalVisible(false)} />
+                <PremiumModal visible={premiumModalVisible} onClose={() => setPremiumModalVisible(false)} />
             </View>
         );
     }
@@ -286,31 +299,46 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                     <View style={styles.divider} />
 
                     <View style={styles.menuItems}>
-                        <MenuItem icon="user" label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
-                        <MenuItem icon="search-outline" label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} iconFamily="Ionicons" />
-                        <MenuItem icon="bubble" label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
-                        <MenuItem icon="star" label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
-                        <MenuItem icon="settings" label="Ayarlar" onPress={() => handleNavigation('Settings')} />
+                        <TouchableOpacity onPress={() => setPremiumModalVisible(true)} style={{ marginBottom: 15, marginHorizontal: 20 }}>
+                            <LinearGradient
+                                colors={['#10b981', '#0d9488']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 }}
+                            >
+                                <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Crown size={20} color="#fcd34d" fill="#fcd34d" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Premium'a Geç</Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Özel ayrıcalıklardan yararlan</Text>
+                                </View>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                        <MenuItem IconComponent={User} label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
+                        <MenuItem IconComponent={Search} label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} />
+                        <MenuItem IconComponent={MessageCircle} label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
+                        <MenuItem IconComponent={Star} label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
+                        <MenuItem IconComponent={Settings} label="Ayarlar" onPress={() => handleNavigation('Settings')} />
                         <MenuItem
-                            icon={themeMode === 'dark' ? 'moon' : 'sunny'}
+                            IconComponent={themeMode === 'dark' ? Moon : Sun}
                             label="Görünüm"
                             onPress={() => setThemeModalVisible(true)}
-                            iconFamily="Ionicons"
                         />
                         <MenuItem
-                            icon="bookmark-outline"
+                            IconComponent={Bookmark}
                             label="Kaydedilenler"
                             onPress={() => handleNavigation('SavedPosts')}
-                            iconFamily="Ionicons"
                         />
 
                     </View>
 
                     <View style={styles.footer}>
-                        <MenuItem icon="logout" label="Çıkış Yap" onPress={handleLogout} color={theme.colors.error} />
+                        <MenuItem IconComponent={LogOut} label="Çıkış Yap" onPress={handleLogout} color={theme.colors.error} />
                     </View>
                 </Animated.View>
                 <ThemeSelectorModal visible={themeModalVisible} onClose={() => setThemeModalVisible(false)} />
+                <PremiumModal visible={premiumModalVisible} onClose={() => setPremiumModalVisible(false)} />
             </View>
         </Modal>
     );

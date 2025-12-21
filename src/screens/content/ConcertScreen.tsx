@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image, ActivityIndicator, Linking } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { ticketmasterService } from '../../services/backendApi';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
 interface Event {
@@ -155,7 +155,7 @@ export const ConcertScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
+                    <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Konserler</Text>
             </View>

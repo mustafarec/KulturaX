@@ -5,7 +5,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { ArrowLeft } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 
 const FollowUserItem = ({ user, currentUserId, onFollowUpdate }: { user: any, currentUserId: number, onFollowUpdate: (id: number, isFollowing: boolean) => void }) => {
@@ -176,7 +176,7 @@ export const FollowListScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={20} color={theme.colors.text} />
+                    <ArrowLeft size={20} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.title}>
                     {type === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}

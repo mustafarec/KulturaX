@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar, Linking } from 'react-native';
 import { BookLoader } from '../../components/BookLoader';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
-import { postService, reviewService, spotifyService, lyricsService, libraryService } from '../../services/backendApi';
+import { postService, reviewService, spotifyService, lyricsService, libraryService, ticketmasterService } from '../../services/backendApi';
 import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
 import { LibraryStatusButton } from '../../components/LibraryStatusButton';
-import Icon from 'react-native-vector-icons/SimpleLineIcons';
+import { Plus, MessageSquare, Pencil, Share2, Bookmark, Music, MessageCircle, Calendar, MapPin, Ticket } from 'lucide-react-native';
+import { ContentDetailLayout } from '../../components/layouts/ContentDetailLayout';
 
-type ContentType = 'book' | 'movie' | 'music';
+type ContentType = 'book' | 'movie' | 'music' | 'event';
 
 export const ContentDetailScreen = () => {
     const route = useRoute();
@@ -48,6 +49,12 @@ export const ContentDetailScreen = () => {
                 } else if (!content) {
                     // Fetch from Spotify if no initial data
                     data = await spotifyService.getTrack(id as string);
+                }
+            } else if (type === 'event') {
+                if (!content && initialData) {
+                    data = initialData;
+                } else {
+                    data = await ticketmasterService.getEventDetails(id as string);
                 }
             }
 
@@ -111,71 +118,27 @@ export const ContentDetailScreen = () => {
             flex: 1,
             backgroundColor: theme.colors.background,
         },
-        header: {
-            flexDirection: 'row',
-            padding: theme.spacing.l,
-            backgroundColor: theme.colors.surface,
-            borderBottomLeftRadius: theme.borderRadius.xl,
-            borderBottomRightRadius: theme.borderRadius.xl,
-            ...theme.shadows.soft,
-            paddingTop: 110,
-        },
-        backButton: {
-            position: 'absolute',
-            top: 50,
-            left: 20,
-            zIndex: 10,
-            padding: 8,
-            backgroundColor: theme.colors.surface + 'CC',
-            borderRadius: 20,
-        },
-        coverImage: {
-            width: 100,
-            height: 150,
-            borderRadius: theme.borderRadius.m,
-            marginRight: theme.spacing.m,
-            ...theme.shadows.soft,
-        },
-        headerInfo: {
-            flex: 1,
-            justifyContent: 'center',
-        },
-        title: {
-            fontSize: 20,
-            fontWeight: '800',
-            color: theme.colors.text,
-            marginBottom: 8,
-            letterSpacing: -0.5,
-        },
-        subtitle: {
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-            marginBottom: 8,
-            fontWeight: '500',
-        },
-        metaText: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-            marginBottom: 8,
-        },
+        // ... Removed header styles as they are now in Layout
+
         tabs: {
             flexDirection: 'row',
             backgroundColor: theme.colors.surface,
             marginHorizontal: 20,
-            marginTop: 20,
+            marginTop: 0,
             borderRadius: 16,
             padding: 4,
             borderWidth: 1,
             borderColor: theme.colors.border,
+            marginBottom: 20,
         },
         tab: {
             flex: 1,
-            paddingVertical: 12,
+            paddingVertical: 10,
             alignItems: 'center',
             borderRadius: 12,
         },
         activeTab: {
-            backgroundColor: theme.colors.primary + '15',
+            backgroundColor: theme.colors.primary,
         },
         tabText: {
             fontSize: 13,
@@ -183,12 +146,14 @@ export const ContentDetailScreen = () => {
             fontWeight: '600',
         },
         activeTabText: {
-            color: theme.colors.primary,
+            color: '#FFFFFF',
             fontWeight: '700',
         },
         tabContent: {
-            padding: theme.spacing.l,
+            paddingHorizontal: 20,
+            paddingBottom: 40,
         },
+
         sectionTitle: {
             fontSize: 18,
             fontWeight: '800',
@@ -217,6 +182,10 @@ export const ContentDetailScreen = () => {
             fontWeight: 'bold',
             color: theme.colors.text,
             marginRight: 8,
+        },
+        metaText: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
         },
         infoValue: {
             fontSize: 14,
@@ -395,11 +364,18 @@ export const ContentDetailScreen = () => {
         if (type === 'book') {
             return (content.volumeInfo?.imageLinks?.thumbnail || content.imageLinks?.thumbnail || content.image || 'https://via.placeholder.com/150').replace(/^http:/, 'https:');
         } else if (type === 'movie') {
-            return content.poster_path
-                ? `https://image.tmdb.org/t/p/w500${content.poster_path}`
-                : (content.image || 'https://via.placeholder.com/150');
+            return content.backdrop_path
+                ? `https://image.tmdb.org/t/p/w780${content.backdrop_path}`
+                : (content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : (content.image || 'https://via.placeholder.com/150'));
         } else if (type === 'music') {
             return content.image || content.album?.images?.[0]?.url || 'https://via.placeholder.com/150';
+        } else if (type === 'event') {
+            // Ticketmaster specific image logic
+            if (content.images) {
+                const wide = content.images.find((img: any) => img.ratio === '16_9' && img.width > 500);
+                return wide ? wide.url : content.images[0].url;
+            }
+            return content.image || 'https://via.placeholder.com/150';
         }
         return 'https://via.placeholder.com/150';
     };
@@ -409,6 +385,7 @@ export const ContentDetailScreen = () => {
         if (type === 'book') return content.title || content.volumeInfo?.title;
         if (type === 'movie') return content.title;
         if (type === 'music') return content.title || content.name;
+        if (type === 'event') return content.name;
         return '';
     };
 
@@ -421,6 +398,8 @@ export const ContentDetailScreen = () => {
             return content.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Yönetmen Bilinmiyor';
         } else if (type === 'music') {
             return content.artist || content.author || content.artists?.[0]?.name || 'Sanatçı Bilinmiyor';
+        } else if (type === 'event') {
+            return content._embedded?.venues?.[0]?.name || 'Mekan Bilinmiyor';
         }
         return '';
     };
@@ -440,6 +419,11 @@ export const ContentDetailScreen = () => {
             return `${content.release_date ? new Date(content.release_date).toLocaleDateString('tr-TR') : ''} • ${content.runtime ? content.runtime + ' dk' : ''}`;
         } else if (type === 'music') {
             return content.album?.name || content.album || '';
+        } else if (type === 'event') {
+            // Format: Date • City
+            const date = content.dates?.start?.localDate ? new Date(content.dates.start.localDate).toLocaleDateString('tr-TR') : '';
+            const city = content._embedded?.venues?.[0]?.city?.name || '';
+            return `${date}${date && city ? ' • ' : ''}${city}`;
         }
         return '';
     };
@@ -479,7 +463,8 @@ export const ContentDetailScreen = () => {
                         <Text style={styles.overview}>
                             {type === 'book' ? stripHtml(content.volumeInfo?.description || content.description || 'Özet bulunamadı.') :
                                 type === 'movie' ? (content.overview || 'Özet bulunamadı.') :
-                                    type === 'music' ? 'Bu şarkı hakkında henüz bir bilgi yok.' : ''}
+                                    type === 'music' ? 'Bu şarkı hakkında henüz bir bilgi yok.' :
+                                        type === 'event' ? (content.info || (content.pleaseNote ? `Not: ${content.pleaseNote}` : 'Detay bulunamadı.')) : ''}
                         </Text>
 
                         {type === 'movie' && content.credits?.cast && (
@@ -513,14 +498,14 @@ export const ContentDetailScreen = () => {
                                 style={styles.addQuoteButton}
                                 onPress={() => setShowQuoteModal(true)}
                             >
-                                <Icon name="plus" size={12} color="#fff" style={{ marginRight: 4 }} />
+                                <Plus size={12} color="#fff" style={{ marginRight: 4 }} />
                                 <Text style={styles.addQuoteButtonText}>Ekle</Text>
                             </TouchableOpacity>
                         </View>
                         {quotes.length > 0 ? (
                             quotes.map((quote) => (
                                 <View key={quote.id} style={styles.quoteCard}>
-                                    <Icon name="speech" size={24} color={theme.colors.primary} style={styles.quoteIcon} />
+                                    <MessageSquare size={24} color={theme.colors.primary} style={styles.quoteIcon} />
                                     <Text style={styles.quoteText}>"{quote.content}"</Text>
                                     <View style={styles.quoteFooter}>
                                         <TouchableOpacity
@@ -547,7 +532,7 @@ export const ContentDetailScreen = () => {
                             ))
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="speech" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <MessageSquare size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Henüz alıntı yok.</Text>
                             </View>
                         )}
@@ -562,7 +547,7 @@ export const ContentDetailScreen = () => {
                                 style={styles.addReviewButton}
                                 onPress={() => setShowReviewModal(true)}
                             >
-                                <Icon name="pencil" size={12} color="#fff" style={{ marginRight: 4 }} />
+                                <Pencil size={12} color="#fff" style={{ marginRight: 4 }} />
                                 <Text style={styles.addReviewButtonText}>Yorum Yap</Text>
                             </TouchableOpacity>
                         </View>
@@ -595,7 +580,7 @@ export const ContentDetailScreen = () => {
                             ))
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="pencil" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <Pencil size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Henüz yorum yok.</Text>
                             </View>
                         )}
@@ -682,7 +667,7 @@ export const ContentDetailScreen = () => {
                                                         });
                                                     }}
                                                 >
-                                                    <Icon name="bubble" size={14} color="#fff" style={{ marginRight: 6 }} />
+                                                    <MessageSquare size={14} color="#fff" style={{ marginRight: 6 }} />
                                                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>Alıntı Yap</Text>
                                                     <View style={{
                                                         position: 'absolute',
@@ -707,7 +692,7 @@ export const ContentDetailScreen = () => {
                             </View>
                         ) : (
                             <View style={styles.emptyContainer}>
-                                <Icon name="music-tone-alt" size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                <Music size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
                                 <Text style={styles.emptyText}>Şarkı sözleri bulunamadı.</Text>
                             </View>
                         )}
@@ -723,7 +708,7 @@ export const ContentDetailScreen = () => {
 
     if (isLoading) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
                 <BookLoader />
             </View>
         );
@@ -731,93 +716,167 @@ export const ContentDetailScreen = () => {
 
     if (!content) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text>İçerik bulunamadı.</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                <Text style={{ color: theme.colors.text }}>İçerik bulunamadı.</Text>
             </View>
         );
     }
 
-    return (
-        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-            <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Icon name="arrow-left" size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-                <Image
-                    source={{ uri: getCoverUrl() }}
-                    style={styles.coverImage}
-                />
-                <View style={styles.headerInfo}>
-                    <Text style={styles.title}>{getTitle()}</Text>
-                    {type === 'movie' ? (
-                        <TouchableOpacity onPress={() => {
-                            const director = getDirector();
-                            if (director) {
-                                (navigation as any).push('CreatorDetail', { id: director.id, name: director.name, type: 'person' });
-                            }
-                        }}>
-                            <Text style={[styles.subtitle, { textDecorationLine: 'underline' }]}>{getSubtitle()}</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <Text style={styles.subtitle}>{getSubtitle()}</Text>
-                    )}
-                    <Text style={styles.metaText}>{getMetaText()}</Text>
-                    <View style={{ marginTop: 8 }}>
-                        <LibraryStatusButton
-                            contentType={type as 'book' | 'movie' | 'music'}
-                            contentId={id.toString()}
-                            contentTitle={getTitle()}
-                            imageUrl={getCoverUrl()}
-                            author={getSubtitle()}
-                            summary={type === 'book' ? stripHtml(content.volumeInfo?.description || content.description || '') : type === 'movie' ? (content.overview || '') : ''}
-                            lyrics={type === 'music' ? lyrics || undefined : undefined}
-                        />
-                    </View>
-                </View>
-            </View>
+    const coverUrl = getCoverUrl();
+    const title = getTitle();
+    const subtitle = getSubtitle(); // Artist for Music
+    const meta = getMetaText(); // Album name / etc.
 
-            <View style={styles.tabs}>
+    // Stats
+    const renderStats = () => (
+        type === 'music' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Music size={16} color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                    {content.album?.name || 'Single'}
+                </Text>
+            </View>
+        ) : type === 'event' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MapPin size={16} color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+                    {content._embedded?.venues?.[0]?.city?.name || 'Şehir'}
+                </Text>
+            </View>
+        ) : null
+    );
+
+    // Actions
+    const renderActions = () => {
+        if (type === 'event') {
+            return (
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity
+                        style={{
+                            flex: 1,
+                            backgroundColor: theme.colors.primary,
+                            borderRadius: 12,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            paddingVertical: 14,
+                            flexDirection: 'row',
+                            gap: 8,
+                            ...theme.shadows.soft
+                        }}
+                        onPress={() => {
+                            if (content.url) {
+                                Linking.openURL(content.url).catch(err => console.error("Couldn't open URL", err));
+                            }
+                        }}
+                    >
+                        <Ticket size={18} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Bilet Al</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        return (
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                    <LibraryStatusButton
+                        contentType={type as 'book' | 'movie' | 'music'}
+                        contentId={id.toString()}
+                        contentTitle={title}
+                        imageUrl={coverUrl}
+                        author={subtitle}
+                        summary={type === 'book' ? stripHtml(content.volumeInfo?.description || content.description || '') : type === 'movie' ? (content.overview || '') : ''}
+                        lyrics={type === 'music' ? lyrics || undefined : undefined}
+                    />
+                </View>
                 <TouchableOpacity
-                    style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
-                    onPress={() => setActiveTab('overview')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Hakkında</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'quotes' && styles.activeTab]}
-                    onPress={() => setActiveTab('quotes')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>Alıntılar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
+                    style={{
+                        flex: 1,
+                        backgroundColor: theme.colors.primary,
+                        borderRadius: 12,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        flexDirection: 'row',
+                        gap: 8,
+                        ...theme.shadows.soft
+                    }}
                     onPress={() => setActiveTab('reviews')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Yorumlar</Text>
+                    <MessageCircle size={18} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Yorum Yap</Text>
                 </TouchableOpacity>
-                {type === 'music' && (
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'lyrics' && styles.activeTab]}
-                        onPress={() => setActiveTab('lyrics')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'lyrics' && styles.activeTabText]}>Sözler</Text>
-                    </TouchableOpacity>
-                )}
             </View>
+        );
+    };
 
-            {renderTabContent()}
+    const renderHeaderActions = () => (
+        <>
+            <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                <Bookmark size={20} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                <Share2 size={20} color="#FFF" />
+            </TouchableOpacity>
+        </>
+    );
 
+    return (
+        <>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <ContentDetailLayout
+                title={title}
+                image={coverUrl}
+                subtitle={subtitle}
+                metaText={meta}
+                stats={renderStats()}
+                actions={renderActions()}
+                headerActions={renderHeaderActions()}
+            >
+                <View style={styles.tabs}>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+                        onPress={() => setActiveTab('overview')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Hakkında</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'quotes' && styles.activeTab]}
+                        onPress={() => setActiveTab('quotes')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>Alıntılar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
+                        onPress={() => setActiveTab('reviews')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>Yorumlar</Text>
+                    </TouchableOpacity>
+                    {type === 'music' && (
+                        <TouchableOpacity
+                            style={[styles.tab, activeTab === 'lyrics' && styles.activeTab]}
+                            onPress={() => setActiveTab('lyrics')}
+                        >
+                            <Text style={[styles.tabText, activeTab === 'lyrics' && styles.activeTabText]}>Sözler</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                <View style={{ minHeight: 400 }}>
+                    {renderTabContent()}
+                </View>
+
+            </ContentDetailLayout>
             <ReviewModal
                 visible={showReviewModal}
                 onClose={() => setShowReviewModal(false)}
                 contentType={type}
                 contentId={id.toString()}
-                contentTitle={getTitle()}
+                contentTitle={title}
+                imageUrl={coverUrl}
                 userId={user?.id || 0}
                 onReviewAdded={fetchData}
             />
-
             <QuoteModal
                 visible={showQuoteModal}
                 onClose={() => setShowQuoteModal(false)}
@@ -829,6 +888,6 @@ export const ContentDetailScreen = () => {
                 initialContentType={type}
                 initialContentId={id.toString()}
             />
-        </ScrollView>
+        </>
     );
 };

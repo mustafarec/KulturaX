@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { X, ChevronRight, Box, Music, Film, Book, Palette, Globe, Cpu, Gamepad2, Hash } from 'lucide-react-native';
 import { topicService } from '../services/backendApi';
 
 interface TopicSelectionModalProps {
@@ -30,6 +30,20 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const getTopicIcon = (iconName: string) => {
+        switch (iconName) {
+            case 'musical-notes': return Music;
+            case 'film': return Film;
+            case 'book': return Book;
+            case 'easel': return Palette;
+            case 'earth': return Globe;
+            case 'hardware-chip': return Cpu;
+            case 'game-controller': return Gamepad2;
+            case 'cube-outline': return Box;
+            default: return Hash;
         }
     };
 
@@ -108,7 +122,7 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
                     <View style={styles.header}>
                         <Text style={styles.title}>Konu Seç</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={24} color={theme.colors.text} />
+                            <X size={24} color={theme.colors.text} />
                         </TouchableOpacity>
                     </View>
 
@@ -118,24 +132,27 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
                         <FlatList
                             data={topics}
                             keyExtractor={(item) => item.id.toString()}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={styles.item}
-                                    onPress={() => {
-                                        onSelect(item);
-                                        onClose();
-                                    }}
-                                >
-                                    <View style={styles.iconContainer}>
-                                        <Ionicons name={item.icon || 'cube-outline'} size={20} color={theme.colors.primary} />
-                                    </View>
-                                    <View style={styles.itemContent}>
-                                        <Text style={styles.itemName}>{item.name}</Text>
-                                        <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
-                                    </View>
-                                    <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-                                </TouchableOpacity>
-                            )}
+                            renderItem={({ item }) => {
+                                const TopicIcon = getTopicIcon(item.icon);
+                                return (
+                                    <TouchableOpacity
+                                        style={styles.item}
+                                        onPress={() => {
+                                            onSelect(item);
+                                            onClose();
+                                        }}
+                                    >
+                                        <View style={styles.iconContainer}>
+                                            <TopicIcon size={20} color={theme.colors.primary} />
+                                        </View>
+                                        <View style={styles.itemContent}>
+                                            <Text style={styles.itemName}>{item.name}</Text>
+                                            <Text style={styles.itemDesc} numberOfLines={1}>{item.description}</Text>
+                                        </View>
+                                        <ChevronRight size={20} color={theme.colors.textSecondary} />
+                                    </TouchableOpacity>
+                                );
+                            }}
                         />
                     )}
                 </View>
