@@ -275,12 +275,12 @@ export const ChatDetailScreen = () => {
 
         setSending(true);
         try {
-            await messageService.send(user.id, otherUserId, inputText.trim());
+            await messageService.send(otherUserId, inputText.trim());
             setInputText('');
             await fetchMessages();
-            // Scroll to bottom
+            // Scroll to bottom (inverted list, so offset 0 is the bottom)
             setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
+                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
             }, 100);
         } catch (error) {
             console.error('Failed to send message:', error);

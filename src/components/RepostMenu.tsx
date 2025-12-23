@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Animated } from 'react-native';
 import { Repeat, Pencil } from 'lucide-react-native';
 import { theme } from '../theme/theme';
 
@@ -12,17 +12,45 @@ interface RepostMenuProps {
 }
 
 export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDirectRepost, onQuoteRepost, isReposted }) => {
+    const slideAnim = useRef(new Animated.Value(300)).current; // Start off-screen (below)
+
+    useEffect(() => {
+        if (visible) {
+            // Slide up
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+                tension: 65,
+                friction: 11,
+            }).start();
+        } else {
+            // Reset to off-screen
+            slideAnim.setValue(300);
+        }
+    }, [visible]);
+
+    const handleClose = () => {
+        // Slide down then close
+        Animated.timing(slideAnim, {
+            toValue: 300,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(() => {
+            onClose();
+        });
+    };
+
     return (
         <Modal
-            animationType="slide"
+            animationType="fade"
             transparent={true}
             visible={visible}
-            onRequestClose={onClose}
+            onRequestClose={handleClose}
         >
-            <TouchableWithoutFeedback onPress={onClose}>
+            <TouchableWithoutFeedback onPress={handleClose}>
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
-                        <View style={styles.content}>
+                        <Animated.View style={[styles.content, { transform: [{ translateY: slideAnim }] }]}>
                             <View style={styles.handle} />
 
                             <TouchableOpacity style={styles.option} onPress={onDirectRepost}>
@@ -37,10 +65,10 @@ export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDire
                                 <Text style={styles.optionText}>Alıntı</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+                            <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
                                 <Text style={styles.cancelText}>İptal</Text>
                             </TouchableOpacity>
-                        </View>
+                        </Animated.View>
                     </TouchableWithoutFeedback>
                 </View>
             </TouchableWithoutFeedback>
@@ -51,7 +79,7 @@ export const RepostMenu: React.FC<RepostMenuProps> = ({ visible, onClose, onDire
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
         justifyContent: 'flex-end',
     },
     content: {
@@ -94,3 +122,4 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
     },
 });
+

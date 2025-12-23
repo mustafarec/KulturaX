@@ -98,26 +98,49 @@ class Validator {
 
     /**
      * Şifre gücü kontrolü
+     * @param string $password Şifre
+     * @param bool $returnMessage true ise başarısızlıkta mesaj döndürür
+     * @return bool|array
      */
-    public static function validatePasswordStrength($password) {
-        // En az 8 karakter, en az 1 büyük harf, 1 küçük harf, 1 rakam
+    public static function validatePasswordStrength($password, $returnMessage = false) {
+        $errors = [];
+        
+        // En az 8 karakter
         if (strlen($password) < 8) {
-            return false;
+            $errors[] = "en az 8 karakter";
         }
         
+        // En az 1 büyük harf
         if (!preg_match('/[A-Z]/', $password)) {
-            return false;
+            $errors[] = "en az 1 büyük harf";
         }
         
+        // En az 1 küçük harf
         if (!preg_match('/[a-z]/', $password)) {
-            return false;
+            $errors[] = "en az 1 küçük harf";
         }
         
+        // En az 1 rakam
         if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = "en az 1 rakam";
+        }
+        
+        // En az 1 özel karakter
+        if (!preg_match('/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\\\/~`]/', $password)) {
+            $errors[] = "en az 1 özel karakter (!@#$%^&* vb.)";
+        }
+        
+        if (count($errors) > 0) {
+            if ($returnMessage) {
+                return [
+                    "valid" => false,
+                    "message" => "Şifre şunları içermelidir: " . implode(", ", $errors)
+                ];
+            }
             return false;
         }
         
-        return true;
+        return $returnMessage ? ["valid" => true] : true;
     }
 
     /**

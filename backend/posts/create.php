@@ -67,9 +67,17 @@ try {
     $topic_id = isset($data->topic_id) ? (int)$data->topic_id : null;
 
     // Duplicate Repost Check
-    // Sadece repost (alıntı metni olmayan) için kontrol et
-    if ($original_post_id && empty($quote_text)) {
-        $checkDupQuery = "SELECT id FROM posts WHERE user_id = :user_id AND original_post_id = :original_post_id AND (quote_text IS NULL OR quote_text = '')";
+    // Sadece basit repost (alıntı/yorum metni olmayan veya 'Yeniden paylaşım' içerikli) için kontrol et
+    $isSimpleRepost = empty($quote_text) && (empty($comment_text) || $comment_text === 'Yeniden paylaşım');
+    
+    if ($original_post_id && $isSimpleRepost) {
+        // Mevcut repost'u ara (basit repost olanlar - quote/comment boş veya 'Yeniden paylaşım')
+        $checkDupQuery = "SELECT id FROM posts WHERE user_id = :user_id AND original_post_id = :original_post_id 
+                          AND (quote_text IS NULL OR quote_text = '')
+                          AND (
+                              (comment_text IS NULL OR comment_text = '' OR comment_text = 'Yeniden paylaşım')
+                              OR content = 'Yeniden paylaşım'
+                          )";
         $checkDupStmt = $conn->prepare($checkDupQuery);
         $checkDupStmt->bindParam(':user_id', $userId);
         $checkDupStmt->bindParam(':original_post_id', $original_post_id);
@@ -85,16 +93,11 @@ try {
             $deleteStmt->bindParam(':id', $existingId);
             
             if ($deleteStmt->execute()) {
-                // Determine topic_id to decrement count if applicable
-                // Since we don't select it above, we might skip updating topic count accurately on delete or do a separate fetch if strict accuracy is needed.
-                // ideally we should fetch topic_id too.
-                
-                // Fetch topic_id for accurate decrement
-                // $topicStmt = $conn->prepare("SELECT topic_id FROM posts WHERE id = :id"); ...
-                // For now, simplifying to just delete and valid response.
-                
-                // If the post had a topic_id, we ideally decrement the topic's post_count.
-                // Assuming negligible impact for now or handled by a trigger/cron logic if strict.
+                // Orijinal post'un repost_count'unu düşür
+                $updateCounterQuery = "UPDATE posts SET repost_count = GREATEST(0, repost_count - 1) WHERE id = :original_id";
+                $updateCounterStmt = $conn->prepare($updateCounterQuery);
+                $updateCounterStmt->bindParam(':original_id', $original_post_id);
+                $updateCounterStmt->execute();
 
                 http_response_code(200);
                 echo json_encode(array("message" => "Repost geri alındı.", "unreposted" => true, "post_id" => $existingId));
@@ -128,8 +131,15 @@ try {
 
         // Bildirim Mantığı (Repost ve Alıntı için)
         if ($original_post_id) {
+            // Orijinal post'un repost_count'unu artır
+            $updateCounterQuery = "UPDATE posts SET repost_count = repost_count + 1 WHERE id = :original_id";
+            $updateCounterStmt = $conn->prepare($updateCounterQuery);
+            $updateCounterStmt->bindParam(':original_id', $original_post_id);
+            $updateCounterStmt->execute();
+
             include_once '../notifications/notification_helper.php';
-            $notifType = !empty($quote_text) ? 'quote' : 'repost';
+            // Eğer quote metni veya yorum metni varsa bu bir alıntıdır (quote), yoksa sadece paylaşımdır (repost)
+            $notifType = (!empty($quote_text) || !empty($comment_text)) ? 'quote' : 'repost';
             sendRepostNotification($conn, $userId, $newPostId, $original_post_id, $notifType);
         }
 

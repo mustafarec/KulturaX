@@ -1,10 +1,13 @@
 <?php
 include_once '../config.php';
+include_once '../auth_middleware.php';
+
+// Token'dan kimlik doğrula
+$userId = requireAuth();
 
 $data = json_decode(file_get_contents("php://input"));
 
 if(
-    !empty($data->user_id) &&
     !empty($data->token) &&
     !empty($data->platform)
 ){
@@ -15,7 +18,7 @@ if(
     
     $stmt = $conn->prepare($query);
 
-    $stmt->bindParam(':user_id', $data->user_id);
+    $stmt->bindParam(':user_id', $userId);
     $stmt->bindParam(':token', $data->token);
     $stmt->bindParam(':platform', $data->platform);
 

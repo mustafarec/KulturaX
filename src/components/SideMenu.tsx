@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Animated, Dimensions, Modal, TouchableWithoutFeedback, Easing } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated, Dimensions, Modal, TouchableWithoutFeedback, Easing, ScrollView } from 'react-native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { User, Search, MessageCircle, Star, Settings, Moon, Sun, Bookmark, LogOut, Crown } from 'lucide-react-native';
+import { User, Search, MessageCircle, Star, Settings, Moon, Sun, Bookmark, LogOut, Crown, FileText } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { ThemeSelectorModal } from './ThemeSelectorModal';
@@ -105,9 +105,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             paddingVertical: 14,
             paddingHorizontal: 20,
         },
-        menuIcon: {
-            marginRight: 16,
-        },
+
         menuLabel: {
             fontSize: 16,
             color: theme.colors.text,
@@ -184,10 +182,69 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
         }
     };
 
-    const MenuItem = ({ IconComponent, label, onPress, color }: { IconComponent: any, label: string, onPress: () => void, color?: string }) => (
+    // Get current route name to determine active state
+    const currentRoute = useNavigationState(state => {
+        const route = state?.routes[state.index];
+        // Handle nested navigators if necessary, but simple check might suffice for now
+        // Or recursively get the deeper route name
+        return route?.name;
+    });
+
+    const MenuItem = ({
+        IconComponent,
+        label,
+        onPress,
+        color,
+        gradientColors,
+        isActive = false
+    }: {
+        IconComponent: any,
+        label: string,
+        onPress: () => void,
+        color?: string,
+        gradientColors?: string[],
+        isActive?: boolean
+    }) => (
         <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-            <IconComponent size={20} color={color || theme.colors.text} style={styles.menuIcon} />
-            <Text style={[styles.menuLabel, color && { color }]}>{label}</Text>
+            <LinearGradient
+                colors={gradientColors || (isActive
+                    ? [theme.colors.primary, '#5D4037'] // Darker/Richer for active
+                    : [theme.colors.secondary, theme.colors.primary] // Default
+                )}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 16,
+                    shadowColor: isActive ? theme.colors.primary : "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: isActive ? 0.4 : 0.2, // Stronger shadow for active
+                    shadowRadius: 8,
+                    elevation: isActive ? 8 : 4,
+                    borderWidth: isActive ? 1.5 : 0, // Highlight border
+                    borderColor: theme.colors.surface, // Or a contrasting color
+                }}
+            >
+                <IconComponent
+                    size={20}
+                    color="#FFFFFF"
+                    strokeWidth={2.5} // Increased thickness
+                />
+            </LinearGradient>
+            <View>
+                <Text style={[
+                    styles.menuLabel,
+                    color && { color },
+                    isActive && { fontWeight: 'bold', color: theme.colors.primary } // Bold text for active
+                ]}>{label}</Text>
+                {isActive && (
+                    <View style={{ height: 2, width: 20, backgroundColor: theme.colors.primary, marginTop: 4, borderRadius: 1 }} />
+                )}
+            </View>
         </TouchableOpacity>
     );
 
@@ -215,7 +272,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
 
             <View style={styles.divider} />
 
-            <View style={styles.menuItems}>
+            <ScrollView style={styles.menuItems} showsVerticalScrollIndicator={false}>
                 <TouchableOpacity onPress={() => setPremiumModalVisible(true)} style={{ marginBottom: 15, marginHorizontal: 20 }}>
                     <LinearGradient
                         colors={['#10b981', '#0d9488']}
@@ -224,7 +281,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                         style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 }}
                     >
                         <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                            <Crown size={20} color="#fcd34d" fill="#fcd34d" />
+                            <Crown size={20} color="#fcd34d" fill="#fcd34d" strokeWidth={2.5} />
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Premium'a Geç</Text>
@@ -232,7 +289,16 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                         </View>
                     </LinearGradient>
                 </TouchableOpacity>
-                <MenuItem IconComponent={User} label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
+
+                {/* Note: Active state logic might need refinement based on exact route names/structure */}
+                <MenuItem
+                    IconComponent={User}
+                    label="Profil"
+                    onPress={() => handleNavigation('Main', { screen: 'Profile' })}
+                // Simple check - might not be perfect if 'Main' is active but deep inside Profile? 
+                // Usually 'Main' is the stack, so we might need context. 
+                // For now leaving manual active checks or broad assumption.
+                />
                 <MenuItem IconComponent={Search} label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} />
                 <MenuItem IconComponent={MessageCircle} label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                 <MenuItem IconComponent={Star} label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
@@ -247,11 +313,23 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                     label="Kaydedilenler"
                     onPress={() => handleNavigation('SavedPosts')}
                 />
+                <MenuItem
+                    IconComponent={FileText}
+                    label="Taslaklar"
+                    onPress={() => handleNavigation('Drafts')}
+                />
 
-            </View>
+            </ScrollView>
 
             <View style={styles.footer}>
-                <MenuItem IconComponent={LogOut} label="Çıkış Yap" onPress={handleLogout} color={theme.colors.error} />
+                <MenuItem
+                    IconComponent={LogOut}
+                    label="Çıkış Yap"
+                    onPress={handleLogout}
+                    color={theme.colors.error}
+                    gradientColors={[theme.colors.error, '#B91C1C']}
+                // No active state for logout
+                />
             </View>
         </View >
     );
@@ -298,7 +376,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
 
                     <View style={styles.divider} />
 
-                    <View style={styles.menuItems}>
+                    <ScrollView style={styles.menuItems} showsVerticalScrollIndicator={false}>
                         <TouchableOpacity onPress={() => setPremiumModalVisible(true)} style={{ marginBottom: 15, marginHorizontal: 20 }}>
                             <LinearGradient
                                 colors={['#10b981', '#0d9488']}
@@ -330,8 +408,13 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                             label="Kaydedilenler"
                             onPress={() => handleNavigation('SavedPosts')}
                         />
+                        <MenuItem
+                            IconComponent={FileText}
+                            label="Taslaklar"
+                            onPress={() => handleNavigation('Drafts')}
+                        />
 
-                    </View>
+                    </ScrollView>
 
                     <View style={styles.footer}>
                         <MenuItem IconComponent={LogOut} label="Çıkış Yap" onPress={handleLogout} color={theme.colors.error} />

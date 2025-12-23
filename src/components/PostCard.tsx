@@ -27,7 +27,7 @@ interface PostCardProps {
     onUpdatePost?: PostUpdateFn; // New Prop for self-contained logic
 }
 
-export const PostCard: React.FC<PostCardProps> = ({
+const PostCardComponent: React.FC<PostCardProps> = ({
     post,
     onPress,
     onLike,
@@ -48,6 +48,25 @@ export const PostCard: React.FC<PostCardProps> = ({
     const optionsButtonRef = React.useRef<any>(null);
     const [internalRepostMenuVisible, setInternalRepostMenuVisible] = useState(false);
 
+    // --- LOGIC BLOCK MOVED UP ---
+    const isRepost = !!post.original_post_id;
+    const isQuoteRepost = isRepost && post.original_post &&
+        post.content !== 'Yeniden paylaşım' &&
+        post.content !== post.original_post.content;
+
+    const displayPost = isQuoteRepost ? post : (isRepost && post.original_post ? post.original_post : post);
+
+    // --- INSTANT FEEDBACK STATE ---
+    // Performans için beğeni durumunu local state'te tutuyoruz
+    const [localIsLiked, setLocalIsLiked] = useState(!!displayPost.is_liked);
+    const [localLikeCount, setLocalLikeCount] = useState(parseInt(displayPost.like_count || '0', 10));
+
+    // Prop değişirse local state'i güncelle (örn: başka bir yerden beğenilirse)
+    React.useEffect(() => {
+        setLocalIsLiked(!!displayPost.is_liked);
+        setLocalLikeCount(parseInt(displayPost.like_count || '0', 10));
+    }, [displayPost.is_liked, displayPost.like_count]);
+
     // Initialize Hook
     const interactions = usePostInteractions({ onUpdatePost });
 
@@ -59,30 +78,26 @@ export const PostCard: React.FC<PostCardProps> = ({
         }
     };
 
-    // Derived Handlers (Use Prop if exists, else Hook)
-    const handleLike = onLike || (() => interactions.handleLike(post));
-    // Save uses "isSaved" prop usually, but hook gets it from item.
-    // If onSave is passed, parent manages state. If NOT passed, we use hook. 
-    // BUT hook assumes item has is_saved. 
-    // We should trust the hook if we simply want "toggle".
+    // Derived Handlers (Use Prop if exists, else Hook with Instant Feedback)
+    const handleLike = () => {
+        // 1. Anında UI güncellemesi (Instant Feedback)
+        const newStatus = !localIsLiked;
+        setLocalIsLiked(newStatus);
+        setLocalLikeCount(prev => newStatus ? prev + 1 : Math.max(0, prev - 1));
+
+        // 2. Asıl işlemi tetikle (API + Global State)
+        if (onLike) {
+            onLike();
+        } else {
+            interactions.handleLike(post);
+        }
+    };
+
+    // ... Diğer handlerlar aynen kalır ...
     const handleSave = onSave || (() => interactions.handleToggleSave(post));
-
-    // Repost is Tricky: Prop triggers menu usually.
-    // If Prop exists -> Call it (Parent handles menu).
-    // If Prop missing -> Set internal menu visible.
     const handleRepost = onRepost || (() => setInternalRepostMenuVisible(true));
-
-    // Content/User Press
     const handleContent = onContentPress || interactions.handleContentPress;
     const handleUser = onUserPress || interactions.handleUserPress;
-
-    // --- LOGIC BLOCK: PRESERVING EXISTING DATA PARSING ---
-    const isRepost = !!post.original_post_id;
-    const isQuoteRepost = isRepost && post.original_post &&
-        post.content !== 'Yeniden paylaşım' &&
-        post.content !== post.original_post.content;
-
-    const displayPost = isQuoteRepost ? post : (isRepost && post.original_post ? post.original_post : post);
 
     let displayComment = '';
     let displayQuote = '';
@@ -127,7 +142,6 @@ export const PostCard: React.FC<PostCardProps> = ({
             displayUser = { username: post.author, full_name: post.author, avatar_url: null };
         }
     }
-    // --- END LOGIC BLOCK ---
 
     const styles = StyleSheet.create({
         container: {
@@ -161,6 +175,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             flexDirection: 'row',
             alignItems: 'center',
             marginTop: 2,
+            flexWrap: 'wrap',
         },
         username: {
             fontSize: 13,
@@ -229,6 +244,46 @@ export const PostCard: React.FC<PostCardProps> = ({
             fontFamily: theme.fonts.quote || theme.fonts.main,
             lineHeight: 24,
         },
+        embeddedPostContainer: {
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 12,
+            marginTop: 12,
+            marginBottom: 12,
+            backgroundColor: theme.colors.surface,
+        },
+        embeddedHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 8,
+        },
+        embeddedAvatar: {
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: theme.colors.border,
+            marginRight: 8,
+        },
+        embeddedName: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+        },
+        embeddedUsername: {
+            fontSize: 12,
+            color: theme.colors.textSecondary,
+        },
+        embeddedContent: {
+            fontSize: 14,
+            color: theme.colors.text,
+            marginBottom: 8,
+        },
+        embeddedImage: {
+            width: '100%',
+            height: 150,
+            borderRadius: 8,
+            marginTop: 8,
+        },
         footer: {
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -295,15 +350,22 @@ export const PostCard: React.FC<PostCardProps> = ({
                         <Text style={styles.username}>@{displayUser.username}</Text>
                         <Text style={styles.dot}>•</Text>
                         <Text style={styles.time}>{formatRelativeTime(post.created_at || Date.now())}</Text>
-                        {post.topic_name && (
+                        {/* Topic badge - show from post or original post */}
+                        {(post.topic_name || (post.original_post && post.original_post.topic_name)) && (
                             <>
                                 <Text style={styles.dot}>•</Text>
                                 <TouchableOpacity
-                                    onPress={() => onTopicPress && post.topic_id && onTopicPress(post.topic_id, post.topic_name)}
-                                    disabled={!onTopicPress || !post.topic_id}
+                                    onPress={() => {
+                                        const topicId = post.topic_id || (post.original_post && post.original_post.topic_id);
+                                        const topicName = post.topic_name || (post.original_post && post.original_post.topic_name);
+                                        if (onTopicPress && topicId && topicName) {
+                                            onTopicPress(topicId, topicName);
+                                        }
+                                    }}
+                                    disabled={!onTopicPress || !(post.topic_id || (post.original_post && post.original_post.topic_id))}
                                 >
                                     <Badge variant="secondary">
-                                        {post.topic_name}
+                                        {post.topic_name || (post.original_post && post.original_post.topic_name)}
                                     </Badge>
                                 </TouchableOpacity>
                             </>
@@ -383,16 +445,108 @@ export const PostCard: React.FC<PostCardProps> = ({
                 </View>
             ) : null}
 
+            {/* Embedded Post for Quote Reposts */}
+            {isQuoteRepost && post.original_post && (
+                <TouchableOpacity
+                    style={[styles.embeddedPostContainer, { borderColor: theme.colors.border }]}
+                    onPress={() => {
+                        if (post.original_post && handleContent && post.original_post.content_type && post.original_post.content_id) {
+                            handleContent(post.original_post.content_type, post.original_post.content_id);
+                        }
+                    }}
+                    activeOpacity={0.9}
+                >
+                    <TouchableOpacity
+                        style={styles.embeddedHeader}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            if (post.original_post?.user?.id) {
+                                handleUser(post.original_post.user.id);
+                            }
+                        }}
+                    >
+                        <Image
+                            source={{ uri: post.original_post.user.avatar_url || 'https://via.placeholder.com/50' }}
+                            style={styles.embeddedAvatar}
+                        />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <Text style={styles.embeddedName} numberOfLines={1}>
+                                {post.original_post.user.full_name || post.original_post.user.username}
+                            </Text>
+                            <Text style={[styles.embeddedUsername, { marginLeft: 4 }]} numberOfLines={1}>
+                                @{post.original_post.user.username}
+                            </Text>
+                            <Text style={[styles.dot, { marginHorizontal: 4 }]}>•</Text>
+                            <Text style={styles.embeddedUsername}>
+                                {formatRelativeTime(post.original_post.created_at)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Show comment text if exists */}
+                    {post.original_post.comment_text ? (
+                        <Text style={styles.embeddedContent} numberOfLines={2}>
+                            {post.original_post.comment_text}
+                        </Text>
+                    ) : post.original_post.content && !post.original_post.quote_text ? (
+                        <Text style={styles.embeddedContent} numberOfLines={2}>
+                            {post.original_post.content}
+                        </Text>
+                    ) : null}
+
+                    {/* Show content card if it's a book/movie/music post */}
+                    {(post.original_post.content_type === 'book' ||
+                        post.original_post.content_type === 'movie' ||
+                        post.original_post.content_type === 'music') && post.original_post.image_url && (
+                            <View style={[styles.bookCard, { marginBottom: 8, marginTop: 8 }]}>
+                                <Image
+                                    source={{ uri: post.original_post.image_url }}
+                                    style={[styles.bookCover, { width: 50, height: 75 }]}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.bookInfo}>
+                                    <Text style={[styles.bookTitle, { fontSize: 14 }]} numberOfLines={1}>
+                                        {post.original_post.source || 'Başlık Yok'}
+                                    </Text>
+                                    <Text style={[styles.bookAuthor, { fontSize: 12 }]} numberOfLines={1}>
+                                        {post.original_post.author || 'Bilinmeyen'}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+
+                    {/* Show quote if exists */}
+                    {post.original_post.quote_text && (
+                        <View style={[styles.quoteBox, { padding: 10, marginTop: 4 }]}>
+                            <Text style={[styles.quoteText, { fontSize: 13 }]} numberOfLines={3}>
+                                "{post.original_post.quote_text}"
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Fallback: Show image only if no content_type but has image */}
+                    {!post.original_post.content_type && post.original_post.image_url && (
+                        <Image
+                            source={{ uri: post.original_post.image_url }}
+                            style={styles.embeddedImage}
+                            resizeMode="cover"
+                        />
+                    )}
+                </TouchableOpacity>
+            )}
+
+
+
             {/* Interactions Footer */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
                     <Heart
                         size={18}
-                        color={displayPost.is_liked ? interactionColors.like : interactionColors.inactive}
-                        fill={displayPost.is_liked ? interactionColors.like : 'transparent'}
+                        color={localIsLiked ? interactionColors.like : interactionColors.inactive}
+                        fill={localIsLiked ? interactionColors.like : 'transparent'}
                     />
-                    <Text style={[styles.actionText, { color: displayPost.is_liked ? interactionColors.like : interactionColors.inactive }]}>
-                        {displayPost.like_count || 0}
+                    <Text style={[styles.actionText, { color: localIsLiked ? interactionColors.like : interactionColors.inactive }]}>
+                        {localLikeCount || 0}
                     </Text>
                 </TouchableOpacity>
 
@@ -436,3 +590,32 @@ export const PostCard: React.FC<PostCardProps> = ({
         </Card>
     );
 };
+
+// React.memo ile sarmalayarak gereksiz re-render'ları önlüyoruz
+export const PostCard = React.memo(PostCardComponent, (prevProps, nextProps) => {
+    // Shallow comparison for critical props
+    // true döndürürse: re-render YAPILMAZ (props aynı)
+    // false döndürürse: re-render YAPILIR (props farklı)
+    const prevPost = prevProps.post;
+    const nextPost = nextProps.post;
+
+    // Temel post kontrolü
+    if (prevPost.id !== nextPost.id) return false;
+
+    // Etkileşim durumları
+    if (prevPost.is_liked !== nextPost.is_liked) return false;
+    if (prevPost.like_count !== nextPost.like_count) return false;
+    if (prevPost.is_saved !== nextPost.is_saved) return false;
+    if (prevPost.is_reposted !== nextPost.is_reposted) return false;
+    if (prevPost.repost_count !== nextPost.repost_count) return false;
+    if (prevPost.comment_count !== nextPost.comment_count) return false;
+
+    // isSaved prop kontrolü
+    if (prevProps.isSaved !== nextProps.isSaved) return false;
+
+    // original_post kontrolü (repost durumları için)
+    if (prevPost.original_post?.is_liked !== nextPost.original_post?.is_liked) return false;
+    if (prevPost.original_post?.like_count !== nextPost.original_post?.like_count) return false;
+
+    return true;
+});

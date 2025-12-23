@@ -17,7 +17,7 @@ try {
         // Diğer alanları (full_name, bio, avatar_url) ayrı ayrı çekmeyi dene veya varsayılan değer ata
         // Bu, eğer sütunlar yoksa hatayı önler
         try {
-            $detailQuery = "SELECT full_name, bio, avatar_url, header_image_url, location, website, is_email_verified FROM users WHERE id = :user_id";
+            $detailQuery = "SELECT full_name, bio, avatar_url, header_image_url, location, website, is_email_verified, is_private FROM users WHERE id = :user_id";
             $detailStmt = $conn->prepare($detailQuery);
             $detailStmt->bindParam(':user_id', $user_id);
             $detailStmt->execute();
@@ -37,6 +37,7 @@ try {
         // Check if viewer follows this user
         $viewer_id = isset($_GET['viewer_id']) ? $_GET['viewer_id'] : null;
         $user['is_following'] = false;
+        $user['request_status'] = null;
 
         if ($viewer_id) {
             try {
@@ -47,6 +48,19 @@ try {
                 $followStmt->execute();
                 if ($followStmt->rowCount() > 0) {
                     $user['is_following'] = true;
+                }
+                
+                // Check for pending follow request (only if not already following)
+                if (!$user['is_following']) {
+                    $requestQuery = "SELECT status FROM follow_requests WHERE requester_id = :viewer_id AND target_id = :user_id";
+                    $requestStmt = $conn->prepare($requestQuery);
+                    $requestStmt->bindParam(':viewer_id', $viewer_id);
+                    $requestStmt->bindParam(':user_id', $user_id);
+                    $requestStmt->execute();
+                    $requestResult = $requestStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($requestResult) {
+                        $user['request_status'] = $requestResult['status'];
+                    }
                 }
             } catch (Exception $e) {
                 error_log("Follow check error: " . $e->getMessage());

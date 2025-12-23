@@ -1,16 +1,20 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../config.php';
+include_once '../auth_middleware.php';
+
+// Token'dan kimlik doğrula
+$userId = requireAuth();
 
 try {
     $data = json_decode(file_get_contents("php://input"));
 
-    if(!empty($data->user_id) && !empty($data->post_id)){
+    if(!empty($data->post_id)){
         
         // Check if like exists
         $checkQuery = "SELECT id FROM interactions WHERE user_id = :user_id AND post_id = :post_id AND type = 'like'";
         $checkStmt = $conn->prepare($checkQuery);
-        $checkStmt->bindParam(':user_id', $data->user_id);
+        $checkStmt->bindParam(':user_id', $userId);
         $checkStmt->bindParam(':post_id', $data->post_id);
         $checkStmt->execute();
 
@@ -18,7 +22,7 @@ try {
             // Unlike
             $query = "DELETE FROM interactions WHERE user_id = :user_id AND post_id = :post_id AND type = 'like'";
             $stmt = $conn->prepare($query);
-            $stmt->bindParam(':user_id', $data->user_id);
+            $stmt->bindParam(':user_id', $userId);
             $stmt->bindParam(':post_id', $data->post_id);
             $stmt->execute();
             $liked = false;
@@ -26,7 +30,7 @@ try {
             // Like
             $query = "INSERT INTO interactions SET user_id = :user_id, post_id = :post_id, type = 'like'";
             $stmt = $conn->prepare($query);
-            $stmt->bindParam(':user_id', $data->user_id);
+            $stmt->bindParam(':user_id', $userId);
             $stmt->bindParam(':post_id', $data->post_id);
             $stmt->execute();
             $liked = true;
@@ -42,7 +46,7 @@ try {
 
                 if ($postOwner) {
                     $ownerId = (int)$postOwner['user_id'];
-                    $senderId = (int)$data->user_id;
+                    $senderId = (int)$userId;
                     
                     // Gönderen kullanıcı adını al
                     $senderQuery = "SELECT username FROM users WHERE id = :sender_id";

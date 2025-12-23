@@ -7,6 +7,7 @@ interface NotificationContextType {
     fetchUnreadCount: () => Promise<void>;
     markAsRead: () => void; // Simple way to clear badge locally
     decrementUnreadCount: () => void;
+    setUnreadCount: (count: number) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -14,6 +15,7 @@ const NotificationContext = createContext<NotificationContextType>({
     fetchUnreadCount: async () => { },
     markAsRead: () => { },
     decrementUnreadCount: () => { },
+    setUnreadCount: () => { },
 });
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,7 +60,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, []);
 
     return (
-        <NotificationContext.Provider value={{ unreadCount, fetchUnreadCount, markAsRead, decrementUnreadCount }}>
+        <NotificationContext.Provider value={{ unreadCount, fetchUnreadCount, markAsRead, decrementUnreadCount, setUnreadCount }}>
             {children}
         </NotificationContext.Provider>
     );

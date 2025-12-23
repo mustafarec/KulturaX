@@ -6,8 +6,10 @@ import { MessageProvider } from './src/context/MessageContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { initOneSignal } from './src/services/OneSignalService';
 import Toast from 'react-native-toast-message';
+import { toastConfig } from './src/components/ToastConfig';
 
 import { NotificationProvider } from './src/context/NotificationContext';
+import { PostHubProvider } from './src/context/PostHubContext';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -22,13 +24,15 @@ function App(): React.JSX.Element {
         <AuthProvider>
           <ThemeProvider>
             <MessageProvider>
-              <NotificationProvider>
-                <AppNavigator />
-              </NotificationProvider>
+              <PostHubProvider>
+                <NotificationProvider>
+                  <AppNavigator />
+                </NotificationProvider>
+              </PostHubProvider>
             </MessageProvider>
           </ThemeProvider>
         </AuthProvider>
-        <Toast />
+        <Toast config={toastConfig} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

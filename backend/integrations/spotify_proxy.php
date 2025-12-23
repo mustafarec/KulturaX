@@ -1,8 +1,10 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../config.php';
+include_once '../auth_middleware.php';
 
-$user_id = isset($_GET['user_id']) ? $_GET['user_id'] : die(json_encode(array("message" => "User ID required")));
+// Token'dan kimlik doğrula
+$user_id = requireAuth();
 
 // Token'ı çek
 $query = "SELECT * FROM user_integrations WHERE user_id = :user_id AND provider = 'spotify'";

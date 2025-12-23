@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, TouchableWithoutFeedback, DeviceEventEmitter, LayoutAnimation, UIManager, Platform, Share, Dimensions, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, TouchableWithoutFeedback, DeviceEventEmitter, LayoutAnimation, UIManager, Platform, Share, Dimensions, ScrollView, BackHandler } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -97,6 +97,34 @@ export const FeedScreen = () => {
         book: true,
         music: true
     });
+
+    // Back Handler Logic for Exit Confirmation
+    const lastBackPress = useRef(0);
+    useFocusEffect(
+        React.useCallback(() => {
+            const onBackPress = () => {
+                const now = Date.now();
+                if (now - lastBackPress.current < 2000) {
+                    BackHandler.exitApp();
+                    return true;
+                }
+
+                lastBackPress.current = now;
+                Toast.show({
+                    type: 'info',
+                    text1: 'Uygulamadan Çıkılıyor',
+                    text2: 'Çıkmak için tekrar geri tuşuna basın.',
+                    position: 'bottom',
+                    visibilityTime: 2000,
+                });
+                return true;
+            };
+
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+            return () => subscription.remove();
+        }, [])
+    );
 
     // Global state for current refreshing action
     const [refreshing, setRefreshing] = useState(false);
@@ -499,7 +527,7 @@ export const FeedScreen = () => {
 
         try {
             if (user) {
-                await postService.delete(user.id, item.id);
+                await postService.delete(item.id);
                 updateAllFeeds(prev => prev.filter(post => post.id !== item.id));
                 Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
             }
@@ -679,6 +707,12 @@ export const FeedScreen = () => {
                 }
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
+                // Performance optimizations
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                initialNumToRender={5}
+                updateCellsBatchingPeriod={50}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Ghost size={40} color={theme.colors.textSecondary} />

@@ -196,7 +196,7 @@ export const ChatScreen = () => {
             };
             setMessages(prev => [...prev, newMessage]);
 
-            await messageService.send(user.id, otherUserId, content);
+            await messageService.send(otherUserId, content);
             fetchMessages(); // Sync with server
         } catch (error) {
             console.error(error);

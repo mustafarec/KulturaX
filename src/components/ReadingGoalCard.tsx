@@ -36,7 +36,7 @@ export const ReadingGoalCard = () => {
 
         setIsLoading(true);
         try {
-            await goalService.updateGoal(user!.id, target);
+            await goalService.updateGoal(target);
             fetchGoal();
             setShowModal(false);
         } catch (error) {

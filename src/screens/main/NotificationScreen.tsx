@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter, Animated } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter, Animated, Alert } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { notificationService } from '../../services/backendApi';
+import { notificationService, userService } from '../../services/backendApi';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '../../context/NotificationContext';
-import { Heart, MessageCircle, UserPlus, BookOpen, Calendar, Sparkles, BellRing, Film, Quote, Trash2 } from 'lucide-react-native';
+import { Heart, MessageCircle, UserPlus, BookOpen, Calendar, Sparkles, BellRing, Film, Quote, Trash2, MoreVertical, CheckCheck, Clock, Check, X } from 'lucide-react-native';
+import { DropdownMenu } from '../../components/DropdownMenu';
+import { ThemedDialog } from '../../components/ThemedDialog';
+import Toast from 'react-native-toast-message';
 
 interface Notification {
     id: number;
@@ -28,9 +31,14 @@ export const NotificationScreen = () => {
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
-    const { fetchUnreadCount, decrementUnreadCount } = useNotification();
+    const { fetchUnreadCount, decrementUnreadCount, setUnreadCount } = useNotification();
 
-    const [activeFilter, setActiveFilter] = useState<'Tümü' | 'Beğeniler' | 'Yorumlar' | 'Takip' | 'Öneriler' | 'Bahsetmeler'>('Tümü');
+    const [activeFilter, setActiveFilter] = useState<'Tümü' | 'Beğeniler' | 'Yorumlar' | 'Takip' | 'İstekler' | 'Öneriler' | 'Bahsetmeler'>('Tümü');
+
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [menuPosition, setMenuPosition] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
+    const moreButtonRef = useRef<View>(null);
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
     const fetchNotifications = async () => {
         if (!user) return;
@@ -62,7 +70,9 @@ export const NotificationScreen = () => {
             case 'Yorumlar':
                 return notifications.filter(n => n.type === 'comment' || n.type === 'reply');
             case 'Takip':
-                return notifications.filter(n => n.type === 'follow');
+                return notifications.filter(n => n.type === 'follow' || n.type === 'follow_accepted');
+            case 'İstekler':
+                return notifications.filter(n => n.type === 'follow_request');
             case 'Bahsetmeler':
                 return notifications.filter(n => n.type === 'quote' || n.type === 'repost');
             case 'Öneriler':
@@ -166,6 +176,47 @@ export const NotificationScreen = () => {
         }
     };
 
+    const handleMorePress = () => {
+        if (moreButtonRef.current) {
+            moreButtonRef.current.measure((fx: number, fy: number, width: number, height: number, px: number, py: number) => {
+                setMenuPosition({ x: px, y: py, width, height });
+                setMenuVisible(true);
+            });
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        if (!user) return;
+        try {
+            await notificationService.markAllAsRead(user.id);
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            setUnreadCount(0); // Update global context immediately
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Tüm bildirimler okundu olarak işaretlendi.' });
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem gerçekleştirilemedi.' });
+        }
+    };
+
+    const handleDeleteAll = () => {
+        if (!user) return;
+        setMenuVisible(false); // Close menu
+        setDeleteDialogVisible(true);
+    };
+
+    const confirmDeleteAll = async () => {
+        if (!user) return;
+        setDeleteDialogVisible(false); // Close dialog
+
+        try {
+            await notificationService.deleteAllNotifications(user.id);
+            setNotifications([]);
+            setUnreadCount(0);
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Tüm bildirimler silindi.' });
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'Silme işlemi başarısız oldu.' });
+        }
+    };
+
     const getNotificationIcon = (type: string) => {
         const isDark = theme.dark;
         switch (type) {
@@ -173,6 +224,8 @@ export const NotificationScreen = () => {
             case 'comment': return <MessageCircle size={16} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />;
             case 'reply': return <MessageCircle size={16} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />;
             case 'follow': return <UserPlus size={16} color={isDark ? "#4ade80" : "#16a34a"} fill={isDark ? "#4ade80" : "#16a34a"} />;
+            case 'follow_request': return <Clock size={16} color={isDark ? "#fbbf24" : "#d97706"} />;
+            case 'follow_accepted': return <Check size={16} color={isDark ? "#4ade80" : "#16a34a"} />;
             case 'quote': return <Quote size={16} color={isDark ? "#c084fc" : "#9333ea"} fill={isDark ? "#c084fc" : "#9333ea"} />;
             case 'repost': return <Quote size={16} color={isDark ? "#c084fc" : "#9333ea"} fill={isDark ? "#c084fc" : "#9333ea"} />;
             case 'recommendation': return <Sparkles size={16} color={isDark ? "#fbbf24" : "#d97706"} fill={isDark ? "#fbbf24" : "#d97706"} />;
@@ -188,7 +241,9 @@ export const NotificationScreen = () => {
                 case 'like': return 'rgba(248, 113, 113, 0.2)';
                 case 'comment':
                 case 'reply': return 'rgba(96, 165, 250, 0.2)';
-                case 'follow': return 'rgba(74, 222, 128, 0.2)';
+                case 'follow':
+                case 'follow_accepted': return 'rgba(74, 222, 128, 0.2)';
+                case 'follow_request': return 'rgba(251, 191, 36, 0.2)';
                 case 'quote':
                 case 'repost': return 'rgba(192, 132, 252, 0.2)';
                 case 'recommendation': return 'rgba(251, 191, 36, 0.2)';
@@ -200,7 +255,9 @@ export const NotificationScreen = () => {
             case 'like': return '#fef2f2';
             case 'comment':
             case 'reply': return '#eff6ff';
-            case 'follow': return '#f0fdf4';
+            case 'follow':
+            case 'follow_accepted': return '#f0fdf4';
+            case 'follow_request': return '#fffbeb';
             case 'quote':
             case 'repost': return '#faf5ff';
             case 'recommendation': return '#fffbeb';
@@ -390,11 +447,54 @@ export const NotificationScreen = () => {
         );
     };
 
+    const handleAcceptRequest = async (item: Notification) => {
+        try {
+            const data = typeof item.data === 'string' ? JSON.parse(item.data) : item.data;
+            const requestId = data?.request_id;
+
+            if (!requestId) {
+                // If no request_id, use sender_id to find request
+                Toast.show({ type: 'error', text1: 'Hata', text2: 'İstek bulunamadı.' });
+                return;
+            }
+
+            await userService.acceptFollowRequest(requestId);
+            setNotifications(prev => prev.filter(n => n.id !== item.id));
+            decrementUnreadCount();
+            Toast.show({ type: 'success', text1: 'Kabul Edildi', text2: 'Takip isteği kabul edildi.' });
+        } catch (error) {
+            console.error('Accept request error:', error);
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem gerçekleştirilemedi.' });
+        }
+    };
+
+    const handleRejectRequest = async (item: Notification) => {
+        try {
+            const data = typeof item.data === 'string' ? JSON.parse(item.data) : item.data;
+            const requestId = data?.request_id;
+
+            if (!requestId) {
+                Toast.show({ type: 'error', text1: 'Hata', text2: 'İstek bulunamadı.' });
+                return;
+            }
+
+            await userService.rejectFollowRequest(requestId);
+            setNotifications(prev => prev.filter(n => n.id !== item.id));
+            decrementUnreadCount();
+            Toast.show({ type: 'info', text1: 'Reddedildi', text2: 'Takip isteği reddedildi.' });
+        } catch (error) {
+            console.error('Reject request error:', error);
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem gerçekleştirilemedi.' });
+        }
+    };
+
     const renderItem = ({ item }: { item: Notification }) => {
         const iconBg = getIconBgColor(item.type);
 
         const cardStyle = item.is_read ? styles.cardRead : styles.cardUnread;
         const bgStyle = item.is_read ? { backgroundColor: theme.colors.background } : { backgroundColor: theme.colors.surface };
+
+        const isFollowRequest = item.type === 'follow_request';
 
         return (
             <Swipeable
@@ -425,6 +525,44 @@ export const NotificationScreen = () => {
                             <Text style={{ color: theme.colors.textSecondary }}>{item.message}</Text>
                         </Text>
                         <Text style={styles.timeText}>{formatTimeAgo(item.created_at)}</Text>
+
+                        {/* Accept/Reject buttons for follow requests */}
+                        {isFollowRequest && (
+                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                                <TouchableOpacity
+                                    style={{
+                                        backgroundColor: theme.colors.primary,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 6,
+                                        borderRadius: 16,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                    }}
+                                    onPress={() => handleAcceptRequest(item)}
+                                >
+                                    <Check size={14} color="#FFF" />
+                                    <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 12 }}>Kabul Et</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{
+                                        backgroundColor: theme.colors.surface,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 6,
+                                        borderRadius: 16,
+                                        borderWidth: 1,
+                                        borderColor: theme.colors.border,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                    }}
+                                    onPress={() => handleRejectRequest(item)}
+                                >
+                                    <X size={14} color={theme.colors.text} />
+                                    <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 12 }}>Reddet</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
 
                     {!item.is_read && <View style={styles.unreadDot} />}
@@ -439,12 +577,22 @@ export const NotificationScreen = () => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <Text style={styles.headerTitle}>Bildirimler</Text>
-                    {unreadCount > 0 && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{unreadCount} yeni</Text>
-                        </View>
-                    )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.headerTitle}>Bildirimler</Text>
+                        {unreadCount > 0 && (
+                            <View style={[styles.badge, { marginLeft: 8 }]}>
+                                <Text style={styles.badgeText}>{unreadCount} yeni</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    <TouchableOpacity
+                        ref={moreButtonRef}
+                        onPress={handleMorePress}
+                        style={{ padding: 4 }}
+                    >
+                        <MoreVertical size={24} color={theme.colors.text} />
+                    </TouchableOpacity>
                 </View>
                 <Text style={styles.subtitle}>Son aktivitelerinizi ve güncellemeleri takip edin</Text>
             </View>
@@ -460,6 +608,7 @@ export const NotificationScreen = () => {
                         { label: 'Yorumlar', key: 'Yorumlar' },
                         { label: 'Bahsetmeler', key: 'Bahsetmeler' },
                         { label: 'Takip', key: 'Takip' },
+                        { label: 'İstekler', key: 'İstekler' },
                         { label: 'Öneriler', key: 'Öneriler' },
                     ]}
                     keyExtractor={item => item.key}
@@ -509,6 +658,45 @@ export const NotificationScreen = () => {
                     }
                 />
             )}
+
+            <DropdownMenu
+                visible={menuVisible}
+                onClose={() => setMenuVisible(false)}
+                targetPosition={menuPosition}
+                options={[
+                    {
+                        label: 'Tümünü okundu işaretle',
+                        icon: CheckCheck,
+                        onPress: handleMarkAllRead
+                    },
+                    {
+                        label: 'Tüm bildirimleri sil',
+                        icon: Trash2,
+                        color: theme.colors.error,
+                        onPress: handleDeleteAll
+                    }
+                ]}
+            />
+
+            <ThemedDialog
+                visible={deleteDialogVisible}
+                title="Tüm Bildirimleri Sil"
+                message="Tüm bildirimlerinizi kalıcı olarak silmek istediğinizden emin misiniz?"
+                onClose={() => setDeleteDialogVisible(false)}
+                actions={[
+                    {
+                        text: 'İptal',
+                        style: 'cancel',
+                        onPress: () => setDeleteDialogVisible(false)
+                    },
+                    {
+                        text: 'Sil',
+                        style: 'destructive',
+                        onPress: confirmDeleteAll
+                    }
+                ]}
+            />
         </View>
     );
 };
+

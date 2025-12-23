@@ -72,7 +72,7 @@ export const registerUser = async (userId: number) => {
         // Register if token exists
         if (token) {
             console.log('OneSignal: Registering initial token:', token);
-            await notificationService.registerToken(userId, token, Platform.OS === 'ios' ? 'ios' : 'android');
+            await notificationService.registerToken(token, Platform.OS === 'ios' ? 'ios' : 'android');
         }
 
         // Listen for token changes (e.g. first time generation)
@@ -81,7 +81,7 @@ export const registerUser = async (userId: number) => {
             const newToken = event.current.id;
             if (newToken) {
                 console.log('OneSignal: Registering new token:', newToken);
-                await notificationService.registerToken(userId, newToken, Platform.OS === 'ios' ? 'ios' : 'android');
+                await notificationService.registerToken(newToken, Platform.OS === 'ios' ? 'ios' : 'android');
             }
         });
 

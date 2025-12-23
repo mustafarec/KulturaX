@@ -159,6 +159,11 @@ export const InboxScreen = () => {
             borderColor: theme.colors.border,
             ...theme.shadows.soft,
         },
+        itemUnread: {
+            backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(139, 90, 43, 0.05)',
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.primary,
+        },
         avatarContainer: {
             position: 'relative',
             marginRight: theme.spacing.m,
@@ -213,9 +218,16 @@ export const InboxScreen = () => {
             color: theme.colors.text,
             fontFamily: theme.fonts.main,
         },
+        usernameUnread: {
+            fontWeight: '800',
+        },
         time: {
             fontSize: 12,
             color: theme.colors.textSecondary,
+        },
+        timeUnread: {
+            color: theme.colors.primary,
+            fontWeight: '600',
         },
         lastMessage: {
             fontSize: 14,
@@ -224,13 +236,13 @@ export const InboxScreen = () => {
         },
         unreadMessage: {
             color: theme.colors.text,
-            fontWeight: '500',
+            fontWeight: '600',
         },
         countBadge: {
-            backgroundColor: theme.colors.primary,
-            minWidth: 20,
-            height: 20,
-            borderRadius: 10,
+            backgroundColor: theme.colors.error,
+            minWidth: 22,
+            height: 22,
+            borderRadius: 11,
             justifyContent: 'center',
             alignItems: 'center',
             paddingHorizontal: 6,
@@ -238,7 +250,7 @@ export const InboxScreen = () => {
         },
         countText: {
             color: '#fff',
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 'bold',
         },
         actionsButton: {
@@ -343,7 +355,7 @@ export const InboxScreen = () => {
         if (!user) return;
         if (!refreshing) setIsLoading(true);
         try {
-            const data = await messageService.getInbox(user.id);
+            const data = await messageService.getInbox();
             console.log('Inbox data:', JSON.stringify(data, null, 2));
             setConversations(data);
         } catch (error) {
@@ -405,61 +417,77 @@ export const InboxScreen = () => {
 
     const totalUnread = conversations.reduce((acc, curr) => acc + (parseInt(curr.unread_count) || 0), 0);
 
-    const renderMessageItem = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={styles.item}
-            onPress={() => (navigation as any).navigate('Chat', {
-                otherUserId: item.chat_partner_id,
-                otherUserName: item.username,
-                avatarUrl: item.avatar_url
-            })}
-        >
-            <View style={styles.avatarContainer}>
-                <View style={styles.avatarWrapper}>
-                    {item.avatar_url ? (
-                        <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
-                    ) : (
-                        <View style={styles.avatarPlaceholder}>
-                            <Text style={styles.avatarLetter}>{item.username.charAt(0).toUpperCase()}</Text>
-                        </View>
+    const renderMessageItem = ({ item }: { item: any }) => {
+        const unreadNum = parseInt(item.unread_count) || 0;
+        const hasUnread = unreadNum > 0;
+
+        return (
+            <TouchableOpacity
+                style={[styles.item, hasUnread && styles.itemUnread]}
+                onPress={() => (navigation as any).navigate('Chat', {
+                    otherUserId: item.chat_partner_id,
+                    otherUserName: item.username,
+                    avatarUrl: item.avatar_url
+                })}
+            >
+                <View style={styles.avatarContainer}>
+                    <View style={styles.avatarWrapper}>
+                        {item.avatar_url ? (
+                            <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+                        ) : (
+                            <View style={styles.avatarPlaceholder}>
+                                <Text style={styles.avatarLetter}>{item.username.charAt(0).toUpperCase()}</Text>
+                            </View>
+                        )}
+                    </View>
+                    {/* Unread indicator dot on avatar */}
+                    {hasUnread && (
+                        <View style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: 14,
+                            height: 14,
+                            backgroundColor: theme.colors.error,
+                            borderRadius: 7,
+                            borderWidth: 2,
+                            borderColor: theme.colors.surface,
+                        }} />
                     )}
                 </View>
-                {/* Mock Online status - Randomly show for demo or use real data if available */}
-                {Math.random() > 0.7 && <View style={styles.onlineIndicator} />}
-            </View>
 
-            <View style={styles.itemContent}>
-                <View style={styles.itemHeader}>
-                    <Text style={styles.username}>{item.username}</Text>
-                    {/* Time would ideally come from backend formatted */}
-                    <Text style={styles.time}>{item.time_ago || 'Az önce'}</Text>
-                </View>
-                <Text style={[
-                    styles.lastMessage,
-                    item.unread_count > 0 && styles.unreadMessage
-                ]}
-                    numberOfLines={1}
-                >
-                    {item.last_message || 'Sohbeti görüntüle'}
-                </Text>
-            </View>
-
-            <View style={{ alignItems: 'flex-end', gap: 8 }}>
-                {item.unread_count > 0 && (
-                    <View style={styles.countBadge}>
-                        <Text style={styles.countText}>{item.unread_count}</Text>
+                <View style={styles.itemContent}>
+                    <View style={styles.itemHeader}>
+                        <Text style={[styles.username, hasUnread && styles.usernameUnread]}>{item.username}</Text>
+                        <Text style={[styles.time, hasUnread && styles.timeUnread]}>{item.time_ago || 'Az önce'}</Text>
                     </View>
-                )}
+                    <Text style={[
+                        styles.lastMessage,
+                        hasUnread && styles.unreadMessage
+                    ]}
+                        numberOfLines={1}
+                    >
+                        {item.last_message || 'Sohbeti görüntüle'}
+                    </Text>
+                </View>
 
-                <TouchableOpacity
-                    style={styles.actionsButton}
-                    onPress={() => setOpenMenuConvId(item.chat_partner_id)}
-                >
-                    <MoreVertical size={20} color={theme.colors.textSecondary} />
-                </TouchableOpacity>
-            </View>
-        </TouchableOpacity>
-    );
+                <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                    {hasUnread && (
+                        <View style={styles.countBadge}>
+                            <Text style={styles.countText}>{unreadNum}</Text>
+                        </View>
+                    )}
+
+                    <TouchableOpacity
+                        style={styles.actionsButton}
+                        onPress={() => setOpenMenuConvId(item.chat_partner_id)}
+                    >
+                        <MoreVertical size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     const renderRequestItem = ({ item }: { item: typeof mockRequests[0] }) => (
         <View style={styles.requestItem}>

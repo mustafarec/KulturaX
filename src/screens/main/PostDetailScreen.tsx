@@ -69,7 +69,7 @@ export const PostDetailScreen = () => {
     const confirmDelete = async () => {
         if (!post || !currentUser) return;
         try {
-            await postService.delete(currentUser.id, post.id);
+            await postService.delete(post.id);
             Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
             navigation.goBack();
         } catch (error) {
@@ -552,7 +552,7 @@ export const PostDetailScreen = () => {
 
     if (!post) {
         return (
-            <View style={styles.container}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'left', 'right']}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <ArrowLeft size={24} color={theme.colors.text} />
@@ -560,9 +560,9 @@ export const PostDetailScreen = () => {
                     <Text style={styles.headerTitle}>Gönderi</Text>
                 </View>
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>Gönderi bulunamadı.</Text>
+                    <Text style={styles.emptyText}>Gönderi bulunamadı veya silinmiş.</Text>
                 </View>
-            </View>
+            </SafeAreaView>
         );
     }
 
@@ -590,9 +590,16 @@ export const PostDetailScreen = () => {
                             post={post}
                             onPress={() => { }}
                             onUserPress={(userId) => {
-                                const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
-                                if (targetUserId !== currentUser?.id) {
-                                    (navigation as any).navigate('OtherProfile', { userId: targetUserId });
+                                // Gelen userId'yi kullan (PostCard doğru ID'yi gönderir)
+                                if (userId && userId !== currentUser?.id) {
+                                    (navigation as any).navigate('OtherProfile', { userId: userId });
+                                }
+                            }}
+                            onReposterPress={() => {
+                                // Repost eden kişinin profiline git
+                                const reposterId = post.user.id;
+                                if (reposterId && reposterId !== currentUser?.id) {
+                                    (navigation as any).navigate('OtherProfile', { userId: reposterId });
                                 }
                             }}
                             onContentPress={handleContentPress}

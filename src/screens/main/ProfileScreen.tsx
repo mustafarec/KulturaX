@@ -231,7 +231,7 @@ export const ProfileScreen = () => {
         const item = selectedPostForOptions;
         if (!item || !user) return;
         try {
-            await postService.delete(user.id, item.id);
+            await postService.delete(item.id);
             setUserPosts(prev => prev.filter(p => p.id !== item.id));
             Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
         } catch (error) {
@@ -599,37 +599,43 @@ export const ProfileScreen = () => {
                         {/* Followers/Following */}
                         <View style={styles.socialStatsRow}>
                             <TouchableOpacity
-                                style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                                style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                                 onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'followers' })}
                             >
-                                <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
-                                    <Users size={16} color={theme.colors.primary} />
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                    <Users size={14} color={theme.colors.primary} />
+                                    <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takipçi</Text>
                                 </View>
-                                <View>
-                                    <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats.follower_count || 0}</Text>
-                                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Takipçi</Text>
-                                </View>
+                                <Text
+                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    adjustsFontSizeToFit
+                                    numberOfLines={1}
+                                >{stats.follower_count || 0}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                                style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                                 onPress={() => (navigation as any).navigate('FollowList', { userId: user.id, type: 'following' })}
                             >
-                                <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
-                                    <UserPlus size={16} color={theme.colors.secondary} />
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                    <UserPlus size={14} color={theme.colors.secondary} />
+                                    <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takip</Text>
                                 </View>
-                                <View>
-                                    <Text style={[styles.statValue, { color: theme.colors.text }]}>{stats.following_count || 0}</Text>
-                                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Takip</Text>
-                                </View>
+                                <Text
+                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    adjustsFontSizeToFit
+                                    numberOfLines={1}
+                                >{stats.following_count || 0}</Text>
                             </TouchableOpacity>
-                            <View style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                                <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
-                                    <MessageSquare size={16} color={theme.colors.primary} />
+                            <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                    <MessageSquare size={14} color={theme.colors.primary} />
+                                    <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Gönderi</Text>
                                 </View>
-                                <View>
-                                    <Text style={[styles.statValue, { color: theme.colors.text }]}>{userPosts.length || 0}</Text>
-                                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Gönderi</Text>
-                                </View>
+                                <Text
+                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    adjustsFontSizeToFit
+                                    numberOfLines={1}
+                                >{userPosts.length || 0}</Text>
                             </View>
                         </View>
 
@@ -933,26 +939,6 @@ const styles = StyleSheet.create({
     socialStatsRow: {
         flexDirection: 'row',
         gap: 12,
-    },
-    statCard: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 16,
-        borderWidth: 1,
-        gap: 12,
-    },
-    statIconCircle: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 18,
-        fontWeight: '700',
     },
 
     activityStatsRow: {

@@ -41,7 +41,11 @@ export const ThoughtForm: React.FC<ThoughtFormProps> = ({ text, setText, selecte
     };
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+        >
             {/* Topic Selector */}
             <View style={[styles.section, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -87,7 +91,7 @@ export const ThoughtForm: React.FC<ThoughtFormProps> = ({ text, setText, selecte
             </View>
 
             {/* Text Input */}
-            <View style={[styles.section, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.section, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface, flex: 1 }]}>
                 <Text style={[styles.label, { color: theme.colors.textSecondary, marginBottom: 8 }]}>Düşüncelerinizi paylaşın</Text>
                 <TextInput
                     value={text}
@@ -119,6 +123,7 @@ export const ThoughtForm: React.FC<ThoughtFormProps> = ({ text, setText, selecte
 const styles = StyleSheet.create({
     container: {
         width: '100%',
+        flex: 1,
     },
     section: {
         padding: 16,
@@ -146,7 +151,8 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     input: {
-        height: 150,
+        flex: 1,
+        minHeight: 150, // Changed from fixed height to minHeight
         borderRadius: 12,
         padding: 12,
         borderWidth: 1,
@@ -159,5 +165,4 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 8,
     },
-
 });

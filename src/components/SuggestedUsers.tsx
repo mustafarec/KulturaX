@@ -37,7 +37,7 @@ export const SuggestedUsers = () => {
         if (!user) return;
         setUsers(prev => prev.filter(u => u.id !== followedId));
         try {
-            await userService.followUser(user.id, followedId);
+            await userService.followUser(followedId);
         } catch (error) {
             console.error("Follow error", error);
         }

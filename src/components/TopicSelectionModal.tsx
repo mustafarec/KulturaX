@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Animated } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { X, ChevronRight, Box, Music, Film, Book, Palette, Globe, Cpu, Gamepad2, Hash } from 'lucide-react-native';
 import { topicService } from '../services/backendApi';
@@ -14,10 +14,19 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
     const { theme } = useTheme();
     const [topics, setTopics] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const slideAnim = useRef(new Animated.Value(500)).current;
 
     useEffect(() => {
-        if (visible && topics.length === 0) {
-            loadTopics();
+        if (visible) {
+            if (topics.length === 0) loadTopics();
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+                tension: 65,
+                friction: 11,
+            }).start();
+        } else {
+            slideAnim.setValue(500);
         }
     }, [visible]);
 
@@ -50,7 +59,7 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
     const styles = StyleSheet.create({
         overlay: {
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.4)',
             justifyContent: 'flex-end',
         },
         container: {
@@ -114,11 +123,11 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
         <Modal
             visible={visible}
             transparent
-            animationType="slide"
+            animationType="fade"
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <View style={styles.container}>
+                <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>
                     <View style={styles.header}>
                         <Text style={styles.title}>Konu Seç</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -155,8 +164,9 @@ export const TopicSelectionModal: React.FC<TopicSelectionModalProps> = ({ visibl
                             }}
                         />
                     )}
-                </View>
+                </Animated.View>
             </View>
         </Modal>
     );
 };
+

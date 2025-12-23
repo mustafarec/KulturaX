@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, StatusBar, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, StatusBar, Alert, Dimensions, Animated as RNAnimated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ interface Conversation {
     last_message: string;
     last_message_time: string;
     last_message_sender_id: number;
+    unread_count?: number | string;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -122,16 +123,25 @@ export const MessageScreen = () => {
             flexDirection: 'row',
             paddingVertical: 12,
             paddingHorizontal: 16,
-            marginHorizontal: 16,
             backgroundColor: theme.colors.surface,
             borderRadius: 16,
-            marginBottom: 12,
             alignItems: 'center',
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.05,
             shadowRadius: 8,
             elevation: 2,
+        },
+        swipeableWrapper: {
+            marginHorizontal: 16,
+            marginBottom: 12,
+            overflow: 'hidden',
+            borderRadius: 16,
+        },
+        itemUnread: {
+            backgroundColor: theme.dark ? 'rgba(255,255,255,0.08)' : 'rgba(139, 90, 43, 0.08)',
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.primary,
         },
         avatarContainer: {
             marginRight: 16,
@@ -165,13 +175,50 @@ export const MessageScreen = () => {
             fontWeight: '600',
             color: theme.colors.text,
         },
+        usernameUnread: {
+            fontWeight: '800',
+        },
         time: {
             fontSize: 12,
             color: theme.colors.textSecondary,
         },
+        timeUnread: {
+            color: theme.colors.primary,
+            fontWeight: '600',
+        },
         message: {
             fontSize: 14,
             color: theme.colors.textSecondary,
+        },
+        messageUnread: {
+            color: theme.colors.text,
+            fontWeight: '600',
+        },
+        unreadBadge: {
+            backgroundColor: theme.colors.error,
+            minWidth: 22,
+            height: 22,
+            borderRadius: 11,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 6,
+            marginLeft: 8,
+        },
+        unreadBadgeText: {
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 'bold',
+        },
+        unreadDot: {
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: 14,
+            height: 14,
+            backgroundColor: theme.colors.error,
+            borderRadius: 7,
+            borderWidth: 2,
+            borderColor: theme.colors.surface,
         },
         loadingContainer: {
             flex: 1,
@@ -205,28 +252,29 @@ export const MessageScreen = () => {
             backgroundColor: theme.colors.error,
             justifyContent: 'center',
             alignItems: 'center',
-            width: 80,
-            height: '100%', // Swipeable içinde tam boy
-            borderRadius: 16,
+            width: 70,
+            height: 56,
+            borderRadius: 12,
+            marginLeft: 8,
         },
         deleteActionContainer: {
             width: 80,
-            marginRight: 16,
-            paddingVertical: 0, // Wrapper padding
-            height: '100%', // Ensure full height
             justifyContent: 'center',
             alignItems: 'center',
+            marginRight: 16,
+            marginBottom: 12,
         },
         deleteActionText: {
             color: 'white',
             fontWeight: 'bold',
+            fontSize: 13,
         },
     }), [theme]);
 
     const fetchInbox = async () => {
         if (!user) return;
         try {
-            const data = await messageService.getInbox(user.id, 'inbox');
+            const data = await messageService.getInbox('inbox');
             setInboxConversations(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch inbox:', error);
@@ -238,7 +286,7 @@ export const MessageScreen = () => {
     const fetchRequests = async () => {
         if (!user) return;
         try {
-            const data = await messageService.getInbox(user.id, 'requests');
+            const data = await messageService.getInbox('requests');
             setRequestsConversations(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch requests:', error);
@@ -264,8 +312,8 @@ export const MessageScreen = () => {
         const unsubscribe = navigation.addListener('focus', () => {
             // Her odaklanmada veriyi taze tut, ama loading gösterme
             if (user) {
-                messageService.getInbox(user.id, 'inbox').then(data => setInboxConversations(Array.isArray(data) ? data : []));
-                messageService.getInbox(user.id, 'requests').then(data => setRequestsConversations(Array.isArray(data) ? data : []));
+                messageService.getInbox('inbox').then(data => setInboxConversations(Array.isArray(data) ? data : []));
+                messageService.getInbox('requests').then(data => setRequestsConversations(Array.isArray(data) ? data : []));
             }
         });
         return unsubscribe;
@@ -319,15 +367,27 @@ export const MessageScreen = () => {
     };
 
     const renderRightActions = (progress: any, dragX: any, partnerId: number, type: 'inbox' | 'requests') => {
+        const translateX = dragX.interpolate({
+            inputRange: [-80, 0],
+            outputRange: [0, 80],
+            extrapolate: 'clamp',
+        });
+
+        const opacity = dragX.interpolate({
+            inputRange: [-80, -40, 0],
+            outputRange: [1, 0.5, 0],
+            extrapolate: 'clamp',
+        });
+
         return (
-            <View style={{ width: 80, paddingVertical: 12, marginRight: 16 }}>
+            <RNAnimated.View style={[styles.deleteActionContainer, { transform: [{ translateX }], opacity }]}>
                 <TouchableOpacity
                     style={styles.deleteAction}
                     onPress={() => handleDelete(partnerId, type)}
                 >
                     <Text style={styles.deleteActionText}>Sil</Text>
                 </TouchableOpacity>
-            </View>
+            </RNAnimated.View>
         );
     };
 
@@ -354,43 +414,58 @@ export const MessageScreen = () => {
         return decoded;
     };
 
-    const renderItem = ({ item, type }: { item: Conversation, type: 'inbox' | 'requests' }) => (
-        <Swipeable
-            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.chat_partner_id, type)}
-            overshootRight={false}
-        >
-            <TouchableOpacity
-                style={styles.item}
-                activeOpacity={0.7}
-                delayPressIn={100}
-                onPress={() => (navigation as any).navigate('ChatDetail', {
-                    otherUserId: item.chat_partner_id,
-                    username: item.username,
-                    avatarUrl: item.avatar_url,
-                    isRequest: type === 'requests'
-                })}
-            >
-                <View style={styles.avatarContainer}>
-                    {item.avatar_url ? (
-                        <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
-                    ) : (
-                        <View style={[styles.avatar, styles.placeholderAvatar]}>
-                            <Text style={styles.placeholderText}>{item.username.charAt(0).toUpperCase()}</Text>
+    const renderItem = ({ item, type }: { item: Conversation, type: 'inbox' | 'requests' }) => {
+        const unreadNum = parseInt(String(item.unread_count)) || 0;
+        const hasUnread = unreadNum > 0;
+
+        return (
+            <View style={styles.swipeableWrapper}>
+                <Swipeable
+                    renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.chat_partner_id, type)}
+                    overshootRight={false}
+                    friction={2}
+                    rightThreshold={40}
+                >
+                    <TouchableOpacity
+                        style={[styles.item, hasUnread && styles.itemUnread]}
+                        activeOpacity={0.7}
+                        delayPressIn={100}
+                        onPress={() => (navigation as any).navigate('ChatDetail', {
+                            otherUserId: item.chat_partner_id,
+                            username: item.username,
+                            avatarUrl: item.avatar_url,
+                            isRequest: type === 'requests'
+                        })}
+                    >
+                        <View style={styles.avatarContainer}>
+                            {item.avatar_url ? (
+                                <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, styles.placeholderAvatar]}>
+                                    <Text style={styles.placeholderText}>{item.username.charAt(0).toUpperCase()}</Text>
+                                </View>
+                            )}
+                            {hasUnread && <View style={styles.unreadDot} />}
                         </View>
-                    )}
-                </View>
-                <View style={styles.itemContent}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.username}>{item.username}</Text>
-                        <Text style={styles.time}>{formatTime(item.last_message_time)}</Text>
-                    </View>
-                    <Text style={styles.message} numberOfLines={1}>
-                        {item.last_message_sender_id === user?.id ? 'Siz: ' : ''}{formatLastMessage(item.last_message)}
-                    </Text>
-                </View>
-            </TouchableOpacity>
-        </Swipeable>
-    );
+                        <View style={styles.itemContent}>
+                            <View style={styles.headerRow}>
+                                <Text style={[styles.username, hasUnread && styles.usernameUnread]}>{item.username}</Text>
+                                <Text style={[styles.time, hasUnread && styles.timeUnread]}>{formatTime(item.last_message_time)}</Text>
+                            </View>
+                            <Text style={[styles.message, hasUnread && styles.messageUnread]} numberOfLines={1}>
+                                {item.last_message_sender_id === user?.id ? 'Siz: ' : ''}{formatLastMessage(item.last_message)}
+                            </Text>
+                        </View>
+                        {hasUnread && (
+                            <View style={styles.unreadBadge}>
+                                <Text style={styles.unreadBadgeText}>{unreadNum}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </Swipeable>
+            </View>
+        );
+    };
 
     const renderEmptyState = (type: 'inbox' | 'requests', loading: boolean) => {
         if (loading) {

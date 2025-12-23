@@ -1,29 +1,31 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+/**
+ * Feed Feedback Endpoint
+ * SQL Injection açığı düzeltildi - PDO prepared statements kullanılıyor
+ */
 
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Content-Type: application/json; charset=UTF-8");
+include_once 'config.php';
+include_once 'auth_middleware.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-require_once 'db.php';
+// Token'dan kimlik doğrula
+$userId = requireAuth();
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->user_id) || !isset($data->post_id) || !isset($data->feedback_type)) {
+if (!isset($data->post_id) || !isset($data->feedback_type)) {
     http_response_code(400);
     echo json_encode(["error" => "Missing required fields"]);
     exit();
 }
 
-$user_id = $conn->real_escape_string($data->user_id);
-$post_id = $conn->real_escape_string($data->post_id);
-$feedback_type = $conn->real_escape_string($data->feedback_type);
+$post_id = $data->post_id;
+$feedback_type = $data->feedback_type;
 
 // Validate feedback type
 if (!in_array($feedback_type, ['interested', 'not_interested'])) {
@@ -32,24 +34,39 @@ if (!in_array($feedback_type, ['interested', 'not_interested'])) {
     exit();
 }
 
-// Check if feedback already exists for this user and post
-$check_sql = "SELECT id FROM feed_feedback WHERE user_id = '$user_id' AND post_id = '$post_id'";
-$result = $conn->query($check_sql);
+try {
+    // Check if feedback already exists for this user and post
+    $checkQuery = "SELECT id FROM feed_feedback WHERE user_id = :user_id AND post_id = :post_id";
+    $checkStmt = $conn->prepare($checkQuery);
+    $checkStmt->bindParam(':user_id', $userId);
+    $checkStmt->bindParam(':post_id', $post_id);
+    $checkStmt->execute();
 
-if ($result->num_rows > 0) {
-    // Update existing feedback
-    $sql = "UPDATE feed_feedback SET feedback_type = '$feedback_type', created_at = CURRENT_TIMESTAMP WHERE user_id = '$user_id' AND post_id = '$post_id'";
-} else {
-    // Insert new feedback
-    $sql = "INSERT INTO feed_feedback (user_id, post_id, feedback_type) VALUES ('$user_id', '$post_id', '$feedback_type')";
-}
+    if ($checkStmt->rowCount() > 0) {
+        // Update existing feedback
+        $query = "UPDATE feed_feedback SET feedback_type = :feedback_type, created_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND post_id = :post_id";
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':feedback_type', $feedback_type);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->bindParam(':post_id', $post_id);
+    } else {
+        // Insert new feedback
+        $query = "INSERT INTO feed_feedback (user_id, post_id, feedback_type) VALUES (:user_id, :post_id, :feedback_type)";
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->bindParam(':post_id', $post_id);
+        $stmt->bindParam(':feedback_type', $feedback_type);
+    }
 
-if ($conn->query($sql) === TRUE) {
-    echo json_encode(["message" => "Feedback recorded successfully"]);
-} else {
+    if ($stmt->execute()) {
+        echo json_encode(["message" => "Feedback recorded successfully"]);
+    } else {
+        http_response_code(500);
+        echo json_encode(["error" => "Failed to save feedback"]);
+    }
+} catch (Exception $e) {
+    error_log("Feedback error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(["error" => "Error: " . $sql . "<br>" . $conn->error]);
+    echo json_encode(["error" => "Server error"]);
 }
-
-$conn->close();
 ?>

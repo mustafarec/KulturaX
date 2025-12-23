@@ -135,6 +135,17 @@ export const authService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
+    changePassword: async (currentPassword: string, newPassword: string) => {
+        try {
+            const response = await backendApi.post('/auth/change_password.php', {
+                current_password: currentPassword,
+                new_password: newPassword
+            });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
     logout: async () => {
         await clearAuthToken();
     },
@@ -199,9 +210,9 @@ export const postService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    delete: async (userId: number, postId: number) => {
+    delete: async (postId: number) => {
         try {
-            const response = await backendApi.post('/posts/delete.php', { user_id: userId, post_id: postId });
+            const response = await backendApi.post('/posts/delete.php', { post_id: postId });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -230,10 +241,9 @@ export const postService = {
 };
 
 export const libraryService = {
-    updateStatus: async (userId: number, contentType: string, contentId: string, status: string, progress: number = 0, contentTitle?: string, imageUrl?: string, author?: string, summary?: string, lyrics?: string, isbn?: string) => {
+    updateStatus: async (contentType: string, contentId: string, status: string, progress: number = 0, contentTitle?: string, imageUrl?: string, author?: string, summary?: string, lyrics?: string, isbn?: string) => {
         try {
             const response = await backendApi.post('/library/update.php', {
-                user_id: userId,
                 content_type: contentType,
                 content_id: contentId,
                 status,
@@ -269,10 +279,9 @@ export const libraryService = {
 };
 
 export const goalService = {
-    updateGoal: async (userId: number, targetCount: number, year?: number) => {
+    updateGoal: async (targetCount: number, year?: number) => {
         try {
             const response = await backendApi.post('/goals/update.php', {
-                user_id: userId,
                 target_count: targetCount,
                 year
             });
@@ -292,9 +301,9 @@ export const goalService = {
 };
 
 export const messageService = {
-    send: async (senderId: number, receiverId: number, content: string) => {
+    send: async (receiverId: number, content: string) => {
         try {
-            const response = await backendApi.post('/messages/send.php', { sender_id: senderId, receiver_id: receiverId, content });
+            const response = await backendApi.post('/messages/send.php', { receiver_id: receiverId, content });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -308,9 +317,9 @@ export const messageService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    getInbox: async (userId: number, type: 'inbox' | 'requests' = 'inbox') => {
+    getInbox: async (type: 'inbox' | 'requests' = 'inbox') => {
         try {
-            const response = await backendApi.get(`/messages/inbox.php?user_id=${userId}&type=${type}`);
+            const response = await backendApi.get(`/messages/inbox.php?type=${type}`);
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -359,9 +368,9 @@ export const messageService = {
 };
 
 export const notificationService = {
-    registerToken: async (userId: number, token: string, platform: 'ios' | 'android') => {
+    registerToken: async (token: string, platform: 'ios' | 'android') => {
         try {
-            const response = await backendApi.post('/notifications/register_token.php', { user_id: userId, token, platform });
+            const response = await backendApi.post('/notifications/register_token.php', { token, platform });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -407,13 +416,46 @@ export const notificationService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    markAllAsRead: async (userId: number) => {
+        try {
+            const response = await backendApi.post('/notifications/mark_all_read.php', { user_id: userId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    deleteAllNotifications: async (userId: number) => {
+        try {
+            const response = await backendApi.post('/notifications/delete_all.php', { user_id: userId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Notification Settings
+    getSettings: async () => {
+        try {
+            const response = await backendApi.get('/notifications/get_settings.php');
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    updateSettings: async (settings: { push_enabled?: boolean; likes?: boolean; comments?: boolean; follows?: boolean; messages?: boolean; reposts?: boolean }) => {
+        try {
+            const response = await backendApi.post('/notifications/update_settings.php', settings);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 
 export const interactionService = {
-    toggleLike: async (userId: number, postId: number) => {
+    toggleLike: async (postId: number) => {
         try {
-            const response = await backendApi.post('/interactions/like.php', { user_id: userId, post_id: postId });
+            const response = await backendApi.post('/interactions/like.php', { post_id: postId });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -575,9 +617,9 @@ export const userService = {
             throw error.response ? error.response.data : new Error('Network Error');
         }
     },
-    followUser: async (followerId: number, followedId: number) => {
+    followUser: async (followedId: number) => {
         try {
-            const response = await backendApi.post('/users/follow.php', { follower_id: followerId, followed_id: followedId });
+            const response = await backendApi.post('/users/follow.php', { followed_id: followedId });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
@@ -643,6 +685,65 @@ export const userService = {
     getSuggestedUsers: async (userId: number) => {
         try {
             const response = await backendApi.get(`/users/suggested_users.php?user_id=${userId}`);
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Muted Users
+    muteUser: async (mutedId: number) => {
+        try {
+            const response = await backendApi.post('/users/mute_user.php', { muted_id: mutedId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    unmuteUser: async (mutedId: number) => {
+        try {
+            const response = await backendApi.post('/users/unmute_user.php', { muted_id: mutedId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    getMutedUsers: async () => {
+        try {
+            const response = await backendApi.get('/users/get_muted_users.php');
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Privacy
+    updatePrivacy: async (isPrivate: boolean) => {
+        try {
+            const response = await backendApi.post('/users/update_privacy.php', { is_private: isPrivate });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Follow Requests
+    getFollowRequests: async () => {
+        try {
+            const response = await backendApi.get('/users/get_follow_requests.php');
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    acceptFollowRequest: async (requestId: number) => {
+        try {
+            const response = await backendApi.post('/users/accept_follow_request.php', { request_id: requestId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    rejectFollowRequest: async (requestId: number) => {
+        try {
+            const response = await backendApi.post('/users/reject_follow_request.php', { request_id: requestId });
             return response.data;
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');

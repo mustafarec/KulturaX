@@ -179,7 +179,7 @@ export const CreateQuoteScreen = () => {
                     );
 
                     if (status && selectedType && selectedId) {
-                        await libraryService.updateStatus(user.id, selectedType, selectedId, status);
+                        await libraryService.updateStatus(selectedType, selectedId, status);
                     }
                 }
                 Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Paylaşıldı!' });

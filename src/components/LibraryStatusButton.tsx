@@ -59,7 +59,7 @@ export const LibraryStatusButton: React.FC<LibraryStatusButtonProps> = ({ conten
         setIsLoading(true);
         try {
             // Pass metadata to service
-            await libraryService.updateStatus(user!.id, contentType, contentId, newStatus, 0, contentTitle, imageUrl, author, summary, lyrics);
+            await libraryService.updateStatus(contentType, contentId, newStatus, 0, contentTitle, imageUrl, author, summary, lyrics);
             setStatus(newStatus);
             setShowModal(false);
             if (onStatusChange) onStatusChange();

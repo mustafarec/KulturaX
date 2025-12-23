@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, FlatList, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, FlatList, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Image, Animated } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { interactionService } from '../services/backendApi';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +22,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({ visible, onClose, po
     const [replyTo, setReplyTo] = useState<{ id: number, username: string, rootId?: number } | null>(null);
     const { user } = useAuth();
     const inputRef = React.useRef<TextInput>(null);
+    const slideAnim = useRef(new Animated.Value(600)).current;
 
     const fetchComments = async () => {
         setIsLoading(true);
@@ -38,6 +39,14 @@ export const CommentModal: React.FC<CommentModalProps> = ({ visible, onClose, po
     useEffect(() => {
         if (visible) {
             fetchComments();
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+                tension: 65,
+                friction: 11,
+            }).start();
+        } else {
+            slideAnim.setValue(600);
         }
     }, [visible, postId]);
 
@@ -160,7 +169,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({ visible, onClose, po
     const styles = React.useMemo(() => StyleSheet.create({
         overlay: {
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.4)',
             justifyContent: 'flex-end',
         },
         backdrop: {
@@ -372,74 +381,76 @@ export const CommentModal: React.FC<CommentModalProps> = ({ visible, onClose, po
     return (
         <Modal
             visible={visible}
-            animationType="slide"
+            animationType="fade"
             transparent={true}
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
                 <TouchableOpacity style={styles.backdrop} onPress={onClose} />
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={styles.container}
-                >
-                    <View style={styles.header}>
-                        <View style={styles.headerIndicator} />
-                        <View style={styles.headerRow}>
-                            <Text style={styles.title}>Yorumlar</Text>
-                            <TouchableOpacity onPress={onClose} style={styles.closeButtonContainer}>
-                                <Text style={styles.closeButton}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {isLoading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color={theme.colors.primary} />
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={organizedComments}
-                            renderItem={renderItem}
-                            keyExtractor={item => item.id.toString()}
-                            contentContainerStyle={styles.list}
-                            ListEmptyComponent={
-                                <View style={styles.emptyContainer}>
-                                    <Text style={styles.emptyIcon}>💭</Text>
-                                    <Text style={styles.emptyText}>Henüz yorum yok. İlk yorumu sen yap!</Text>
-                                </View>
-                            }
-                        />
-                    )}
-
-                    <View style={styles.footer}>
-                        {replyTo && (
-                            <View style={styles.replyBar}>
-                                <Text style={styles.replyText}>@{replyTo.username} kişisine yanıt veriliyor</Text>
-                                <TouchableOpacity onPress={() => setReplyTo(null)}>
-                                    <Text style={styles.cancelReply}>İptal</Text>
+                <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        style={{ flex: 1 }}
+                    >
+                        <View style={styles.header}>
+                            <View style={styles.headerIndicator} />
+                            <View style={styles.headerRow}>
+                                <Text style={styles.title}>Yorumlar</Text>
+                                <TouchableOpacity onPress={onClose} style={styles.closeButtonContainer}>
+                                    <Text style={styles.closeButton}>✕</Text>
                                 </TouchableOpacity>
                             </View>
-                        )}
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                ref={inputRef}
-                                style={styles.input}
-                                placeholder="Yorum yaz..."
-                                placeholderTextColor="#95A5A6"
-                                value={newComment}
-                                onChangeText={setNewComment}
-                                multiline
-                            />
-                            <TouchableOpacity
-                                style={[styles.sendButton, !newComment.trim() && styles.disabledButton]}
-                                onPress={handleSend}
-                                disabled={!newComment.trim()}
-                            >
-                                <Text style={styles.sendButtonText}>Gönder</Text>
-                            </TouchableOpacity>
                         </View>
-                    </View>
-                </KeyboardAvoidingView>
+
+                        {isLoading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={theme.colors.primary} />
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={organizedComments}
+                                renderItem={renderItem}
+                                keyExtractor={item => item.id.toString()}
+                                contentContainerStyle={styles.list}
+                                ListEmptyComponent={
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={styles.emptyIcon}>💭</Text>
+                                        <Text style={styles.emptyText}>Henüz yorum yok. İlk yorumu sen yap!</Text>
+                                    </View>
+                                }
+                            />
+                        )}
+
+                        <View style={styles.footer}>
+                            {replyTo && (
+                                <View style={styles.replyBar}>
+                                    <Text style={styles.replyText}>@{replyTo.username} kişisine yanıt veriliyor</Text>
+                                    <TouchableOpacity onPress={() => setReplyTo(null)}>
+                                        <Text style={styles.cancelReply}>İptal</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    ref={inputRef}
+                                    style={styles.input}
+                                    placeholder="Yorum yaz..."
+                                    placeholderTextColor="#95A5A6"
+                                    value={newComment}
+                                    onChangeText={setNewComment}
+                                    multiline
+                                />
+                                <TouchableOpacity
+                                    style={[styles.sendButton, !newComment.trim() && styles.disabledButton]}
+                                    onPress={handleSend}
+                                    disabled={!newComment.trim()}
+                                >
+                                    <Text style={styles.sendButtonText}>Gönder</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </Animated.View>
             </View>
         </Modal>
     );

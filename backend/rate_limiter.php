@@ -53,9 +53,9 @@ class RateLimiter {
             return true; // İzin verildi
             
         } catch (Exception $e) {
-            // Hata durumunda güvenli tarafta kalıp izin ver
+            // Hata durumunda güvenlik için reddet
             error_log("Rate limiter error: " . $e->getMessage());
-            return true;
+            return false; // Güvenlik: Hata durumunda isteği reddet
         }
     }
 
@@ -109,7 +109,7 @@ function checkRateLimit($conn, $key, $action, $limit, $timeWindow) {
     $limiter = new RateLimiter($conn);
     
     if (!$limiter->check($key, $action, $limit, $timeWindow)) {
-        file_put_contents('../debug_register.log', date('Y-m-d H:i:s') . " - Rate limit exceeded for IP: $key\n", FILE_APPEND);
+        error_log("Rate limit exceeded for: $key, action: $action");
         http_response_code(429); // Too Many Requests
         echo json_encode(array(
             "message" => "Çok fazla istek gönderdiniz. Lütfen daha sonra tekrar deneyin.",

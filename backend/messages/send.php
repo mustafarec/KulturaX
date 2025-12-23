@@ -1,17 +1,20 @@
 <?php
 include_once '../config.php';
+include_once '../auth_middleware.php';
 include_once '../validation.php';
 include_once '../rate_limiter.php';
+
+// Token'dan kimlik doğrula
+$userId = requireAuth();
 
 $data = json_decode(file_get_contents("php://input"));
 
 if(
-    !empty($data->sender_id) &&
     !empty($data->receiver_id) &&
     !empty($data->content)
 ){
     // 1. Rate Limiting: Kullanıcı başına dakikada 10 mesaj
-    checkRateLimit($conn, $data->sender_id, 'send_message', 10, 60);
+    checkRateLimit($conn, $userId, 'send_message', 10, 60);
 
     // 2. Spam Kontrolü
     if (Validator::detectSpam($data->content)) {
@@ -23,7 +26,7 @@ if(
     // 2.5 Block Kontrolü: Engelleyen veya engellenen kullanıcıya mesaj atılamaz
     $checkBlock = "SELECT id FROM blocked_users WHERE (blocker_id = :sender_id AND blocked_id = :receiver_id) OR (blocker_id = :receiver_id AND blocked_id = :sender_id)";
     $stmtBlock = $conn->prepare($checkBlock);
-    $stmtBlock->bindParam(':sender_id', $data->sender_id);
+    $stmtBlock->bindParam(':sender_id', $userId);
     $stmtBlock->bindParam(':receiver_id', $data->receiver_id);
     $stmtBlock->execute();
 
@@ -39,7 +42,7 @@ if(
     // 3. Sanitization
     $data->content = Validator::sanitizeInput($data->content);
 
-    $stmt->bindParam(':sender_id', $data->sender_id);
+    $stmt->bindParam(':sender_id', $userId);
     $stmt->bindParam(':receiver_id', $data->receiver_id);
     $stmt->bindParam(':content', $data->content);
 
@@ -48,7 +51,7 @@ if(
         // Bu sayede takipleşme bitse bile konuşma gelen kutumda kalır.
         $permQuery = "INSERT INTO message_permissions (user_id, partner_id, status) VALUES (:sender_id, :receiver_id, 'accepted') ON DUPLICATE KEY UPDATE status = 'accepted'";
         $permStmt = $conn->prepare($permQuery);
-        $permStmt->bindParam(':sender_id', $data->sender_id);
+        $permStmt->bindParam(':sender_id', $userId);
         $permStmt->bindParam(':receiver_id', $data->receiver_id);
         $permStmt->execute();
 
@@ -57,7 +60,7 @@ if(
         
         // Send Push Notification & Create DB Notification
         try {
-            $senderId = (int)$data->sender_id;
+            $senderId = (int)$userId;
             $receiverId = (int)$data->receiver_id;
             
             // Gönderen kullanıcı adını al

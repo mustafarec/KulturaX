@@ -1,15 +1,17 @@
 <?php
 include '../config.php';
+include '../auth_middleware.php';
+
+// Token'dan kimlik doğrula
+$user_id = requireAuth();
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->user_id) || !isset($data->content_type) || !isset($data->content_id) || !isset($data->status)) {
+if (!isset($data->content_type) || !isset($data->content_id) || !isset($data->status)) {
     http_response_code(400);
     echo json_encode(array("message" => "Eksik veri."));
     exit;
 }
-
-$user_id = $data->user_id;
 $content_type = $data->content_type;
 $content_id = $data->content_id;
 $status = $data->status;

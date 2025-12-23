@@ -1,43 +1,47 @@
 <?php
+/**
+ * Post Image Upload Endpoint
+ * Güvenlik düzeltmeleri: Token doğrulaması, MIME type kontrolü, güvenli dizin izinleri
+ */
+
+header("Content-Type: application/json; charset=UTF-8");
 include_once '../config.php';
+include_once '../auth_middleware.php';
+include_once '../validation.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'POST') {
-    if (isset($_FILES['image']) && isset($_POST['user_id'])) {
-        $user_id = $_POST['user_id'];
+    // Token'dan kimlik doğrula
+    $userId = requireAuth();
+    
+    if (isset($_FILES['image'])) {
         $file = $_FILES['image'];
+
+        // Güvenli MIME type ve dosya validasyonu
+        $validation = Validator::validateImageFile($file);
+        if ($validation['status'] !== true) {
+            http_response_code(400);
+            echo json_encode(array("message" => $validation['message']));
+            exit();
+        }
 
         $target_dir = "../uploads/posts/";
         if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true);
+            mkdir($target_dir, 0755, true); // 0755 daha güvenli
         }
 
         $file_extension = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-        $new_filename = "post_" . $user_id . "_" . time() . "." . $file_extension;
+        // Güvenli dosya adı oluştur
+        $new_filename = "post_" . $userId . "_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $file_extension;
         $target_file = $target_dir . $new_filename;
-
-        // Check file type
-        $allowed_types = array("jpg", "jpeg", "png", "gif");
-        if (!in_array($file_extension, $allowed_types)) {
-            http_response_code(400);
-            echo json_encode(array("message" => "Only JPG, JPEG, PNG & GIF files are allowed."));
-            exit();
-        }
-
-        // Check file size (max 5MB)
-        if ($file["size"] > 5000000) {
-            http_response_code(400);
-            echo json_encode(array("message" => "File is too large. Max 5MB."));
-            exit();
-        }
 
         if (move_uploaded_file($file["tmp_name"], $target_file)) {
             // Construct full URL
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
             $domain = $_SERVER['HTTP_HOST'];
             
-            // Adjust path based on server structure. Assuming /api/uploads/posts
+            // Adjust path based on server structure
             $image_url = "$protocol://$domain/api/uploads/posts/$new_filename"; 
 
             echo json_encode(array("message" => "Image uploaded successfully.", "image_url" => $image_url));
@@ -47,7 +51,10 @@ if ($method === 'POST') {
         }
     } else {
         http_response_code(400);
-        echo json_encode(array("message" => "Incomplete data."));
+        echo json_encode(array("message" => "No image file provided."));
     }
+} else {
+    http_response_code(405);
+    echo json_encode(array("message" => "Method not allowed."));
 }
 ?>

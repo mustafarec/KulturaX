@@ -1,4 +1,12 @@
 {
   "name": "kitapmuzikfilm",
-  "displayName": "KültüraX"
+  "displayName": "KültüraX",
+  "expo": {
+    "name": "KültüraX",
+    "slug": "kitapmuzikfilm",
+    "scheme": "kitapmuzikfilm"
+  },
+  "android": {
+    "package": "com.anonymous.kitapmuzikfilm"
+  }
 }

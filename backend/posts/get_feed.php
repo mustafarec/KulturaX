@@ -203,18 +203,22 @@ try {
                 ou.username as op_username,
                 ou.full_name as op_full_name,
                 ou.avatar_url as op_avatar_url,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'like') as like_count,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'comment') as comment_count,
+                -- OPTIMIZED: Direct column access instead of subqueries
+                p.like_count,
+                p.comment_count,
+                p.repost_count,
+                -- User-specific queries (cannot be denormalized)
                 (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id) as repost_count,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
                 (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
                 p.is_pinned,
                 
-                (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like') as op_like_count,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'comment') as op_comment_count,
+                -- OPTIMIZED: Original post counters
+                op.like_count as op_like_count,
+                op.comment_count as op_comment_count,
+                op.repost_count as op_repost_count,
+                -- User-specific for original post
                 (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id) as op_repost_count,
                 (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,
                 (SELECT COUNT(*) FROM bookmarks WHERE post_id = op.id AND user_id = :user_id) as op_is_saved,
                 
@@ -226,13 +230,18 @@ try {
                 op.view_count as op_view_count,
 
                 t.name as topic_name,
-                t.icon as topic_icon
+                t.icon as topic_icon,
+                
+                -- Original post topic
+                ot.id as op_topic_id,
+                ot.name as op_topic_name
 
               FROM posts p
               JOIN users u ON p.user_id = u.id
               LEFT JOIN posts op ON p.original_post_id = op.id
               LEFT JOIN users ou ON op.user_id = ou.id
               LEFT JOIN topics t ON p.topic_id = t.id
+              LEFT JOIN topics ot ON op.topic_id = ot.id
               
               -- SMART FEED: Görüntülenme Kontrolü
               LEFT JOIN post_views pv ON pv.post_id = p.id AND pv.user_id = :user_id
@@ -247,13 +256,18 @@ try {
               -- LEFT JOIN for Blocked Users (Both directions: I blocked them OR They blocked me)
               LEFT JOIN blocked_users bu_exclude ON
                     (bu_exclude.blocker_id = :user_id AND bu_exclude.blocked_id = p.user_id) OR
-                    (bu_exclude.blocker_id = p.user_id AND bu_exclude.blocked_id = :user_id)";
+                    (bu_exclude.blocker_id = p.user_id AND bu_exclude.blocked_id = :user_id)
+                    
+              -- LEFT JOIN for Private Account Check (Check if viewer follows private account)
+              LEFT JOIN follows f_privacy ON f_privacy.follower_id = :user_id AND f_privacy.followed_id = p.user_id";
 
     $hasWhere = false;
     $whereClause = "";
 
     // IMPORTANT: Exclude where join found a match
-    $whereClause .= " WHERE pf_exclude.id IS NULL AND bu_exclude.id IS NULL"; 
+    // Also exclude private accounts that user doesn't follow (unless it's their own post)
+    $whereClause .= " WHERE pf_exclude.id IS NULL AND bu_exclude.id IS NULL
+                      AND (u.is_private = 0 OR u.is_private IS NULL OR p.user_id = :user_id OR f_privacy.id IS NOT NULL)"; 
     $hasWhere = true;
 
     // SMART FEED: Katı zaman filtresini kaldırıyoruz (Gravity halledecek).
@@ -295,12 +309,12 @@ try {
                             ELSE 0
                         END) 
                         +
-                        -- 2. Global Etkileşim Skoru
+                        -- 2. Global Etkileşim Skoru (OPTIMIZED: Direct column access)
                         (
                             COALESCE(op.view_count, p.view_count, 0) * 0.1 + 
-                            (SELECT COUNT(*) FROM interactions WHERE post_id = COALESCE(op.id, p.id) AND type = 'like') * 5 +
-                            (SELECT COUNT(*) FROM interactions WHERE post_id = COALESCE(op.id, p.id) AND type = 'comment') * 8 +
-                            (SELECT COUNT(*) FROM posts WHERE original_post_id = COALESCE(op.id, p.id)) * 10
+                            COALESCE(op.like_count, p.like_count, 0) * 5 +
+                            COALESCE(op.comment_count, p.comment_count, 0) * 8 +
+                            COALESCE(op.repost_count, p.repost_count, 0) * 10
                         )
                     )
                     /
@@ -367,6 +381,8 @@ try {
                 'is_liked' => $row['op_is_liked'] > 0,
                 'is_reposted' => $row['op_is_reposted'] > 0,
                 'is_saved' => $row['op_is_saved'] > 0,
+                'topic_id' => $row['op_topic_id'],
+                'topic_name' => $row['op_topic_name'],
                 'user' => array(
                     'id' => $row['op_user_id'],
                     'username' => $row['op_username'],

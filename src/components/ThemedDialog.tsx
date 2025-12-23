@@ -7,6 +7,7 @@ interface DialogAction {
     text: string;
     style?: 'default' | 'cancel' | 'destructive';
     onPress?: () => void;
+    fullWidth?: boolean;
 }
 
 interface ThemedDialogProps {
@@ -23,7 +24,7 @@ export const ThemedDialog: React.FC<ThemedDialogProps> = ({ visible, title, mess
     if (!visible) return null;
 
     // Default to a single "OK" button if no actions provided
-    const dialogActions = actions.length > 0 ? actions : [{ text: 'OK', style: 'default', onPress: onClose }];
+    const dialogActions: DialogAction[] = actions.length > 0 ? actions : [{ text: 'OK', style: 'default', onPress: onClose }];
 
     return (
         <Modal
@@ -86,10 +87,15 @@ export const ThemedDialog: React.FC<ThemedDialogProps> = ({ visible, title, mess
                                 ? [styles.button, styles.cancelButton, { borderColor: theme.colors.border }]
                                 : [styles.button, { backgroundColor: buttonBg }];
 
+                            const baseStyle: any[] = [styles.buttonBase, buttonStyle];
+                            if (action.fullWidth) {
+                                baseStyle.push({ width: '100%', flexGrow: 0 }); // Force full width, disable grow logic used for others
+                            }
+
                             return (
                                 <TouchableOpacity
                                     key={index}
-                                    style={[styles.buttonBase, buttonStyle, index > 0 && styles.marginLeft]}
+                                    style={baseStyle}
                                     onPress={action.onPress}
                                     activeOpacity={0.8}
                                 >
@@ -147,11 +153,13 @@ const styles = StyleSheet.create({
     },
     buttonBase: {
         paddingVertical: 10,
-        paddingHorizontal: 20,
+        paddingHorizontal: 12, // Reduced horizontal padding
         borderRadius: 8,
-        minWidth: 80,
+        minWidth: 70, // Reduced minWidth
         alignItems: 'center',
         justifyContent: 'center',
+        flexGrow: 1, // Allow buttons to grow and fill available space
+        margin: 4, // Add explicit margin for wrap spacing
     },
     button: {
         // dynamic bg

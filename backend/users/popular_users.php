@@ -1,8 +1,8 @@
 <?php
-// Hata raporlamasını aktif et (Geliştirme aşamasında)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Production: Hata gösterimi kapalı
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(0);
 
 include '../config.php';
 include '../rate_limiter.php';
@@ -56,11 +56,20 @@ try {
             COALESCE(NULLIF(u.name, ''), '') as name,
             COALESCE(NULLIF(u.surname, ''), '') as surname,
             u.avatar_url,
+            COALESCE(NULLIF(u.header_image_url, ''), '') as header_image_url,
             (SELECT COUNT(*) FROM follows WHERE followed_id = u.id) as follower_count,
             (SELECT COUNT(*) FROM post_views pv JOIN posts p ON pv.post_id = p.id WHERE p.user_id = u.id AND pv.seen_at >= :start_date AND pv.seen_at < :end_date) as total_views,
             (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND created_at >= :start_date AND created_at < :end_date) as post_count,
             (SELECT COUNT(*) FROM interactions i JOIN posts p ON i.post_id = p.id WHERE p.user_id = u.id AND i.type = 'like' AND i.created_at >= :start_date AND i.created_at < :end_date) as total_likes,
             (SELECT COUNT(*) FROM interactions i JOIN posts p ON i.post_id = p.id WHERE p.user_id = u.id AND i.type = 'comment' AND i.created_at >= :start_date AND i.created_at < :end_date) as total_comments,
+            (
+                SELECT content_type 
+                FROM posts 
+                WHERE user_id = u.id AND content_type IS NOT NULL AND content_type != ''
+                GROUP BY content_type 
+                ORDER BY COUNT(*) DESC 
+                LIMIT 1
+            ) as fav_category,
             (
                 (SELECT COUNT(*) FROM follows WHERE followed_id = u.id) * 5 + 
                 (SELECT COUNT(*) FROM interactions i JOIN posts p ON i.post_id = p.id WHERE p.user_id = u.id AND i.type = 'like' AND i.created_at >= :start_date AND i.created_at < :end_date) * 2 +

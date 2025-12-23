@@ -1,4 +1,8 @@
 <?php
+/**
+ * OneSignal Push Notification Handler
+ * Production: SSL doğrulaması açık, debug logları kapatıldı
+ */
 class OneSignal {
     private $conn;
     private $appId;
@@ -19,11 +23,8 @@ class OneSignal {
     }
 
     public function sendToUser($userId, $title, $message, $data = null) {
-        file_put_contents(__DIR__ . '/../debug_log.txt', date('Y-m-d H:i:s') . " - OneSignal: Sending to user $userId\n", FILE_APPEND);
-        
         if (empty($this->appId) || empty($this->apiKey)) {
             error_log("OneSignal credentials missing");
-            file_put_contents(__DIR__ . '/../debug_log.txt', date('Y-m-d H:i:s') . " - OneSignal: Credentials missing\n", FILE_APPEND);
             return false;
         }
 
@@ -31,7 +32,6 @@ class OneSignal {
         $tokens = $this->getUserTokens($userId);
         if (empty($tokens)) {
             error_log("No device tokens found for user $userId");
-            file_put_contents(__DIR__ . '/../debug_log.txt', date('Y-m-d H:i:s') . " - OneSignal: No tokens for user $userId\n", FILE_APPEND);
             return false;
         }
 
@@ -55,12 +55,16 @@ class OneSignal {
         curl_setopt($ch, CURLOPT_HEADER, FALSE);
         curl_setopt($ch, CURLOPT_POST, TRUE);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE); // Production: SSL doğrulaması açık
 
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        file_put_contents(__DIR__ . '/../debug_log.txt', date('Y-m-d H:i:s') . " - OneSignal Response: " . $response . "\n", FILE_APPEND);
+        // Sadece hata durumunda log
+        if ($httpCode !== 200) {
+            error_log("OneSignal Error (HTTP $httpCode): " . $response);
+        }
 
         return $response;
     }
@@ -75,7 +79,6 @@ class OneSignal {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $tokens[] = $row['token'];
         }
-        file_put_contents(__DIR__ . '/../debug_log.txt', date('Y-m-d H:i:s') . " - OneSignal: Found " . count($tokens) . " tokens for user $userId\n", FILE_APPEND);
         return $tokens;
     }
 }

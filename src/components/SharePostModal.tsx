@@ -5,6 +5,7 @@ import { X, Search, XCircle } from 'lucide-react-native';
 import { userService, messageService } from '../services/backendApi';
 import { useAuth } from '../context/AuthContext';
 import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SharePostModalProps {
     visible: boolean;
@@ -15,6 +16,7 @@ interface SharePostModalProps {
 export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose, post }) => {
     const { theme } = useTheme();
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
     const [searchQuery, setSearchQuery] = useState('');
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -27,13 +29,22 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
 
     // Animation
     const slideAnim = useRef(new Animated.Value(0)).current; // 0: hidden, 1: visible
+    const containerSlideAnim = useRef(new Animated.Value(600)).current; // Container slide-up
 
     useEffect(() => {
         if (visible && user) {
             fetchUsers();
             resetState();
+            // Slide up animation
+            Animated.spring(containerSlideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+                tension: 65,
+                friction: 11,
+            }).start();
         } else {
             resetState();
+            containerSlideAnim.setValue(600);
         }
     }, [visible, user]);
 
@@ -102,7 +113,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
                 comment: comment.trim()
             };
 
-            await messageService.send(user.id, selectedUser.id, JSON.stringify(payload));
+            await messageService.send(selectedUser.id, JSON.stringify(payload));
 
             setSentUsers(prev => [...prev, selectedUser.id]);
             Toast.show({
@@ -133,7 +144,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
             backgroundColor: theme.colors.surface,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
-            height: '85%', // Slightly taller to accommodate keyboard view well
+            height: '85%',
             overflow: 'hidden',
         },
         header: {
@@ -172,7 +183,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
         },
         list: {
             paddingHorizontal: 20,
-            paddingBottom: 40, // Space for bottom sheet
+            paddingBottom: Math.max(insets.bottom, 20) + 10, // Dynamic bottom padding
         },
         userItem: {
             flexDirection: 'row',
@@ -253,7 +264,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             padding: 20,
-            paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+            paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 20) : 20,
             ...theme.shadows.default,
             borderTopWidth: 1,
             borderTopColor: theme.colors.border,
@@ -302,7 +313,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
             marginTop: 40,
             color: theme.colors.textSecondary,
         },
-    }), [theme]);
+    }), [theme, insets]);
 
     const renderItem = ({ item }: { item: any }) => {
         const isSent = sentUsers.includes(item.id);
@@ -347,94 +358,97 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({ visible, onClose
     return (
         <Modal
             visible={visible}
-            animationType="slide"
+            animationType="fade"
             transparent={true}
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={styles.container}
-                >
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Gönderiyi Paylaş</Text>
-                        <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                            <X size={24} color={theme.colors.text} />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.searchContainer}>
-                        <View style={styles.searchInputContainer}>
-                            <Search size={20} color={theme.colors.textSecondary} />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Kişi ara..."
-                                placeholderTextColor={theme.colors.textSecondary}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                autoCapitalize="none"
-                            />
+                <Animated.View style={[styles.container, { transform: [{ translateY: containerSlideAnim }] }]}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        style={{ flex: 1 }}
+                    >
+                        <View style={styles.header}>
+                            <Text style={styles.title}>Gönderiyi Paylaş</Text>
+                            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <X size={24} color={theme.colors.text} />
+                            </TouchableOpacity>
                         </View>
-                    </View>
 
-                    {isLoading ? (
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color={theme.colors.primary} />
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={users}
-                            renderItem={renderItem}
-                            keyExtractor={(item) => item.id.toString()}
-                            contentContainerStyle={styles.list}
-                            keyboardShouldPersistTaps="handled"
-                            ListEmptyComponent={
-                                <Text style={styles.emptyText}>Kullanıcı bulunamadı.</Text>
-                            }
-                        />
-                    )}
-
-                    {/* Animated Comment Sheet */}
-                    <Animated.View style={[styles.commentSheet, { transform: [{ translateY }] }]}>
-                        {selectedUser && (
-                            <>
-                                <View style={styles.sheetHeader}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Text style={styles.sheetTitle}>
-                                            <Text style={{ fontWeight: 'bold', color: theme.colors.primary }}>@{selectedUser.username}</Text> ile paylaş
-                                        </Text>
-                                    </View>
-                                    <TouchableOpacity onPress={handleCloseSelection} style={styles.cancelButton}>
-                                        <XCircle size={24} color={theme.colors.textSecondary} />
-                                    </TouchableOpacity>
-                                </View>
-
+                        <View style={styles.searchContainer}>
+                            <View style={styles.searchInputContainer}>
+                                <Search size={20} color={theme.colors.textSecondary} />
                                 <TextInput
-                                    style={styles.commentInput}
-                                    placeholder="Mesaj ekle... (İsteğe bağlı)"
+                                    style={styles.searchInput}
+                                    placeholder="Kişi ara..."
                                     placeholderTextColor={theme.colors.textSecondary}
-                                    value={comment}
-                                    onChangeText={setComment}
-                                    multiline
-                                    autoFocus={true}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    autoCapitalize="none"
                                 />
+                            </View>
+                        </View>
 
-                                <TouchableOpacity
-                                    style={styles.sendButton}
-                                    onPress={handleSend}
-                                    disabled={isSending}
-                                >
-                                    {isSending ? (
-                                        <ActivityIndicator size="small" color="#fff" />
-                                    ) : (
-                                        <Text style={styles.sendButtonText}>Gönder</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </>
+                        {isLoading ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color={theme.colors.primary} />
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={users}
+                                renderItem={renderItem}
+                                keyExtractor={(item) => item.id.toString()}
+                                contentContainerStyle={styles.list}
+                                keyboardShouldPersistTaps="handled"
+                                ListEmptyComponent={
+                                    <Text style={styles.emptyText}>Kullanıcı bulunamadı.</Text>
+                                }
+                            />
                         )}
-                    </Animated.View>
-                </KeyboardAvoidingView>
+
+                        {/* Animated Comment Sheet */}
+                        <Animated.View style={[styles.commentSheet, { transform: [{ translateY }] }]}>
+                            {selectedUser && (
+                                <>
+                                    <View style={styles.sheetHeader}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Text style={styles.sheetTitle}>
+                                                <Text style={{ fontWeight: 'bold', color: theme.colors.primary }}>@{selectedUser.username}</Text> ile paylaş
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity onPress={handleCloseSelection} style={styles.cancelButton}>
+                                            <XCircle size={24} color={theme.colors.textSecondary} />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <TextInput
+                                        style={styles.commentInput}
+                                        placeholder="Mesaj ekle... (İsteğe bağlı)"
+                                        placeholderTextColor={theme.colors.textSecondary}
+                                        value={comment}
+                                        onChangeText={setComment}
+                                        multiline
+                                        autoFocus={true}
+                                    />
+
+                                    <TouchableOpacity
+                                        style={styles.sendButton}
+                                        onPress={handleSend}
+                                        disabled={isSending}
+                                    >
+                                        {isSending ? (
+                                            <ActivityIndicator size="small" color="#fff" />
+                                        ) : (
+                                            <Text style={styles.sendButtonText}>Gönder</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </Animated.View>
+                    </KeyboardAvoidingView>
+                </Animated.View>
             </View>
         </Modal>
     );
 };
+

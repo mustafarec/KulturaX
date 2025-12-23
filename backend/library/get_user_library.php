@@ -2,7 +2,35 @@
 include '../config.php';
 
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : die();
+$viewer_id = isset($_GET['viewer_id']) ? $_GET['viewer_id'] : null;
 $status = isset($_GET['status']) ? $_GET['status'] : null;
+
+// Check if target user is private and if viewer can access
+try {
+    $privacyQuery = "SELECT is_private FROM users WHERE id = :user_id";
+    $privacyStmt = $conn->prepare($privacyQuery);
+    $privacyStmt->bindParam(':user_id', $user_id);
+    $privacyStmt->execute();
+    $userData = $privacyStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($userData && $userData['is_private'] && $viewer_id && $viewer_id != $user_id) {
+        // Check if viewer follows this user
+        $followCheck = "SELECT id FROM follows WHERE follower_id = :viewer_id AND followed_id = :user_id";
+        $followStmt = $conn->prepare($followCheck);
+        $followStmt->bindParam(':viewer_id', $viewer_id);
+        $followStmt->bindParam(':user_id', $user_id);
+        $followStmt->execute();
+        
+        if ($followStmt->rowCount() === 0) {
+            // Not following private account - return empty
+            http_response_code(200);
+            echo json_encode([]);
+            exit;
+        }
+    }
+} catch (Exception $e) {
+    error_log("Privacy check error in get_user_library: " . $e->getMessage());
+}
 
 $query = "SELECT * FROM user_library WHERE user_id = :user_id";
 
@@ -35,7 +63,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Geliştirme ortamı için
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true); // Production: SSL doğrulaması açık
                 $response = curl_exec($ch);
                 curl_close($ch);
                 
@@ -61,7 +89,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 $response = curl_exec($ch);
                 curl_close($ch);
                 

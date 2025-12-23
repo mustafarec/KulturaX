@@ -6,12 +6,11 @@ include_once '../rate_limiter.php';
 include_once '../auth_middleware.php';
 
 
-
-// DEBUG LOGGING START
+// DEBUG LOGGING DISABLED FOR PRODUCTION
 function debugLog($message) {
-    file_put_contents('../debug_register.log', date('Y-m-d H:i:s') . " - " . $message . "\n", FILE_APPEND);
+    // Production'da log yazılmıyor
+    // Geliştirme için: error_log($message);
 }
-debugLog("Register script started. IP: " . $_SERVER['REMOTE_ADDR']);
 
 // Rate limiting - IP bazlı, 3 kayıt/saat
 $ip = $_SERVER['REMOTE_ADDR'];
@@ -43,11 +42,12 @@ if (!Validator::validateEmail($data->email)) {
     exit;
 }
 
-// Şifre gücü kontrolü
-if (!Validator::validatePasswordStrength($data->password)) {
+// Şifre gücü kontrolü (özel karakter dahil)
+$passwordCheck = Validator::validatePasswordStrength($data->password, true);
+if (!$passwordCheck['valid']) {
     debugLog("Validation failed: Weak password.");
     http_response_code(400);
-    echo json_encode(array("message" => "Şifre en az 8 karakter, 1 büyük harf, 1 küçük harf ve 1 rakam içermelidir."));
+    echo json_encode(array("message" => $passwordCheck['message']));
     exit;
 }
 
@@ -139,8 +139,8 @@ try {
         echo json_encode(['message' => 'Kayıt oluşturulamadı.']);
     }
 } catch (PDOException $e) {
-    debugLog("Database Exception: " . $e->getMessage());
+    error_log("Register Database Exception: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['message' => 'Veritabanı hatası: ' . $e->getMessage()]);
+    echo json_encode(['message' => 'Bir hata oluştu. Lütfen tekrar deneyin.']);
 }
 ?>

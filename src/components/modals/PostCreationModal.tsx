@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Dimensions, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Dimensions, ScrollView, Platform, KeyboardAvoidingView, Alert, BackHandler } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft, X } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { usePostHub } from '../../context/PostHubContext';
 
 // Components
 import { PostTypeSelector, CreateTab } from '../post/creation/PostTypeSelector';
@@ -13,21 +14,19 @@ import { ThoughtForm } from '../post/creation/forms/ThoughtForm';
 import { ReviewForm } from '../post/creation/forms/ReviewForm';
 import { BookForm } from '../post/creation/forms/BookForm';
 import { EventForm } from '../post/creation/forms/EventForm';
+import { ThemedDialog } from '../ThemedDialog';
 
 // Services
 import { postService, reviewService, libraryService } from '../../services/backendApi';
-
-interface PostCreationModalProps {
-    visible: boolean;
-    onClose: () => void;
-}
+import { draftService, Draft } from '../../services/DraftService';
 
 const { height } = Dimensions.get('window');
 
-export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, onClose }) => {
+export const PostCreationModal: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const { theme } = useTheme();
+    const { isModalVisible, closeModal, currentDraft } = usePostHub();
 
     // State
     const [selectedType, setSelectedType] = useState<CreateTab | null>(null);
@@ -68,35 +67,189 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
     const scale = useSharedValue(0.95);
 
     useEffect(() => {
-        if (visible) {
+        if (isModalVisible) {
             const config = { duration: 250, easing: Easing.out(Easing.cubic) };
 
             opacity.value = withTiming(1, config);
             translateY.value = withTiming(0, config);
             scale.value = withTiming(1, config);
+
+            // Load Draft
+            if (currentDraft) {
+                loadDraft(currentDraft);
+            }
         } else {
             handleCloseAnimation();
         }
-    }, [visible]);
+    }, [isModalVisible, currentDraft]);
+
+    // Handle Hardware Back Button
+    useEffect(() => {
+        const backAction = () => {
+            if (isModalVisible) {
+                if (selectedType) {
+                    handleCloseRequest(); // If inside a form, try to save/close
+                } else {
+                    closeModal(); // If in selection menu, just close
+                    handleCloseAnimation();
+                }
+                return true; // Prevent default behavior
+            }
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            backAction,
+        );
+
+        return () => backHandler.remove();
+    }, [isModalVisible, selectedType, thoughtText, reviewTitle, reviewText, bookTitle, eventTitle]); // Add dependencies for closure capture
+
+    const loadDraft = (draft: Draft) => {
+        setSelectedType(draft.type as CreateTab);
+        const data = draft.data;
+
+        switch (draft.type) {
+            case 'thought':
+                setThoughtText(data.thoughtText || '');
+                setSelectedTopic(data.selectedTopic || '');
+                break;
+            case 'review':
+                setReviewType(data.reviewType || 'book');
+                setReviewTitle(data.reviewTitle || '');
+                setReviewContentId(data.reviewContentId || '');
+                setReviewImage(data.reviewImage || '');
+                setReviewText(data.reviewText || '');
+                setReviewRating(data.reviewRating || 0);
+                break;
+            case 'book':
+                setBookTitle(data.bookTitle || '');
+                setBookAuthor(data.bookAuthor || '');
+                setBookContentId(data.bookContentId || '');
+                setBookImage(data.bookImage || '');
+                setBookStatus(data.bookStatus || 'reading');
+                setBookRating(data.bookRating || 0);
+                break;
+            case 'event':
+                setEventType(data.eventType || 'concert');
+                setEventTitle(data.eventTitle || '');
+                setEventContentId(data.eventContentId || '');
+                setEventImage(data.eventImage || '');
+                setEventLocation(data.eventLocation || '');
+                setEventDate(data.eventDate || '');
+                setEventNotes(data.eventNotes || '');
+                setEventRating(data.eventRating || 0);
+                break;
+        }
+    };
+
+    // Dialog Config State
+    const [dialogConfig, setDialogConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message: string;
+        onDiscard: () => void;
+        onSave: () => void;
+    }>({
+        visible: false,
+        title: '',
+        message: '',
+        onDiscard: () => { },
+        onSave: () => { }
+    });
 
     const handleCloseAnimation = () => {
         const config = { duration: 200, easing: Easing.in(Easing.cubic) };
 
         opacity.value = withTiming(0, config);
-        translateY.value = withTiming(10, config); // Gentle slide down
-        scale.value = withTiming(0.98, config); // Gentle shrink
+        translateY.value = withTiming(10, config);
+        scale.value = withTiming(0.98, config);
 
         setTimeout(() => {
             resetState();
-            // Reset for next opening (start from slightly below and smaller)
             translateY.value = 20;
             scale.value = 0.96;
         }, 200);
     };
 
-    const handleClose = () => {
-        onClose();
-        handleCloseAnimation();
+    const hasUnsavedChanges = useCallback(() => {
+        if (!selectedType) return false;
+
+        switch (selectedType) {
+            case 'thought': return thoughtText.trim().length > 0;
+            case 'review': return reviewTitle.trim().length > 0 || reviewText.trim().length > 0;
+            case 'book': return bookTitle.trim().length > 0;
+            case 'event': return eventTitle.trim().length > 0;
+            default: return false;
+        }
+    }, [selectedType, thoughtText, reviewTitle, reviewText, bookTitle, eventTitle]);
+
+    const handleCloseRequest = () => {
+        if (hasUnsavedChanges()) {
+            setDialogConfig({
+                visible: true,
+                title: "Taslak Kaydedilsin mi?",
+                message: "Yaptığınız değişiklikleri taslak olarak kaydetmek ister misiniz?",
+                onDiscard: () => {
+                    closeModal();
+                    handleCloseAnimation();
+                    setDialogConfig(prev => ({ ...prev, visible: false }));
+                },
+                onSave: async () => {
+                    await saveDraft();
+                    closeModal();
+                    handleCloseAnimation();
+                    setDialogConfig(prev => ({ ...prev, visible: false }));
+                }
+            });
+        } else {
+            closeModal();
+            handleCloseAnimation();
+        }
+    };
+
+    const saveDraft = async () => {
+        if (!selectedType) return;
+
+        let data = {};
+        switch (selectedType) {
+            case 'thought':
+                data = { thoughtText, selectedTopic };
+                break;
+            case 'review':
+                data = { reviewType, reviewTitle, reviewContentId, reviewImage, reviewText, reviewRating };
+                break;
+            case 'book':
+                data = { bookTitle, bookAuthor, bookContentId, bookImage, bookStatus, bookRating };
+                break;
+            case 'event':
+                data = { eventType, eventTitle, eventContentId, eventImage, eventLocation, eventDate, eventNotes, eventRating };
+                break;
+        }
+
+        try {
+            if (currentDraft) {
+                await draftService.updateDraft(currentDraft.id, data);
+            } else {
+                await draftService.saveDraft({
+                    type: selectedType as any,
+                    data
+                });
+            }
+            Toast.show({
+                type: 'info',
+                text1: 'Taslak Kaydedildi',
+                visibilityTime: 2000,
+            });
+        } catch (error) {
+            console.error(error);
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'Taslak kaydedilemedi.',
+            });
+        }
     };
 
     const resetState = () => {
@@ -138,6 +291,7 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
     }));
 
     const getHeaderTitle = () => {
+        if (currentDraft && selectedType) return 'Taslağı Düzenle';
         if (!selectedType) return 'Ne Paylaşmak İstersiniz?';
         switch (selectedType) {
             case 'thought': return 'Düşünce Paylaş';
@@ -149,12 +303,35 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
     };
 
     const handleBack = () => {
-        setSelectedType(null);
+        // Updated Logic: If has changes, warn user. If no changes, go back to selector.
+        if (hasUnsavedChanges()) {
+            setDialogConfig({
+                visible: true,
+                title: "Dikkat",
+                message: "Geri dönerseniz yazdıklarınız silinecek. Taslak olarak kaydetmek ister misiniz?",
+                onDiscard: () => {
+                    setSelectedType(null);
+                    resetState();
+                    setDialogConfig(prev => ({ ...prev, visible: false }));
+                },
+                onSave: async () => {
+                    await saveDraft();
+                    closeModal();
+                    handleCloseAnimation();
+                    setDialogConfig(prev => ({ ...prev, visible: false }));
+                }
+            });
+        } else {
+            setSelectedType(null);
+        }
     };
 
     const handlePost = async () => {
         // Validation logic
-        if (selectedType === 'thought' && !selectedTopic) return;
+        if (selectedType === 'thought' && !selectedTopic) {
+            Toast.show({ type: 'error', text1: 'Lütfen bir konu seçin.' });
+            return;
+        }
 
         // Backend Integration
         try {
@@ -177,12 +354,6 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                     undefined, // imageUrl
                     Number(selectedTopic)
                 );
-                Toast.show({
-                    type: 'success',
-                    text1: 'Başarılı',
-                    text2: 'Düşünceniz paylaşıldı.',
-                    visibilityTime: 2000,
-                });
             } else if (selectedType === 'review') {
                 await reviewService.addReview(
                     userId,
@@ -195,7 +366,6 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                 );
             } else if (selectedType === 'book') {
                 await libraryService.updateStatus(
-                    userId,
                     'book',
                     bookContentId,
                     bookStatus,
@@ -204,16 +374,8 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                     bookImage,
                     bookAuthor
                 );
-                Toast.show({
-                    type: 'success',
-                    text1: 'Başarılı',
-                    text2: 'Kitap kütüphanenize eklendi.',
-                    visibilityTime: 2000,
-                });
             } else if (selectedType === 'event') {
-                // Save to Library as 'Going' (reading)
                 await libraryService.updateStatus(
-                    userId,
                     'event',
                     eventContentId,
                     'reading',
@@ -223,34 +385,42 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                     eventLocation // Map location to author field for display
                 );
 
-                // Formatting event details into a post since there is no specific event creation endpoint
                 const eventDetails = `${eventTitle} - ${eventLocation}\nTarih: ${eventDate}`;
                 await postService.create(
                     userId,
                     eventDetails,
-                    eventNotes, // Pass user notes as comment/caption
-                    eventTitle, // source (appears as bold title in card)
-                    eventLocation, // author (appears as subtitle in card)
+                    eventNotes,
+                    eventTitle,
+                    eventLocation,
                     undefined,
                     'event',
                     eventContentId,
                     eventImage,
-                    undefined // topicId
+                    undefined
                 );
-                Toast.show({
-                    type: 'success',
-                    text1: 'Başarılı',
-                    text2: 'Etkinlik kütüphanenize ve akışa eklendi.',
-                    visibilityTime: 2000,
-                });
             }
 
-            // Simulate success
-            resetState();
-            handleClose();
+            // Success handling
+            if (currentDraft) {
+                await draftService.deleteDraft(currentDraft.id);
+            }
+
+            Toast.show({
+                type: 'success',
+                text1: 'Başarılı',
+                text2: 'Paylaşım yapıldı.',
+                visibilityTime: 2000,
+            });
+
+            closeModal();
+            handleCloseAnimation(); // Ensure state reset
         } catch (error) {
             console.error('Post failed:', error);
-            // Show error toast
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'Paylaşım yapılamadı.',
+            });
         }
     };
 
@@ -262,12 +432,12 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
         return false;
     };
 
-    if (!visible && opacity.value === 0) return null;
+    if (!isModalVisible && opacity.value === 0) return null;
 
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents={visible ? "auto" : "none"}>
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]} pointerEvents={isModalVisible ? "auto" : "none"}>
             {/* Backdrop */}
-            <TouchableWithoutFeedback onPress={handleClose}>
+            <TouchableWithoutFeedback onPress={handleCloseRequest}>
                 <Animated.View style={[styles.backdrop, backdropStyle]} />
             </TouchableWithoutFeedback>
 
@@ -292,18 +462,17 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                     ]}>
 
                         {/* Header */}
-                        {/* Header */}
                         <View style={[styles.header, {
                             borderBottomWidth: 1,
                             borderBottomColor: theme.colors.border,
-                            backgroundColor: theme.colors.surface + '80' // Slight transparency or surface color
+                            backgroundColor: theme.colors.surface + '80'
                         }]}>
                             {selectedType ? (
                                 <TouchableOpacity onPress={handleBack} style={[styles.iconButton, { backgroundColor: theme.colors.background }]}>
-                                    <ArrowLeft size={18} color={theme.colors.text} />
+                                    {currentDraft ? <X size={18} color={theme.colors.text} /> : <ArrowLeft size={18} color={theme.colors.text} />}
                                 </TouchableOpacity>
                             ) : (
-                                <View style={{ width: 40 }} /> // Balance the close button
+                                <View style={{ width: 40 }} />
                             )}
 
                             <Text style={[styles.headerTitle, {
@@ -334,7 +503,7 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                                     </Text>
                                 </TouchableOpacity>
                             ) : (
-                                <TouchableOpacity onPress={handleClose} style={[styles.iconButton, { backgroundColor: theme.colors.background }]}>
+                                <TouchableOpacity onPress={handleCloseRequest} style={[styles.iconButton, { backgroundColor: theme.colors.background }]}>
                                     <X size={20} color={theme.colors.textSecondary} />
                                 </TouchableOpacity>
                             )}
@@ -398,6 +567,31 @@ export const PostCreationModal: React.FC<PostCreationModalProps> = ({ visible, o
                     </Animated.View>
                 </View>
             </KeyboardAvoidingView>
+
+            <ThemedDialog
+                visible={dialogConfig.visible}
+                title={dialogConfig.title}
+                message={dialogConfig.message}
+                onClose={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+                actions={[
+                    {
+                        text: 'Kaydet',
+                        style: 'default', // Primary color
+                        onPress: dialogConfig.onSave
+                    },
+                    {
+                        text: 'Sil', // Shortened text for better fit
+                        style: 'destructive',
+                        onPress: dialogConfig.onDiscard
+                    },
+                    {
+                        text: 'Vazgeç',
+                        style: 'cancel',
+                        fullWidth: true,
+                        onPress: () => setDialogConfig(prev => ({ ...prev, visible: false }))
+                    }
+                ]}
+            />
         </View>
     );
 };

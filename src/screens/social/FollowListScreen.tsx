@@ -18,7 +18,7 @@ const FollowUserItem = ({ user, currentUserId, onFollowUpdate }: { user: any, cu
         if (loading) return;
         setLoading(true);
         try {
-            const response = await userService.followUser(currentUserId, user.id);
+            const response = await userService.followUser(user.id);
             setIsFollowing(response.is_following);
             onFollowUpdate(user.id, response.is_following);
 
@@ -131,8 +131,28 @@ export const FollowListScreen = () => {
         if (!currentUser) return;
         setLoading(true);
         try {
-            const data = await userService.getConnections(userId, type, currentUser.id);
-            setUsers(data);
+            // Fetch the list to display AND current user's following list for verification
+            const listPromise = userService.getConnections(userId, type, currentUser.id);
+            const myFollowingPromise = userService.getConnections(currentUser.id, 'following');
+
+            const [data, myFollowing] = await Promise.all([
+                listPromise,
+                myFollowingPromise
+            ]);
+
+            // Create set of IDs I follow
+            const myFollowingIds = new Set<number>();
+            if (Array.isArray(myFollowing)) {
+                myFollowing.forEach((u: any) => myFollowingIds.add(u.id));
+            }
+
+            // Update is_following for the list
+            const updatedData = Array.isArray(data) ? data.map((u: any) => ({
+                ...u,
+                is_following: myFollowingIds.has(u.id)
+            })) : [];
+
+            setUsers(updatedData);
         } catch (error) {
             console.error(error);
         } finally {

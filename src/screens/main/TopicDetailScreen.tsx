@@ -72,7 +72,7 @@ export const TopicDetailScreen = () => {
 
         try {
             if (user) {
-                await postService.delete(user.id, item.id);
+                await postService.delete(item.id);
                 setPosts(prev => prev.filter(post => post.id !== item.id));
                 Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
             }

@@ -39,14 +39,8 @@ try {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if(password_verify($data->password, $row['password'])){
-            // Token oluştur ve veritabanına kaydet
-            $token = generateToken($row['id']);
-            
-            $updateQuery = "UPDATE users SET token = :token WHERE id = :id";
-            $updateStmt = $conn->prepare($updateQuery);
-            $updateStmt->bindParam(':token', $token);
-            $updateStmt->bindParam(':id', $row['id']);
-            $updateStmt->execute();
+            // Token oluştur ve veritabanına kaydet (expiry ile birlikte)
+            $token = createTokenWithExpiry($conn, $row['id']);
             
             http_response_code(200);
             
@@ -65,7 +59,8 @@ try {
         echo json_encode(array("message" => "Kullanıcı bulunamadı."));
     }
 } catch (Exception $e) {
+    error_log("Login error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(array("message" => "Sunucu hatası: " . $e->getMessage()));
+    echo json_encode(array("message" => "Bir hata oluştu. Lütfen tekrar deneyin."));
 }
 ?>

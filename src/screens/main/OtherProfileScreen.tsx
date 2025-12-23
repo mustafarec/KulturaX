@@ -10,7 +10,7 @@ import { ReviewCard } from '../../components/ReviewCard';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import Toast from 'react-native-toast-message';
 import { ThemedDialog } from '../../components/ThemedDialog';
-import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
@@ -25,8 +25,9 @@ if (Platform.OS === 'android') {
 export const OtherProfileScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
-    const params = route.params as { userId?: number } | undefined;
+    const params = route.params as { userId?: number; initialFollowing?: boolean } | undefined;
     const userId = params?.userId;
+    const initialFollowing = params?.initialFollowing;
 
     if (!userId) {
         return (
@@ -90,13 +91,13 @@ export const OtherProfileScreen = () => {
         },
         dropdownMenu: {
             position: 'absolute',
-            top: 90, // optionsButton top + height + margin
-            right: 20,
+            top: 45,
+            right: 0,
             backgroundColor: theme.colors.surface,
             borderRadius: 12,
             padding: 8,
-            minWidth: 150,
-            zIndex: 30,
+            minWidth: 120,
+            zIndex: 100,
             ...theme.shadows.default,
             borderWidth: 1,
             borderColor: theme.colors.border,
@@ -136,6 +137,8 @@ export const OtherProfileScreen = () => {
             flexDirection: 'row',
             gap: 8,
             paddingBottom: 12,
+            flexWrap: 'wrap',
+            alignItems: 'center',
         },
         iconBtn: {
             padding: 10,
@@ -192,31 +195,7 @@ export const OtherProfileScreen = () => {
             flexDirection: 'row',
             gap: 12,
         },
-        statCard: {
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 12,
-            borderRadius: 16,
-            borderWidth: 1,
-            gap: 12,
-        },
-        statIconCircle: {
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-        statValue: {
-            fontSize: 18,
-            fontWeight: '700',
-            color: theme.colors.text,
-        },
-        statLabel: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-        },
+        // statCard, statIconCircle, statValue, statLabel removed as they are no longer used
         activityStatsRow: {
             flexDirection: 'row',
             gap: 12,
@@ -231,10 +210,11 @@ export const OtherProfileScreen = () => {
             flexDirection: 'row',
             borderBottomWidth: 1,
             marginBottom: 16,
+            paddingHorizontal: 0,
         },
         tabItem: {
-            flex: 1,
             paddingVertical: 12,
+            paddingHorizontal: 16,
             alignItems: 'center',
             borderBottomWidth: 2,
             borderBottomColor: 'transparent',
@@ -242,6 +222,7 @@ export const OtherProfileScreen = () => {
         tabText: {
             fontSize: 14,
             fontWeight: '600',
+            flexWrap: 'nowrap',
         },
         contentArea: {
             minHeight: 200,
@@ -365,7 +346,8 @@ export const OtherProfileScreen = () => {
     // Mock Header Image (Random Library/Aesthetic)
     const headerImage = profile?.header_image_url || 'https://images.unsplash.com/photo-1507842217121-9e96e4430330?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
 
-    const [isFollowing, setIsFollowing] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(initialFollowing ?? false);
+    const [requestStatus, setRequestStatus] = useState<'pending' | 'accepted' | 'rejected' | null>(null);
 
 
 
@@ -375,18 +357,41 @@ export const OtherProfileScreen = () => {
         try {
             const profileData = await userService.getUserProfile(userId, currentUser?.id);
             setProfile(profileData);
+            // Set request status from profile data
+            if (profileData.request_status) {
+                setRequestStatus(profileData.request_status);
+            }
+            if (profileData.is_following) {
+                setIsFollowing(true);
+            }
         } catch (profileError) {
             console.error('Error fetching profile:', profileError);
         }
     };
 
     const checkFollowStatus = async () => {
-        if (!currentUser || !profile) return;
+        if (!currentUser || !userId) return;
         try {
-            const status = await userService.checkFollowStatus(currentUser.id, profile.id);
-            setIsFollowing(status.is_following);
+            // Robust check: Fetch all following users to be 100% sure
+            // This bypasses potential caching or logic issues with the single-check endpoint
+            const followingList = await userService.getConnections(currentUser.id, 'following');
+
+            let isFollowingUser = false;
+            if (Array.isArray(followingList)) {
+                // Check if our target userId is in the returned list
+                isFollowingUser = followingList.some((u: any) => u.id === userId);
+            }
+
+            setIsFollowing(isFollowingUser);
         } catch (error) {
             console.error('Error checking follow status:', error);
+            // Fallback to simple check if list fetch fails, or just keep current state
+            try {
+                const status = await userService.checkFollowStatus(currentUser.id, userId);
+                setIsFollowing(status.is_following);
+            } catch (e) {
+                console.error('Fallback check failed', e);
+            }
         }
     };
 
@@ -480,23 +485,42 @@ export const OtherProfileScreen = () => {
     const handleFollow = async () => {
         if (!currentUser) return;
         try {
-            const response = await userService.followUser(currentUser.id, userId);
+            const response = await userService.followUser(userId);
             setIsFollowing(response.is_following);
+            setRequestStatus(response.request_status || null);
 
-            // Update follower count locally
-            if (profile) {
+            // Update follower count locally (only if actually following, not just requesting)
+            if (profile && response.is_following) {
                 setProfile((prev: any) => ({
                     ...prev,
-                    follower_count: response.is_following
-                        ? (prev.follower_count || 0) + 1
-                        : Math.max((prev.follower_count || 0) - 1, 0)
+                    follower_count: (prev.follower_count || 0) + 1
+                }));
+            } else if (profile && !response.is_following && !response.request_status) {
+                // Unfollowed
+                setProfile((prev: any) => ({
+                    ...prev,
+                    follower_count: Math.max((prev.follower_count || 0) - 1, 0)
                 }));
             }
 
-            Toast.show({
-                type: 'success',
-                text1: response.is_following ? 'Takip Ediliyor' : 'Takip Bırakıldı',
-            });
+            // Show appropriate toast
+            if (response.request_status === 'pending') {
+                Toast.show({
+                    type: 'success',
+                    text1: 'İstek Gönderildi',
+                    text2: 'Takip isteğiniz kullanıcıya iletildi.',
+                });
+            } else if (response.is_following) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Takip Ediliyor',
+                });
+            } else if (response.request_status === null && !response.is_following) {
+                Toast.show({
+                    type: 'info',
+                    text1: requestStatus === 'pending' ? 'İstek İptal Edildi' : 'Takip Bırakıldı',
+                });
+            }
         } catch (error) {
             console.error(error);
             Toast.show({
@@ -514,11 +538,13 @@ export const OtherProfileScreen = () => {
             fetchUserPosts();
             fetchLibraryItems();
             fetchUserReviews();
-            if (currentUser) {
+            // Only check follow status if we don't have an initial value passed from navigation
+            // This prevents race conditions where the backend might lag behind the UI state
+            if (currentUser && initialFollowing === undefined) {
                 checkFollowStatus();
             }
         }
-    }, [userId, currentUser]);
+    }, [userId, currentUser, initialFollowing]);
 
     // Tab switch: Fetch data only if needed (Lazy Loading)
     useEffect(() => {
@@ -575,19 +601,11 @@ export const OtherProfileScreen = () => {
         });
     };
 
-    if (isLoading && !profile) {
+    if (!profile) {
         return (
             <View style={styles.loadingContainer}>
                 <SkeletonPost />
                 <SkeletonPost />
-            </View>
-        );
-    }
-
-    if (!profile) {
-        return (
-            <View style={styles.container}>
-                <Text>Kullanıcı bulunamadı. (ID: {userId})</Text>
             </View>
         );
     };
@@ -661,6 +679,23 @@ export const OtherProfileScreen = () => {
     };
 
     const renderTabContent = (currentTab: string) => {
+        // Check if account is private and we're not following
+        const isPrivateAndNotFollowing = profile?.is_private && !isFollowing && userId !== currentUser?.id;
+
+        if (isPrivateAndNotFollowing) {
+            return (
+                <View style={[styles.emptyContainer, { paddingVertical: 60 }]}>
+                    <Lock size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
+                    <Text style={[styles.emptyText, { fontWeight: '600', marginBottom: 8 }]}>
+                        Bu Hesap Özel
+                    </Text>
+                    <Text style={[styles.emptyText, { fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }]}>
+                        İçerikleri görmek için bu kullanıcıyı takip edin.
+                    </Text>
+                </View>
+            );
+        }
+
         switch (currentTab) {
             case 'posts':
                 if (isLoading && !refreshing) {
@@ -863,27 +898,6 @@ export const OtherProfileScreen = () => {
                     <ArrowLeft size={24} color="#FFF" />
                 </TouchableOpacity>
 
-
-                {/* Dropdown Menu */}
-                {menuVisible && (
-                    <TouchableOpacity
-                        style={styles.menuOverlay}
-                        activeOpacity={1}
-                        onPress={() => setMenuVisible(false)}
-                    >
-                        <View style={styles.dropdownMenu}>
-                            <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={() => {
-                                    setMenuVisible(false);
-                                    setBlockDialogVisible(true);
-                                }}
-                            >
-                                <Text style={styles.menuItemTextDestructive}>Engelle</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableOpacity>
-                )}
             </View>
 
             {/* Profile Header Content (Overlapping) */}
@@ -905,7 +919,11 @@ export const OtherProfileScreen = () => {
                                     style={[
                                         styles.iconBtn,
                                         {
-                                            backgroundColor: isFollowing ? theme.colors.surface : theme.colors.primary,
+                                            backgroundColor: isFollowing
+                                                ? theme.colors.surface
+                                                : requestStatus === 'pending'
+                                                    ? theme.colors.secondary
+                                                    : theme.colors.primary,
                                             borderColor: isFollowing ? theme.colors.border : 'transparent',
                                             paddingHorizontal: 20,
                                         }
@@ -916,7 +934,13 @@ export const OtherProfileScreen = () => {
                                         color: isFollowing ? theme.colors.text : '#FFF',
                                         fontWeight: '600'
                                     }}>
-                                        {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
+                                        {isFollowing
+                                            ? 'Takip Ediliyor'
+                                            : requestStatus === 'pending'
+                                                ? 'İstek Gönderildi'
+                                                : profile?.is_private
+                                                    ? 'İstek Gönder'
+                                                    : 'Takip Et'}
                                     </Text>
                                 </TouchableOpacity>
 
@@ -933,12 +957,27 @@ export const OtherProfileScreen = () => {
                         <TouchableOpacity style={styles.iconBtn} onPress={handleShareProfile}>
                             <Share2 size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.iconBtn}
-                            onPress={() => setMenuVisible(!menuVisible)}
-                        >
-                            <MoreVertical size={20} color={theme.colors.primary} />
-                        </TouchableOpacity>
+                        <View style={{ position: 'relative', zIndex: 100 }}>
+                            <TouchableOpacity
+                                style={styles.iconBtn}
+                                onPress={() => setMenuVisible(!menuVisible)}
+                            >
+                                <MoreVertical size={20} color={theme.colors.primary} />
+                            </TouchableOpacity>
+                            {menuVisible && (
+                                <View style={styles.dropdownMenu}>
+                                    <TouchableOpacity
+                                        style={styles.menuItem}
+                                        onPress={() => {
+                                            setMenuVisible(false);
+                                            setBlockDialogVisible(true);
+                                        }}
+                                    >
+                                        <Text style={styles.menuItemTextDestructive}>Engelle</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
                     </View>
                     {/* Dropdown Menu Overlay was here but moved to dialog or modal logic ideally. Keeping layout same as design */}
                 </View>
@@ -969,37 +1008,43 @@ export const OtherProfileScreen = () => {
                     {/* Followers/Following */}
                     <View style={styles.socialStatsRow}>
                         <TouchableOpacity
-                            style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                            style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                             onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'followers' })}
                         >
-                            <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
-                                <Users size={16} color={theme.colors.primary} />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <Users size={14} color={theme.colors.primary} />
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takipçi</Text>
                             </View>
-                            <View>
-                                <Text style={[styles.statValue, { color: theme.colors.text }]}>{profile.follower_count || 0}</Text>
-                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Takipçi</Text>
-                            </View>
+                            <Text
+                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                adjustsFontSizeToFit
+                                numberOfLines={1}
+                            >{profile.follower_count || 0}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                            style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                             onPress={() => (navigation as any).navigate('FollowList', { userId: userId, type: 'following' })}
                         >
-                            <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
-                                <UserPlus size={16} color={theme.colors.secondary} />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <UserPlus size={14} color={theme.colors.secondary} />
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takip</Text>
                             </View>
-                            <View>
-                                <Text style={[styles.statValue, { color: theme.colors.text }]}>{profile.following_count || 0}</Text>
-                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Takip</Text>
-                            </View>
+                            <Text
+                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                adjustsFontSizeToFit
+                                numberOfLines={1}
+                            >{profile.following_count || 0}</Text>
                         </TouchableOpacity>
-                        <View style={[styles.statCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                            <View style={[styles.statIconCircle, { backgroundColor: theme.colors.background }]}>
-                                <MessageSquare size={16} color={theme.colors.primary} />
+                        <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <MessageSquare size={14} color={theme.colors.primary} />
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Gönderi</Text>
                             </View>
-                            <View>
-                                <Text style={[styles.statValue, { color: theme.colors.text }]}>{userPosts.length || 0}</Text>
-                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Gönderi</Text>
-                            </View>
+                            <Text
+                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                adjustsFontSizeToFit
+                                numberOfLines={1}
+                            >{userPosts.length || 0}</Text>
                         </View>
                     </View>
 
@@ -1049,23 +1094,29 @@ export const OtherProfileScreen = () => {
             </View>
 
             {/* Tabs */}
-            <View style={[styles.tabContainer, { borderBottomColor: theme.colors.border }]}>
-                {['posts', 'replies', 'book', 'movie', 'music', 'reviews'].map((tab) => (
-                    <TouchableOpacity
-                        key={tab}
-                        style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.colors.primary }]}
-                        onPress={() => {
-                            if (tab === 'replies' && userReplies.length === 0) {
-                                setIsRepliesLoading(true);
-                            }
-                            setActiveTab(tab);
-                        }}
-                    >
-                        <Text style={[styles.tabText, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
-                            {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : tab === 'music' ? 'Müzik' : 'İncelemeler'}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+            <View>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.tabContainer, { borderBottomColor: theme.colors.border, minWidth: '100%' }]}
+                >
+                    {['posts', 'replies', 'book', 'movie', 'music', 'reviews'].map((tab) => (
+                        <TouchableOpacity
+                            key={tab}
+                            style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.colors.primary }]}
+                            onPress={() => {
+                                if (tab === 'replies' && userReplies.length === 0) {
+                                    setIsRepliesLoading(true);
+                                }
+                                setActiveTab(tab);
+                            }}
+                        >
+                            <Text style={[styles.tabText, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
+                                {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : tab === 'music' ? 'Müzik' : 'İncelemeler'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {/* Content Section */}

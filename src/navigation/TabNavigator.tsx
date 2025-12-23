@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, Image, TouchableOpacity, DeviceEventEmitter, Modal, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { View, StyleSheet, Text, Image, TouchableOpacity, DeviceEventEmitter, Modal, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -11,7 +11,11 @@ import { NotificationScreen } from '../screens/main/NotificationScreen';
 import { useTheme } from '../context/ThemeContext';
 import { Home, Search, Mail, User, Plus, Compass } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useMessage } from '../context/MessageContext';
+import { usePostHub } from '../context/PostHubContext';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { normalize } from '../utils/responsive';
 
 const Tab = createBottomTabNavigator();
 const FeedStack = createNativeStackNavigator();
@@ -29,7 +33,7 @@ const FeedStackScreen = () => {
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-const FloatingAnimatedButton = ({ onPress, isOpen, theme }: { onPress: () => void, isOpen: boolean, theme: any }) => {
+const FloatingAnimatedButton = ({ onPress, isOpen, theme, bottomInset }: { onPress: () => void, isOpen: boolean, theme: any, bottomInset: number }) => {
     const rotation = useSharedValue(0);
 
     React.useEffect(() => {
@@ -42,6 +46,8 @@ const FloatingAnimatedButton = ({ onPress, isOpen, theme }: { onPress: () => voi
         };
     });
 
+    const buttonSize = normalize(60);
+
     return (
         <AnimatedTouchable
             activeOpacity={0.9}
@@ -52,17 +58,21 @@ const FloatingAnimatedButton = ({ onPress, isOpen, theme }: { onPress: () => voi
                     shadowColor: theme.colors.primary,
                     borderColor: theme.colors.surface,
                     zIndex: 2000,
+                    bottom: bottomInset + 15, // Floating button position adjusted for safe area
+                    width: buttonSize,
+                    height: buttonSize,
+                    borderRadius: buttonSize / 2,
                 },
                 animatedStyle
             ]}
             onPress={onPress}
         >
-            <Plus size={36} color="#FFF" />
+            <Plus size={normalize(32)} color="#FFF" />
         </AnimatedTouchable>
     );
 };
 
-import { PostCreationModal } from '../components/modals/PostCreationModal';
+// ... (No inline PostMenuOverlay)
 
 // ... (No inline PostMenuOverlay)
 
@@ -70,9 +80,10 @@ import { PostCreationModal } from '../components/modals/PostCreationModal';
 
 export const TabNavigator = () => {
     const { theme } = useTheme();
+    const insets = useSafeAreaInsets();
     const isBlackTheme = (theme as any).id === 'black';
 
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { isModalVisible, openModal } = usePostHub();
 
     // Black Theme Constraints
     const blackThemeBarSettings = {
@@ -81,22 +92,24 @@ export const TabNavigator = () => {
         inactiveColor: '#a8a29e', // Stone Gray
     };
 
-    const toggleMenu = () => {
-        setIsMenuOpen(!isMenuOpen);
-    };
+    // Calculate dynamic tab bar height and padding
+    // If there is a safe area (iPhone X+), use it. If not (older Android/iOS), use default padding.
+    const bottomPadding = insets.bottom > 0 ? insets.bottom : 10;
+    const tabBarHeight = 60 + bottomPadding;
+    const iconSize = normalize(24);
+    const activeIconScale = 1.1;
 
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator
-                safeAreaInsets={{ bottom: 0 }}
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
                         backgroundColor: isBlackTheme ? 'rgba(0,0,0,1)' : theme.colors.surface,
                         borderTopWidth: isBlackTheme ? 0 : 1,
                         borderTopColor: theme.colors.border,
-                        height: 60,
-                        paddingBottom: 5, // Add some padding for the icons/labels
+                        height: tabBarHeight,
+                        paddingBottom: Platform.OS === 'ios' ? bottomPadding : 10,
                         paddingTop: 5,
                         elevation: 0,
                         shadowOpacity: 0,
@@ -105,14 +118,14 @@ export const TabNavigator = () => {
                     tabBarActiveTintColor: isBlackTheme ? blackThemeBarSettings.activeColor : theme.colors.primary,
                     tabBarInactiveTintColor: isBlackTheme ? blackThemeBarSettings.inactiveColor : theme.colors.textSecondary,
                     tabBarItemStyle: {
-                        height: 60,
+                        height: 60, // Fixed height for the touchable area within the bar
                         flex: 1,
                         justifyContent: 'center',
                         alignItems: 'center',
                     },
                     tabBarIconStyle: {
-                        width: 28,
-                        height: 28,
+                        width: normalize(28),
+                        height: normalize(28),
                     }
                 }}
             >
@@ -128,7 +141,7 @@ export const TabNavigator = () => {
                     })}
                     options={{
                         tabBarIcon: ({ color, focused }) => (
-                            <Home size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
+                            <Home size={focused ? iconSize * activeIconScale : iconSize} color={color} strokeWidth={focused ? 2.5 : 2} />
                         ),
                     }}
                 />
@@ -137,7 +150,7 @@ export const TabNavigator = () => {
                     component={DiscoveryScreen}
                     options={{
                         tabBarIcon: ({ color, focused }) => (
-                            <Compass size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
+                            <Compass size={focused ? iconSize * activeIconScale : iconSize} color={color} strokeWidth={focused ? 2.5 : 2} />
                         ),
                     }}
                 />
@@ -148,7 +161,7 @@ export const TabNavigator = () => {
                     listeners={{
                         tabPress: (e) => {
                             e.preventDefault(); // Prevent navigation
-                            toggleMenu(); // Trigger custom menu
+                            openModal(); // Trigger custom menu
                         },
                     }}
                     options={{
@@ -176,7 +189,7 @@ export const TabNavigator = () => {
                                     delayLongPress={safeDelayLongPress}
                                     style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
                                 >
-                                    <View style={{ width: 64, height: 64 }} />
+                                    <View style={{ width: normalize(60), height: normalize(60) }} />
                                 </TouchableOpacity>
                             );
                         },
@@ -187,9 +200,35 @@ export const TabNavigator = () => {
                     name="Messages"
                     component={MessageScreen}
                     options={{
-                        tabBarIcon: ({ color, focused }) => (
-                            <Mail size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
-                        ),
+                        tabBarIcon: ({ color, focused }) => {
+                            const { unreadCount } = useMessage();
+                            const size = focused ? iconSize * activeIconScale : iconSize;
+
+                            return (
+                                <View>
+                                    <Mail size={size} color={color} strokeWidth={focused ? 2.5 : 2} />
+                                    {unreadCount > 0 && (
+                                        <View style={{
+                                            position: 'absolute',
+                                            right: -6,
+                                            top: -4,
+                                            backgroundColor: theme.colors.error,
+                                            borderRadius: 10,
+                                            minWidth: 18,
+                                            height: 18,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            borderWidth: 2,
+                                            borderColor: theme.colors.surface,
+                                        }}>
+                                            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>
+                                                {unreadCount > 99 ? '99+' : unreadCount}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        },
                     }}
                 />
                 <Tab.Screen
@@ -199,16 +238,17 @@ export const TabNavigator = () => {
                         tabBarIcon: ({ color, focused }) => {
                             const { user } = useAuth();
                             const showBadge = user && user.is_email_verified == 0;
+                            const size = focused ? iconSize * activeIconScale : iconSize;
 
                             return (
                                 <View>
                                     {user?.avatar_url ? (
                                         <Image
                                             source={{ uri: user.avatar_url }}
-                                            style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: color }}
+                                            style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 1, borderColor: color }}
                                         />
                                     ) : (
-                                        <User size={26} color={color} strokeWidth={focused ? 2.5 : 2} />
+                                        <User size={size} color={color} strokeWidth={focused ? 2.5 : 2} />
                                     )}
                                     {showBadge && (
                                         <View style={{
@@ -238,11 +278,10 @@ export const TabNavigator = () => {
                 />
             </Tab.Navigator>
 
-            {/* Overlay Menu */}
-            <PostCreationModal visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+            {/* Overlay Menu - Moved to AppNavigator */}
 
             {/* Hoisted Floating Button */}
-            <FloatingAnimatedButton isOpen={isMenuOpen} onPress={toggleMenu} theme={theme} />
+            <FloatingAnimatedButton isOpen={isModalVisible} onPress={() => openModal()} theme={theme} bottomInset={bottomPadding > 10 ? bottomPadding : 0} />
 
         </View>
     );
@@ -251,11 +290,11 @@ export const TabNavigator = () => {
 const styles = StyleSheet.create({
     floatingButtonData: {
         position: 'absolute',
-        bottom: 10, // Lowered to align with tab bar
+        // bottom: setted inline
         alignSelf: 'center',
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        // width: setted inline
+        // height: setted inline
+        // borderRadius: setted inline
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: "#000",
@@ -266,3 +305,4 @@ const styles = StyleSheet.create({
         borderWidth: 4,
     },
 });
+

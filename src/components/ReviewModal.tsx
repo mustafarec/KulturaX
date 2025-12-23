@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Animated } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { StarRating } from './StarRating';
@@ -36,11 +36,25 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     const [rating, setRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const slideAnim = useRef(new Animated.Value(400)).current;
+
+    useEffect(() => {
+        if (visible) {
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+                tension: 65,
+                friction: 11,
+            }).start();
+        } else {
+            slideAnim.setValue(400);
+        }
+    }, [visible]);
 
     const styles = React.useMemo(() => StyleSheet.create({
         overlay: {
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.4)',
             justifyContent: 'flex-end',
         },
         modal: {
@@ -142,11 +156,11 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         <Modal
             visible={visible}
             transparent
-            animationType="slide"
+            animationType="fade"
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <View style={styles.modal}>
+                <Animated.View style={[styles.modal, { transform: [{ translateY: slideAnim }] }]}>
                     <View style={styles.header}>
                         <Text style={styles.title}>İncele: {contentTitle}</Text>
                         <TouchableOpacity onPress={onClose}>
@@ -188,8 +202,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                             <Text style={styles.submitButtonText}>Kaydet</Text>
                         )}
                     </TouchableOpacity>
-                </View>
+                </Animated.View>
             </View>
         </Modal>
     );
 };
+

@@ -1,15 +1,18 @@
 <?php
 include '../config.php';
+include '../auth_middleware.php';
+
+// Token'dan kimlik doğrula
+$user_id = requireAuth();
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->user_id) || !isset($data->target_count)) {
+if (!isset($data->target_count)) {
     http_response_code(400);
     echo json_encode(array("message" => "Eksik veri."));
     exit;
 }
 
-$user_id = $data->user_id;
 $target_count = $data->target_count;
 $year = isset($data->year) ? $data->year : date('Y');
 

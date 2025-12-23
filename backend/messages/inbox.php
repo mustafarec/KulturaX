@@ -1,13 +1,9 @@
 <?php
 include_once '../config.php';
+include_once '../auth_middleware.php';
 
-$user_id = isset($_GET['user_id']) ? $_GET['user_id'] : null;
-
-if (!$user_id) {
-    http_response_code(400);
-    echo json_encode(array("message" => "Missing user_id"));
-    exit;
-}
+// Token'dan kimlik doğrula
+$user_id = requireAuth();
 
 try {
     $type = isset($_GET['type']) ? $_GET['type'] : 'inbox'; // 'inbox' or 'requests'

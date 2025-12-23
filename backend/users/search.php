@@ -28,7 +28,7 @@ try {
     // If name/surname don't exist, we might need to adjust.
     // Let's assume name and surname exist based on backendApi.ts.
     
-    $sql = "SELECT id, username, name, surname, avatar_url FROM users 
+    $sql = "SELECT id, username, name, surname, avatar_url, is_private FROM users 
             WHERE username LIKE :query 
             OR name LIKE :query 
             OR surname LIKE :query 
