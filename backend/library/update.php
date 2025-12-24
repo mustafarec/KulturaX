@@ -73,7 +73,7 @@ if ($image_url_input) {
 }
 
 // Geçerli durumları kontrol et
-$valid_statuses = ['read', 'reading', 'want_to_read', 'dropped', 'visited'];
+$valid_statuses = ['read', 'reading', 'want_to_read', 'dropped', 'visited', 'want_to_watch', 'want_to_listen', 'want_to_attend', ''];
 
 if (!in_array($status, $valid_statuses)) {
     http_response_code(400);

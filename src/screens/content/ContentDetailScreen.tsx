@@ -9,9 +9,11 @@ import { postService, reviewService, spotifyService, lyricsService, libraryServi
 import { ReviewModal } from '../../components/ReviewModal';
 import { QuoteModal } from '../../components/QuoteModal';
 import { useAuth } from '../../context/AuthContext';
-import { LibraryStatusButton } from '../../components/LibraryStatusButton';
 import { Plus, MessageSquare, Pencil, Share2, Bookmark, Music, MessageCircle, Calendar, MapPin, Ticket } from 'lucide-react-native';
 import { ContentDetailLayout } from '../../components/layouts/ContentDetailLayout';
+import Toast from 'react-native-toast-message';
+import { LibraryBottomSheet } from '../../components/LibraryBottomSheet';
+import { ShareCardModal } from '../../components/ShareCardModal';
 
 type ContentType = 'book' | 'movie' | 'music' | 'event';
 
@@ -32,6 +34,11 @@ export const ContentDetailScreen = () => {
     const [reviews, setReviews] = useState<any[]>([]);
     const [lyrics, setLyrics] = useState<string | null>(null);
     const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null);
+    const [isSaved, setIsSaved] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [currentStatus, setCurrentStatus] = useState<string | null>(null);
+    const [showLibrarySheet, setShowLibrarySheet] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -105,7 +112,95 @@ export const ContentDetailScreen = () => {
         }
     }, [id, type]);
 
+    // Check if content is already saved
+    useEffect(() => {
+        const checkSaveStatus = async () => {
+            if (!user || !id) return;
+            try {
+                const status = await libraryService.getStatus(user.id, type, id.toString());
+                const savedStatus = status?.status || null;
+                setCurrentStatus(savedStatus);
+                setIsSaved(!!savedStatus && savedStatus !== '');
+            } catch (error) {
+                setCurrentStatus(null);
+                setIsSaved(false);
+            }
+        };
+        checkSaveStatus();
+    }, [user, id, type]);
 
+    // Get appropriate status label based on content type
+    const getStatusLabel = () => {
+        switch (type) {
+            case 'book': return 'want_to_read';
+            case 'movie': return 'want_to_watch';
+            case 'music': return 'want_to_listen';
+            case 'event': return 'want_to_attend';
+            default: return 'want_to_read';
+        }
+    };
+
+    const handleSave = async (newStatus: string) => {
+        if (isSaving || !user) return;
+        if (!content) {
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'İçerik henüz yüklenmedi.',
+            });
+            return;
+        }
+
+        setIsSaving(true);
+        setShowLibrarySheet(false);
+
+        const contentTitle = getTitle();
+        const contentImage = getCoverUrl();
+        const contentAuthor = getSubtitle();
+
+        try {
+            await libraryService.updateStatus(
+                type,
+                id.toString(),
+                newStatus,
+                0,
+                contentTitle,
+                contentImage,
+                contentAuthor
+            );
+            setCurrentStatus(newStatus || null);
+            setIsSaved(!!newStatus && newStatus !== '');
+
+            const statusLabels: Record<string, string> = {
+                'reading': type === 'movie' ? 'İzliyorum' : type === 'music' ? 'Dinliyorum' : 'Okuyorum',
+                'read': type === 'movie' ? 'İzledim' : type === 'music' ? 'Dinledim' : 'Okudum',
+                'want_to_read': 'Okuyacağım',
+                'want_to_watch': 'İzleyeceğim',
+                'want_to_listen': 'Dinleyeceğim',
+                'want_to_attend': 'Katılacağım',
+                'dropped': 'Bıraktım',
+                '': 'Kaldırıldı',
+            };
+
+            Toast.show({
+                type: 'success',
+                text1: newStatus ? statusLabels[newStatus] || 'Kaydedildi' : 'Kaldırıldı',
+                text2: newStatus ? 'Kütüphaneye eklendi.' : 'Listenden kaldırıldı.',
+            });
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: error?.message || 'İşlem başarısız oldu.',
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleShare = () => {
+        setShowShareModal(true);
+    };
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -778,17 +873,6 @@ export const ContentDetailScreen = () => {
 
         return (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                    <LibraryStatusButton
-                        contentType={type as 'book' | 'movie' | 'music'}
-                        contentId={id.toString()}
-                        contentTitle={title}
-                        imageUrl={coverUrl}
-                        author={subtitle}
-                        summary={type === 'book' ? stripHtml(content.volumeInfo?.description || content.description || '') : type === 'movie' ? (content.overview || '') : ''}
-                        lyrics={type === 'music' ? lyrics || undefined : undefined}
-                    />
-                </View>
                 <TouchableOpacity
                     style={{
                         flex: 1,
@@ -812,10 +896,17 @@ export const ContentDetailScreen = () => {
 
     const renderHeaderActions = () => (
         <>
-            <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-                <Bookmark size={20} color="#FFF" />
+            <TouchableOpacity
+                style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: isSaved ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}
+                onPress={() => setShowLibrarySheet(true)}
+                disabled={isSaving}
+            >
+                <Bookmark size={20} color="#FFF" fill={isSaved ? '#FFF' : 'transparent'} />
             </TouchableOpacity>
-            <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity
+                style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}
+                onPress={handleShare}
+            >
                 <Share2 size={20} color="#FFF" />
             </TouchableOpacity>
         </>
@@ -828,6 +919,12 @@ export const ContentDetailScreen = () => {
                 title={title}
                 image={coverUrl}
                 subtitle={subtitle}
+                onSubtitlePress={type === 'movie' ? () => {
+                    const director = getDirector();
+                    if (director) {
+                        (navigation as any).navigate('CreatorDetail', { id: director.id, name: director.name, type: 'person' });
+                    }
+                } : undefined}
                 metaText={meta}
                 stats={renderStats()}
                 actions={renderActions()}
@@ -887,6 +984,25 @@ export const ContentDetailScreen = () => {
                 onQuoteAdded={fetchPosts}
                 initialContentType={type}
                 initialContentId={id.toString()}
+            />
+            <LibraryBottomSheet
+                visible={showLibrarySheet}
+                onClose={() => setShowLibrarySheet(false)}
+                onSelectStatus={handleSave}
+                contentType={type}
+                currentStatus={currentStatus}
+            />
+            <ShareCardModal
+                visible={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                shareType="content"
+                contentType={type}
+                title={title}
+                subtitle={subtitle}
+                coverUrl={coverUrl}
+                rating={type === 'movie' ? content?.vote_average : undefined}
+                year={type === 'movie' ? content?.release_date?.substring(0, 4) : type === 'book' ? content?.volumeInfo?.publishedDate?.substring(0, 4) : undefined}
+                duration={type === 'movie' && content?.runtime ? `${content.runtime} dk` : undefined}
             />
         </>
     );

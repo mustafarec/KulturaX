@@ -27,17 +27,33 @@ try {
     // NOTE: In a real app, you might want to only hide them for this user using a 'deleted_by_sender' / 'deleted_by_receiver' flag.
     // Assuming simple delete for this task as per plan.
     
-    // Deleting messages where (sender=user AND receiver=partner) OR (sender=partner AND receiver=user)
-    $query = "DELETE FROM messages WHERE (sender_id = :user_id AND receiver_id = :partner_id) OR (sender_id = :partner_id AND receiver_id = :user_id)";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':user_id', $data->user_id);
-    $stmt->bindParam(':partner_id', $data->partner_id);
+    // 4. Soft Delete Conversation
+    // Update messages where user is sender -> set deleted_by_sender = 1
+    // Update messages where user is receiver -> set deleted_by_receiver = 1
+    
+    $query1 = "UPDATE messages SET deleted_by_sender = 1 WHERE sender_id = :user_id AND receiver_id = :partner_id";
+    $stmt1 = $conn->prepare($query1);
+    $stmt1->bindParam(':user_id', $data->user_id);
+    $stmt1->bindParam(':partner_id', $data->partner_id);
+    
+    $query2 = "UPDATE messages SET deleted_by_receiver = 1 WHERE receiver_id = :user_id AND sender_id = :partner_id";
+    $stmt2 = $conn->prepare($query2);
+    $stmt2->bindParam(':user_id', $data->user_id);
+    $stmt2->bindParam(':partner_id', $data->partner_id);
 
-    if ($stmt->execute()) {
+    if ($stmt1->execute() && $stmt2->execute()) {
         
-        // Also delete any message_permissions if exists? Maybe.
-        // Let's keep permissions for now in case they message again.
+        // 5. Cleanup: Hard Delete messages where BOTH parties have deleted
+        // If deleted_by_sender = 1 AND deleted_by_receiver = 1, then the message is gone for everyone.
+        $cleanupQuery = "DELETE FROM messages 
+                         WHERE (sender_id = :user_id AND receiver_id = :partner_id AND deleted_by_sender = 1 AND deleted_by_receiver = 1) 
+                         OR (sender_id = :partner_id AND receiver_id = :user_id AND deleted_by_sender = 1 AND deleted_by_receiver = 1)";
         
+        $cleanupStmt = $conn->prepare($cleanupQuery);
+        $cleanupStmt->bindParam(':user_id', $data->user_id);
+        $cleanupStmt->bindParam(':partner_id', $data->partner_id);
+        $cleanupStmt->execute();
+
         http_response_code(200);
         echo json_encode(["message" => "Conversation deleted successfully."]);
     } else {

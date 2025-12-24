@@ -36,7 +36,10 @@ if(
         exit;
     }
 
-    $query = "INSERT INTO messages SET sender_id = :sender_id, receiver_id = :receiver_id, content = :content";
+    // Reply desteği
+    $replyToId = !empty($data->reply_to_id) ? (int)$data->reply_to_id : null;
+    
+    $query = "INSERT INTO messages SET sender_id = :sender_id, receiver_id = :receiver_id, content = :content, reply_to_id = :reply_to_id";
     $stmt = $conn->prepare($query);
 
     // 3. Sanitization
@@ -45,6 +48,7 @@ if(
     $stmt->bindParam(':sender_id', $userId);
     $stmt->bindParam(':receiver_id', $data->receiver_id);
     $stmt->bindParam(':content', $data->content);
+    $stmt->bindParam(':reply_to_id', $replyToId, PDO::PARAM_INT);
 
     if($stmt->execute()){
         // 4. Auto-accept permission: Eğer ben mesaj atıyorsam, karşı tarafın bana mesaj atmasını kabul etmişimdir.

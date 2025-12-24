@@ -469,17 +469,19 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                             source={{ uri: post.original_post.user.avatar_url || 'https://via.placeholder.com/50' }}
                             style={styles.embeddedAvatar}
                         />
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <View style={{ flex: 1 }}>
                             <Text style={styles.embeddedName} numberOfLines={1}>
                                 {post.original_post.user.full_name || post.original_post.user.username}
                             </Text>
-                            <Text style={[styles.embeddedUsername, { marginLeft: 4 }]} numberOfLines={1}>
-                                @{post.original_post.user.username}
-                            </Text>
-                            <Text style={[styles.dot, { marginHorizontal: 4 }]}>•</Text>
-                            <Text style={styles.embeddedUsername}>
-                                {formatRelativeTime(post.original_post.created_at)}
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                                <Text style={styles.embeddedUsername} numberOfLines={1}>
+                                    @{post.original_post.user.username}
+                                </Text>
+                                <Text style={[styles.dot, { marginHorizontal: 4 }]}>•</Text>
+                                <Text style={styles.embeddedUsername}>
+                                    {formatRelativeTime(post.original_post.created_at)}
+                                </Text>
+                            </View>
                         </View>
                     </TouchableOpacity>
 

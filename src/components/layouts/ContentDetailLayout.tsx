@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, Dimensions, Pressable, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
@@ -10,6 +10,7 @@ interface ContentDetailLayoutProps {
     title: string;
     image: string;
     subtitle?: string; // e.g., Author, Director
+    onSubtitlePress?: () => void;
     metaText?: string; // e.g., Year • Duration
     stats?: React.ReactNode; // Rating, Pages, etc.
     actions?: React.ReactNode; // Like, Message buttons
@@ -23,6 +24,7 @@ export const ContentDetailLayout: React.FC<ContentDetailLayoutProps> = ({
     title,
     image,
     subtitle,
+    onSubtitlePress,
     metaText,
     stats,
     actions,
@@ -78,6 +80,9 @@ export const ContentDetailLayout: React.FC<ContentDetailLayoutProps> = ({
             marginTop: -40, // Overlap
             paddingHorizontal: 20,
             paddingBottom: 20,
+            position: 'relative',
+            zIndex: 20,
+            elevation: 20, // Critical for Android touch events
         },
         infoCard: {
             backgroundColor: theme.colors.surface,
@@ -166,7 +171,19 @@ export const ContentDetailLayout: React.FC<ContentDetailLayoutProps> = ({
                     <View style={styles.infoCard}>
                         <Text style={styles.title}>{title}</Text>
 
-                        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                        {subtitle && (
+                            onSubtitlePress ? (
+                                <Pressable
+                                    onPress={onSubtitlePress}
+                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                    style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
+                                >
+                                    <Text style={[styles.subtitle, { textDecorationLine: 'underline' }]}>{subtitle}</Text>
+                                </Pressable>
+                            ) : (
+                                <Text style={styles.subtitle}>{subtitle}</Text>
+                            )
+                        )}
                         {metaText && <Text style={styles.metaText}>{metaText}</Text>}
 
                         {stats && (

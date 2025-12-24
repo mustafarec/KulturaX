@@ -42,10 +42,16 @@ export const SettingsScreen = () => {
     const [loggingOut, setLoggingOut] = useState(false);
     const [isPrivateAccount, setIsPrivateAccount] = useState(user?.is_private || false);
 
+    const { updateUser } = useAuth();
+
     const handlePrivacyToggle = async (value: boolean) => {
         setIsPrivateAccount(value);
         try {
             await userService.updatePrivacy(value);
+            // Update AuthContext and AsyncStorage so the setting persists
+            if (user) {
+                await updateUser({ ...user, is_private: value });
+            }
             Toast.show({
                 type: 'success',
                 text1: 'Kaydedildi',
@@ -147,7 +153,7 @@ export const SettingsScreen = () => {
             padding: 4,
         },
         headerTitle: {
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: '700',
             color: theme.colors.text,
         },

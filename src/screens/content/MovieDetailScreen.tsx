@@ -559,6 +559,15 @@ export const MovieDetailScreen = () => {
                 title={movie.title}
                 image={posterUrl}
                 subtitle={director}
+                onSubtitlePress={() => {
+                    const directorInfo = movie.credits?.crew?.find((c: any) => c.job === 'Director');
+                    if (directorInfo) {
+                        (navigation as any).navigate('CreatorDetail', { id: directorInfo.id, name: directorInfo.name, type: 'person' });
+                    } else {
+                        console.log('Director info not found in credits', movie.credits);
+                        Alert.alert('Hata', 'Yönetmen bilgisi bulunamadı.');
+                    }
+                }}
                 metaText={movie.genres ? movie.genres.map((g: any) => g.name).join(', ') : ''}
                 stats={renderStats()}
                 actions={renderActions()}

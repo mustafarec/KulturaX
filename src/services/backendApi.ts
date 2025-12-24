@@ -364,6 +364,72 @@ export const messageService = {
         } catch (error: any) {
             throw error.response ? error.response.data : new Error('Network Error');
         }
+    },
+    // Typing indicator
+    setTyping: async (receiverId: number) => {
+        try {
+            const response = await backendApi.post('/messages/set_typing.php', { receiver_id: receiverId });
+            return response.data;
+        } catch (error: any) {
+            // Silently fail - typing indicator is not critical
+            console.log('Set typing failed', error);
+        }
+    },
+    getTyping: async (otherUserId: number) => {
+        try {
+            const response = await backendApi.get(`/messages/get_typing.php?other_user_id=${otherUserId}`);
+            return response.data;
+        } catch (error: any) {
+            return { is_typing: false };
+        }
+    },
+    // Emoji reactions
+    addReaction: async (messageId: number, emoji: string) => {
+        try {
+            const response = await backendApi.post('/messages/add_reaction.php', { message_id: messageId, emoji });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    removeReaction: async (messageId: number) => {
+        try {
+            const response = await backendApi.post('/messages/remove_reaction.php', { message_id: messageId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Edit message (15 dakika içinde)
+    editMessage: async (messageId: number, content: string) => {
+        try {
+            const response = await backendApi.post('/messages/edit.php', { message_id: messageId, content });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Unsend message (15 dakika içinde)
+    unsendMessage: async (messageId: number) => {
+        try {
+            const response = await backendApi.post('/messages/unsend.php', { message_id: messageId });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
+    },
+    // Send with reply
+    sendWithReply: async (receiverId: number, content: string, replyToId?: number) => {
+        try {
+            const response = await backendApi.post('/messages/send.php', {
+                receiver_id: receiverId,
+                content,
+                reply_to_id: replyToId
+            });
+            return response.data;
+        } catch (error: any) {
+            throw error.response ? error.response.data : new Error('Network Error');
+        }
     }
 };
 

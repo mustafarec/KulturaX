@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/backendApi';
 import { ArrowLeft, UserX } from 'lucide-react-native';
@@ -10,6 +11,7 @@ import Toast from 'react-native-toast-message';
 export const BlockedUsersScreen = () => {
     const { theme } = useTheme();
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
     const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [unblockDialogVisible, setUnblockDialogVisible] = useState(false);
@@ -23,7 +25,9 @@ export const BlockedUsersScreen = () => {
         header: {
             flexDirection: 'row',
             alignItems: 'center',
-            padding: 20,
+            paddingTop: insets.top + 10,
+            paddingBottom: 16,
+            paddingHorizontal: 20,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
             backgroundColor: theme.colors.surface,

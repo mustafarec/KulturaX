@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, Share, Dimensions, LayoutAnimation, UIManager } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { postService, userService, libraryService, reviewService, interactionService } from '../../services/backendApi';
+import { postService, userService, libraryService, reviewService, interactionService, messageService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
 import { PostCard } from '../../components/PostCard';
 import { QuoteCard } from '../../components/QuoteCard';
@@ -10,7 +10,7 @@ import { ReviewCard } from '../../components/ReviewCard';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import Toast from 'react-native-toast-message';
 import { ThemedDialog } from '../../components/ThemedDialog';
-import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock, Ban, UserMinus, Star } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
@@ -91,25 +91,38 @@ export const OtherProfileScreen = () => {
         },
         dropdownMenu: {
             position: 'absolute',
-            top: 45,
+            top: 48,
             right: 0,
             backgroundColor: theme.colors.surface,
             borderRadius: 12,
-            padding: 8,
-            minWidth: 120,
+            paddingVertical: 6,
+            paddingHorizontal: 4,
+            minWidth: 170,
             zIndex: 100,
-            ...theme.shadows.default,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 8,
             borderWidth: 1,
             borderColor: theme.colors.border,
         },
         menuItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
             paddingVertical: 12,
-            paddingHorizontal: 16,
+            paddingHorizontal: 14,
+            borderRadius: 8,
+        },
+        menuItemText: {
+            fontSize: 15,
+            color: theme.colors.text,
+            fontWeight: '500',
         },
         menuItemTextDestructive: {
             color: theme.colors.error || '#FF3B30',
-            fontSize: 16,
-            fontWeight: '600',
+            fontSize: 15,
+            fontWeight: '500',
         },
 
         profileHeaderContent: {
@@ -157,7 +170,7 @@ export const OtherProfileScreen = () => {
             marginBottom: 4,
         },
         name: {
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: '800',
             color: theme.colors.text,
         },
@@ -227,24 +240,67 @@ export const OtherProfileScreen = () => {
         contentArea: {
             minHeight: 200,
         },
-        gridContainer: {
+        listContainer: {
+            paddingHorizontal: 16,
+            paddingBottom: 20,
+        },
+        listItem: {
             flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 8,
-            padding: 16,
-        },
-        gridItem: {
-            width: (Dimensions.get('window').width - 32 - 16) / 3, // 3 columns, minus padding and gap
-            aspectRatio: 2 / 3,
-            borderRadius: 8,
-            overflow: 'hidden',
-            backgroundColor: theme.colors.surface, // Fixed dark mode issue
             marginBottom: 8,
+            paddingVertical: 8,
+            alignItems: 'center',
+            borderBottomWidth: 1, // Using simple 1 or StyleSheet.hairlineWidth if imported, but 1 is safe
+            borderBottomColor: 'rgba(255,255,255,0.1)',
         },
-        gridImage: {
+        listPosterContainer: {
+            width: 48,
+            height: 72,
+            borderRadius: 6,
+            overflow: 'hidden',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            marginRight: 14,
+        },
+        listPoster: {
             width: '100%',
             height: '100%',
-            resizeMode: 'cover',
+        },
+        listInfo: {
+            flex: 1,
+            height: 72,
+            justifyContent: 'space-between',
+            paddingVertical: 2,
+        },
+        listTitle: {
+            fontSize: 15,
+            fontWeight: '700',
+            marginBottom: 2,
+        },
+        listSubtitle: {
+            fontSize: 13,
+        },
+        listMetaRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+        },
+        listStatusBadge: {
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 6,
+        },
+        listStatusText: {
+            fontSize: 11,
+            fontWeight: '600',
+        },
+        listRating: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+        },
+        listRatingText: {
+            fontSize: 12,
+            fontWeight: '700',
+            color: '#F59E0B',
         },
         readingBadge: {
             position: 'absolute',
@@ -302,11 +358,7 @@ export const OtherProfileScreen = () => {
             borderRadius: 8,
             alignSelf: 'flex-start',
         },
-        statusText: {
-            color: '#FFFFFF',
-            fontSize: 11,
-            fontWeight: 'bold',
-        },
+
         libraryItemDate: {
             fontSize: 11,
             color: theme.colors.textSecondary,
@@ -592,12 +644,28 @@ export const OtherProfileScreen = () => {
         }
     }, [userId, currentUser, activeTab]);
 
-    const handleMessagePress = () => {
+    const handleMessagePress = async () => {
         if (!profile) return;
-        (navigation as any).navigate('Chat', {
+
+        // Try to get unread count from inbox
+        let unreadCount = 0;
+        try {
+            const inboxData = await messageService.getInbox('inbox');
+            if (Array.isArray(inboxData)) {
+                const conversation = inboxData.find((c: any) => c.chat_partner_id === profile.id);
+                if (conversation) {
+                    unreadCount = parseInt(String(conversation.unread_count)) || 0;
+                }
+            }
+        } catch (error) {
+            console.log('Could not fetch unread count:', error);
+        }
+
+        (navigation as any).navigate('ChatDetail', {
             otherUserId: profile.id,
-            otherUserName: profile.username,
-            avatarUrl: profile.avatar_url
+            username: profile.username,
+            avatarUrl: profile.avatar_url,
+            unreadCount: unreadCount
         });
     };
 
@@ -622,13 +690,7 @@ export const OtherProfileScreen = () => {
     };
 
     const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
-        if (type === 'book') {
-            (navigation as any).navigate('BookDetail', { bookId: id });
-        } else if (type === 'movie') {
-            (navigation as any).navigate('MovieDetail', { movieId: parseInt(id, 10) });
-        } else if (type === 'music') {
-            (navigation as any).navigate('ContentDetail', { id: id, type: 'music' });
-        }
+        (navigation as any).navigate('ContentDetail', { id: id, type: type });
     };
 
     // Interaction logic moved to PostCard internal hook
@@ -671,10 +733,26 @@ export const OtherProfileScreen = () => {
                 return type === 'movie' ? 'İzleniyor' : type === 'music' ? 'Dinleniyor' : 'Okunuyor';
             case 'want_to_read':
                 return type === 'movie' ? 'İzlenecek' : type === 'music' ? 'Dinlenecek' : 'Okunacak';
+            case 'want_to_watch':
+                return 'İzlenecek';
+            case 'want_to_listen':
+                return 'Dinlenecek';
             case 'dropped':
                 return 'Yarım Bırakıldı';
             default:
                 return status;
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'read': return '#10B981'; // green
+            case 'reading': return '#3B82F6'; // blue
+            case 'want_to_read':
+            case 'want_to_watch':
+            case 'want_to_listen': return '#F59E0B'; // amber
+            case 'dropped': return '#EF4444'; // red
+            default: return '#6B7280'; // gray
         }
     };
 
@@ -839,25 +917,57 @@ export const OtherProfileScreen = () => {
                 }
 
                 return (
-                    <View style={styles.gridContainer}>
+                    <View style={styles.listContainer}>
                         {filteredItems.map((item) => (
                             <TouchableOpacity
                                 key={item.id}
-                                style={styles.gridItem}
+                                style={styles.listItem}
                                 onPress={() => handleContentPress(item.content_type || 'book', item.content_id)}
+                                activeOpacity={0.7}
                             >
-                                {item.image_url ? (
-                                    <Image source={{ uri: item.image_url }} style={styles.gridImage} resizeMode="cover" />
-                                ) : (
-                                    <View style={[styles.gridImage, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
-                                        {item.content_type === 'movie' ? <Film size={24} color={theme.colors.textSecondary} /> : item.content_type === 'music' ? <Music size={24} color={theme.colors.textSecondary} /> : <BookOpen size={24} color={theme.colors.textSecondary} />}
+                                {/* Start: Content Poster */}
+                                <View style={styles.listPosterContainer}>
+                                    {item.image_url ? (
+                                        <Image source={{ uri: item.image_url }} style={styles.listPoster} resizeMode="cover" />
+                                    ) : (
+                                        <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                                            {item.content_type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : item.content_type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
+                                        </View>
+                                    )}
+                                </View>
+                                {/* End: Content Poster */}
+
+                                {/* Start: Info Column */}
+                                <View style={styles.listInfo}>
+                                    <View>
+                                        <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                                            {item.content_title || 'Başlık Yok'}
+                                        </Text>
+                                        {/* Subtitle: Author/Artist/Director - ONLY if available */}
+                                        {(item.content_subtitle || item.creator) && (
+                                            <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                                                {item.content_subtitle || item.creator}
+                                            </Text>
+                                        )}
                                     </View>
-                                )}
-                                {item.status === 'reading' && (
-                                    <View style={styles.readingBadge}>
-                                        <BookOpen size={10} color="#FFF" />
+
+                                    <View style={styles.listMetaRow}>
+                                        {item.status && (
+                                            <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                                                <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
+                                                    {getStatusText(item.status, item.content_type)}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        {/* Rating if available */}
+                                        {item.rating > 0 && (
+                                            <View style={styles.listRating}>
+                                                <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                                                <Text style={styles.listRatingText}>{item.rating}</Text>
+                                            </View>
+                                        )}
                                     </View>
-                                )}
+                                </View>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -915,37 +1025,41 @@ export const OtherProfileScreen = () => {
                         {/* Mesaj Gönder Butonu */}
                         {currentUser && currentUser.id !== profile.id && (
                             <>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.iconBtn,
-                                        {
-                                            backgroundColor: isFollowing
-                                                ? theme.colors.surface
-                                                : requestStatus === 'pending'
+                                {!isFollowing && (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.iconBtn,
+                                            {
+                                                backgroundColor: requestStatus === 'pending'
                                                     ? theme.colors.secondary
                                                     : theme.colors.primary,
-                                            borderColor: isFollowing ? theme.colors.border : 'transparent',
-                                            paddingHorizontal: 20,
-                                        }
-                                    ]}
-                                    onPress={handleFollow}
-                                >
-                                    <Text style={{
-                                        color: isFollowing ? theme.colors.text : '#FFF',
-                                        fontWeight: '600'
-                                    }}>
-                                        {isFollowing
-                                            ? 'Takip Ediliyor'
-                                            : requestStatus === 'pending'
+                                                borderColor: 'transparent',
+                                                paddingHorizontal: 16,
+                                                minWidth: 120,
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                            }
+                                        ]}
+                                        onPress={handleFollow}
+                                    >
+                                        <Text style={{
+                                            color: '#FFF',
+                                            fontWeight: '600'
+                                        }}>
+                                            {requestStatus === 'pending'
                                                 ? 'İstek Gönderildi'
                                                 : profile?.is_private
                                                     ? 'İstek Gönder'
                                                     : 'Takip Et'}
-                                    </Text>
-                                </TouchableOpacity>
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 <TouchableOpacity
-                                    style={styles.iconBtn}
+                                    style={[
+                                        styles.iconBtn,
+                                        isFollowing && { paddingHorizontal: 40 }
+                                    ]}
                                     onPress={handleMessagePress}
                                 >
                                     <MessageCircle size={20} color={theme.colors.primary} />
@@ -953,10 +1067,7 @@ export const OtherProfileScreen = () => {
                             </>
                         )}
 
-                        {/* Paylaş Butonu */}
-                        <TouchableOpacity style={styles.iconBtn} onPress={handleShareProfile}>
-                            <Share2 size={20} color={theme.colors.primary} />
-                        </TouchableOpacity>
+                        {/* 3 Nokta Menü */}
                         <View style={{ position: 'relative', zIndex: 100 }}>
                             <TouchableOpacity
                                 style={styles.iconBtn}
@@ -966,6 +1077,28 @@ export const OtherProfileScreen = () => {
                             </TouchableOpacity>
                             {menuVisible && (
                                 <View style={styles.dropdownMenu}>
+                                    {isFollowing && (
+                                        <TouchableOpacity
+                                            style={styles.menuItem}
+                                            onPress={() => {
+                                                setMenuVisible(false);
+                                                handleFollow();
+                                            }}
+                                        >
+                                            <UserMinus size={16} color={theme.colors.text} style={{ marginRight: 8 }} />
+                                            <Text style={styles.menuItemText}>Takibi Bırak</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                        style={styles.menuItem}
+                                        onPress={() => {
+                                            setMenuVisible(false);
+                                            handleShareProfile();
+                                        }}
+                                    >
+                                        <Share2 size={16} color={theme.colors.text} style={{ marginRight: 8 }} />
+                                        <Text style={styles.menuItemText}>Profili Paylaş</Text>
+                                    </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.menuItem}
                                         onPress={() => {
@@ -973,6 +1106,7 @@ export const OtherProfileScreen = () => {
                                             setBlockDialogVisible(true);
                                         }}
                                     >
+                                        <Ban size={16} color={theme.colors.error} style={{ marginRight: 8 }} />
                                         <Text style={styles.menuItemTextDestructive}>Engelle</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -1016,7 +1150,7 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takipçi</Text>
                             </View>
                             <Text
-                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                 adjustsFontSizeToFit
                                 numberOfLines={1}
                             >{profile.follower_count || 0}</Text>
@@ -1030,7 +1164,7 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takip</Text>
                             </View>
                             <Text
-                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                 adjustsFontSizeToFit
                                 numberOfLines={1}
                             >{profile.following_count || 0}</Text>
@@ -1041,7 +1175,7 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Gönderi</Text>
                             </View>
                             <Text
-                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                 adjustsFontSizeToFit
                                 numberOfLines={1}
                             >{userPosts.length || 0}</Text>
@@ -1056,7 +1190,7 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Kitap</Text>
                             </View>
                             <Text
-                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                 adjustsFontSizeToFit
                                 numberOfLines={1}
                             >
@@ -1069,7 +1203,7 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Film</Text>
                             </View>
                             <Text
-                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                 adjustsFontSizeToFit
                                 numberOfLines={1}
                             >
@@ -1082,7 +1216,7 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Etkinlik</Text>
                             </View>
                             <Text
-                                style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                 adjustsFontSizeToFit
                                 numberOfLines={1}
                             >

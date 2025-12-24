@@ -26,7 +26,7 @@ try {
                 m.content as last_message,
                 m.created_at as last_message_time,
                 m.sender_id as last_message_sender_id,
-                (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = :user_id AND is_read = 0) as unread_count
+                (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = :user_id AND is_read = 0 AND deleted_by_receiver = 0) as unread_count
             FROM users u
             JOIN (
                 SELECT 
@@ -36,7 +36,10 @@ try {
                     END as partner_id,
                     MAX(id) as max_msg_id
                 FROM messages
-                WHERE sender_id = :user_id OR receiver_id = :user_id
+                WHERE 
+                    (sender_id = :user_id AND deleted_by_sender = 0)
+                    OR 
+                    (receiver_id = :user_id AND deleted_by_receiver = 0)
                 GROUP BY partner_id
             ) latest ON u.id = latest.partner_id
             JOIN messages m ON m.id = latest.max_msg_id
@@ -62,7 +65,7 @@ try {
                 m.content as last_message,
                 m.created_at as last_message_time,
                 m.sender_id as last_message_sender_id,
-                (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = :user_id AND is_read = 0) as unread_count
+                (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = :user_id AND is_read = 0 AND deleted_by_receiver = 0) as unread_count
             FROM users u
             JOIN (
                 SELECT 
@@ -72,7 +75,10 @@ try {
                     END as partner_id,
                     MAX(id) as max_msg_id
                 FROM messages
-                WHERE sender_id = :user_id OR receiver_id = :user_id
+                WHERE 
+                    (sender_id = :user_id AND deleted_by_sender = 0)
+                    OR 
+                    (receiver_id = :user_id AND deleted_by_receiver = 0)
                 GROUP BY partner_id
             ) latest ON u.id = latest.partner_id
             JOIN messages m ON m.id = latest.max_msg_id

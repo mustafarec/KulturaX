@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Trash2, ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,6 +22,7 @@ interface Preference {
 export const FeedPreferencesScreen = () => {
     const { theme } = useTheme();
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
     const [preferences, setPreferences] = useState<Preference[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'hidden' | 'prioritized'>('hidden');
@@ -91,7 +93,9 @@ export const FeedPreferencesScreen = () => {
             backgroundColor: theme.colors.background,
         },
         header: {
-            padding: 16,
+            paddingTop: insets.top + 10,
+            paddingBottom: 16,
+            paddingHorizontal: 20,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
             flexDirection: 'row',

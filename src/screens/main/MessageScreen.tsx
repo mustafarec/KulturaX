@@ -8,6 +8,7 @@ import { theme } from '../../theme/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { messageService } from '../../services/backendApi';
+import { ThemedDialog } from '../../components/ThemedDialog';
 
 interface Conversation {
     chat_partner_id: number;
@@ -27,6 +28,9 @@ export const MessageScreen = () => {
 
     const [isLoadingInbox, setIsLoadingInbox] = useState(true);
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [conversationToDelete, setConversationToDelete] = useState<{ partnerId: number, type: 'inbox' | 'requests' } | null>(null);
 
     const [refreshing, setRefreshing] = useState(false);
 
@@ -72,7 +76,7 @@ export const MessageScreen = () => {
             paddingBottom: 10,
         },
         headerTitle: {
-            fontSize: 28,
+            fontSize: 23,
             fontWeight: '700',
             color: theme.colors.text,
             marginBottom: 16,
@@ -331,39 +335,36 @@ export const MessageScreen = () => {
     };
 
     const handleDelete = (partnerId: number, type: 'inbox' | 'requests') => {
-        Alert.alert(
-            "Sohbeti Sil",
-            "Bu sohbeti ve tüm mesajlarını silmek istediğine emin misin?",
-            [
-                { text: "Vazgeç", style: "cancel" },
-                {
-                    text: "Sil",
-                    style: "destructive",
-                    onPress: async () => {
-                        // Optimistic update
-                        if (type === 'inbox') {
-                            const prev = [...inboxConversations];
-                            setInboxConversations(p => p.filter(c => c.chat_partner_id !== partnerId));
-                            try {
-                                if (user) await messageService.deleteConversation(user.id, partnerId);
-                            } catch (error) {
-                                console.error('Failed to delete conversation:', error);
-                                setInboxConversations(prev);
-                            }
-                        } else {
-                            const prev = [...requestsConversations];
-                            setRequestsConversations(p => p.filter(c => c.chat_partner_id !== partnerId));
-                            try {
-                                if (user) await messageService.deleteConversation(user.id, partnerId);
-                            } catch (error) {
-                                console.error('Failed to delete conversation:', error);
-                                setRequestsConversations(prev);
-                            }
-                        }
-                    }
-                }
-            ]
-        );
+        setConversationToDelete({ partnerId, type });
+        setDeleteDialogVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!conversationToDelete) return;
+
+        const { partnerId, type } = conversationToDelete;
+        setDeleteDialogVisible(false); // Close immediately for optimistic UI
+
+        if (type === 'inbox') {
+            const prev = [...inboxConversations];
+            setInboxConversations(p => p.filter(c => c.chat_partner_id !== partnerId));
+            try {
+                if (user) await messageService.deleteConversation(user.id, partnerId);
+            } catch (error) {
+                console.error('Failed to delete conversation:', error);
+                setInboxConversations(prev);
+            }
+        } else {
+            const prev = [...requestsConversations];
+            setRequestsConversations(p => p.filter(c => c.chat_partner_id !== partnerId));
+            try {
+                if (user) await messageService.deleteConversation(user.id, partnerId);
+            } catch (error) {
+                console.error('Failed to delete conversation:', error);
+                setRequestsConversations(prev);
+            }
+        }
+        setConversationToDelete(null);
     };
 
     const renderRightActions = (progress: any, dragX: any, partnerId: number, type: 'inbox' | 'requests') => {
@@ -434,7 +435,8 @@ export const MessageScreen = () => {
                             otherUserId: item.chat_partner_id,
                             username: item.username,
                             avatarUrl: item.avatar_url,
-                            isRequest: type === 'requests'
+                            isRequest: type === 'requests',
+                            unreadCount: unreadNum
                         })}
                     >
                         <View style={styles.avatarContainer}>
@@ -539,7 +541,26 @@ export const MessageScreen = () => {
                     />
                 </View>
             </Animated.View>
-        </View>
+
+            <ThemedDialog
+                visible={deleteDialogVisible}
+                title="Sohbeti Sil"
+                message="Bu sohbeti ve tüm mesajlarını silmek istediğine emin misin?"
+                actions={[
+                    {
+                        text: 'Vazgeç',
+                        style: 'cancel',
+                        onPress: () => setDeleteDialogVisible(false),
+                    },
+                    {
+                        text: 'Sil',
+                        style: 'destructive',
+                        onPress: confirmDelete,
+                    }
+                ]}
+                onClose={() => setDeleteDialogVisible(false)}
+            />
+        </View >
     );
 };
 

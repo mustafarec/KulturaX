@@ -283,7 +283,7 @@ export const NotificationScreen = () => {
             marginBottom: 4,
         },
         headerTitle: {
-            fontSize: 28,
+            fontSize: 23,
             fontWeight: '700',
             color: theme.colors.text,
             fontFamily: Platform.OS === 'ios' ? 'Playfair Display' : 'serif',

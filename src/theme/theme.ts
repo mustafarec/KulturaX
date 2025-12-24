@@ -58,11 +58,13 @@ export const lightTheme = {
         }
     },
     typography: {
-        h1: { fontSize: 32, fontWeight: '800', letterSpacing: -1, fontFamily: 'PlayfairDisplay-Bold' } as const,
-        h2: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5, fontFamily: 'PlayfairDisplay-Bold' } as const,
-        h3: { fontSize: 20, fontWeight: '600', fontFamily: 'PlayfairDisplay-Bold' } as const,
-        body: { fontSize: 16, lineHeight: 24, fontFamily: 'Roboto-Regular' } as const,
-        caption: { fontSize: 12, color: '#6B5D4F', fontFamily: 'Roboto-Regular' } as const,
+        h1: { fontSize: 23, fontWeight: '800', letterSpacing: -0.5, fontFamily: 'PlayfairDisplay-Bold' } as const,
+        h2: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3, fontFamily: 'PlayfairDisplay-Bold' } as const,
+        h3: { fontSize: 17, fontWeight: '600', fontFamily: 'PlayfairDisplay-Bold' } as const,
+        body: { fontSize: 15, lineHeight: 20, fontFamily: 'Roboto-Regular' } as const,
+        bodyLarge: { fontSize: 17, lineHeight: 22, fontFamily: 'Roboto-Regular' } as const,
+        caption: { fontSize: 13, color: '#6B5D4F', fontFamily: 'Roboto-Regular' } as const,
+        small: { fontSize: 12, lineHeight: 16, fontFamily: 'Roboto-Regular' } as const,
     },
     dark: false,
 };

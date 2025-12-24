@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, Platform, UIManager, RefreshControl, ActivityIndicator } from 'react-native';
-// Removed unused imports LayoutAnimation, Linking, FlatList for now to keep it clean if not used
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { postService, libraryService, userService, reviewService, interactionService } from '../../services/backendApi';
 import { PostCard } from '../../components/PostCard';
-import { useNavigation } from '@react-navigation/native';
-import { Settings, Share2, Camera, MoreVertical, MapPin, Link, Calendar, Users, UserPlus, BookOpen, Film, Music, Crown, Ghost, Package, User, MessageSquare } from 'lucide-react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Avatar } from '../../components/ui/Avatar';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
+import LinearGradient from 'react-native-linear-gradient';
+import { Share2, MoreVertical, Film, BookOpen, Heart, MessageCircle, Bookmark, Settings, Repeat, Music, Ghost, Camera, Crown, MapPin, Link, Calendar, Users, UserPlus, MessageSquare, Package, Star } from 'lucide-react-native';
+import { postService, userService, libraryService, reviewService, interactionService } from '../../services/backendApi';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
-import Toast from 'react-native-toast-message';
+import { usePostInteractions } from '../../hooks/usePostInteractions';
 import ImagePicker from 'react-native-image-crop-picker';
-import Share from 'react-native-share';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
+import { ShareCardModal } from '../../components/ShareCardModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -58,17 +60,20 @@ export const ProfileScreen = () => {
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [profileMenuVisible, setProfileMenuVisible] = useState(false);
+    const [shareOptionsVisible, setShareOptionsVisible] = useState(false);
+    const [shareCardVisible, setShareCardVisible] = useState(false);
+    const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
 
     // Mock Banner if not present, and Profile Image
     const headerImage = React.useMemo(() =>
         user?.header_image_url
-            ? `${user.header_image_url}?t=${new Date().getTime()}`
+            ? `${user.header_image_url}?t = ${new Date().getTime()} `
             : 'https://images.unsplash.com/photo-1665059691261-daa5bacdf826?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYXJrJTIwYWNhZGVtaWElMjBsaWJyYXJ5JTIwYm9va3MlMjB2aW50YWdlfGVufDF8fHx8MTc2NjA2NTU5Mnww&ixlib=rb-4.1.0&q=80&w=1080',
         [user?.header_image_url, user?.avatar_url, user?.updated_at, user]); // Depend on user object changes
 
     const profileImage = React.useMemo(() =>
         user?.avatar_url
-            ? `${user.avatar_url}?t=${new Date().getTime()}`
+            ? `${user.avatar_url}?t = ${new Date().getTime()} `
             : 'https://images.unsplash.com/photo-1649589244330-09ca58e4fa64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxwb3J0cmFpdCUyMHByb2Zlc3Npb25uYWwlMjB3b21hbnxlbnwxfHx8fDE3NjU5NzA5MTR8MHw&ixlib=rb-4.1.0&q=80&w=1080',
         [user?.avatar_url, user?.updated_at, user]);
 
@@ -208,13 +213,7 @@ export const ProfileScreen = () => {
     }, [libraryItems]);
 
     const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
-        if (type === 'book') {
-            (navigation as any).navigate('BookDetail', { bookId: id });
-        } else if (type === 'movie') {
-            (navigation as any).navigate('MovieDetail', { movieId: parseInt(id, 10) });
-        } else if (type === 'music') {
-            (navigation as any).navigate('ContentDetail', { id: id, type: 'music' });
-        }
+        (navigation as any).navigate('ContentDetail', { id: id, type: type });
     };
 
     const handleOptionsPress = React.useCallback((item: any, position: { x: number; y: number; width: number; height: number }) => {
@@ -343,20 +342,25 @@ export const ProfileScreen = () => {
         }
     };
 
-    const handleShareProfile = async () => {
-        const shareOptions = {
-            title: 'KültüraX Profilim',
-            message: `Merhaba, KültüraX profilime göz at: @${user?.username}`,
-            // In a real app, this would be a deep link. For now, we share a generic text or mock link.
-            url: `https://kulturax.app/u/${user?.username}`,
-        };
-        try {
-            await Share.open(shareOptions);
-        } catch (error) {
-            console.log('Share error:', error);
-            // Fallback for some devices/situations
-            // Share.share({ message: shareOptions.message, url: shareOptions.url });
+    const handleShareProfile = () => {
+        setSelectedPostForShare(null); // Clear any selected post
+        setShareCardVisible(true); // Directly open share card
+    };
+
+    const handleShareDM = () => {
+        setShareOptionsVisible(false);
+        if (selectedPostForShare) {
+            // Navigate to DM with post share
+            (navigation as any).navigate('NewMessage', { sharedPost: selectedPostForShare });
+        } else {
+            // Navigate to DM with profile share
+            (navigation as any).navigate('NewMessage', { sharedProfile: user });
         }
+    };
+
+    const handleShareStory = () => {
+        setShareOptionsVisible(false);
+        setShareCardVisible(true);
     };
 
     const renderPosts = (currentTab: string) => {
@@ -404,13 +408,9 @@ export const ProfileScreen = () => {
                             const targetId = post.type === 'comment' && post.reply_to_post_id ? post.reply_to_post_id : post.id;
                             (navigation as any).navigate('PostDetail', { postId: targetId, autoFocusComment: true });
                         }}
-                        onShare={async () => {
-                            try {
-                                await Share.open({
-                                    message: `KültüraX'ta bu gönderiye bak: ${post.content || 'İçerik'}`,
-                                    url: `https://kulturax.app/p/${post.id}`
-                                });
-                            } catch (e) { }
+                        onShare={() => {
+                            setSelectedPostForShare(post);
+                            setShareOptionsVisible(true);
                         }}
                         onUpdatePost={(updater) => {
                             setUserPosts(prev => prev.map(updater));
@@ -436,13 +436,9 @@ export const ProfileScreen = () => {
                     onOptions={(pos) => handleOptionsPress(post, pos)}
                     onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
                     onComment={() => (navigation as any).navigate('PostDetail', { postId: post.id, autoFocusComment: true })}
-                    onShare={async () => {
-                        try {
-                            await Share.open({
-                                message: `KültüraX'ta bu gönderiye bak: ${post.content || 'İçerik'}`,
-                                url: `https://kulturax.app/p/${post.id}`
-                            });
-                        } catch (e) { }
+                    onShare={() => {
+                        setSelectedPostForShare(post);
+                        setShareOptionsVisible(true);
                     }}
                     onUpdatePost={(updater) => setUserPosts(prev => prev.map(updater))}
                 />
@@ -452,31 +448,91 @@ export const ProfileScreen = () => {
         );
     };
 
+    const getStatusLabel = (status: string, type: string) => {
+        switch (status) {
+            case 'read': return type === 'movie' ? 'İzledim' : type === 'music' ? 'Dinledim' : 'Okudum';
+            case 'reading': return type === 'movie' ? 'İzliyorum' : type === 'music' ? 'Dinliyorum' : 'Okuyorum';
+            case 'want_to_read': return type === 'movie' ? 'İzleyeceğim' : type === 'music' ? 'Dinleyeceğim' : 'Okuyacağım';
+            case 'want_to_watch': return 'İzleyeceğim';
+            case 'want_to_listen': return 'Dinleyeceğim';
+            case 'dropped': return 'Bıraktım';
+            default: return '';
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'read': return '#10B981'; // green
+            case 'reading': return '#3B82F6'; // blue
+            case 'want_to_read':
+            case 'want_to_watch':
+            case 'want_to_listen': return '#F59E0B'; // amber
+            case 'dropped': return '#EF4444'; // red
+            default: return '#6B7280'; // gray
+        }
+    };
+
     const renderGridContent = (type: 'book' | 'movie' | 'music') => {
         const filtered = libraryItems.filter(item => item.content_type === type);
 
         if (filtered.length === 0) return <EmptyState icon={Ghost} text="Henüz içerik yok." />;
 
         return (
-            <View style={styles.gridContainer}>
+            <View style={styles.listContainer}>
                 {filtered.map((item) => (
                     <TouchableOpacity
                         key={item.id}
-                        style={styles.gridItem}
+                        style={styles.listItem}
                         onPress={() => handleContentPress(item.content_type, item.content_id)}
+                        activeOpacity={0.7}
                     >
-                        {item.image_url ? (
-                            <Image source={{ uri: item.image_url }} style={styles.gridImage} resizeMode="cover" />
-                        ) : (
-                            <View style={[styles.gridImage, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
-                                {type === 'movie' ? <Film size={24} color={theme.colors.textSecondary} /> : type === 'music' ? <Music size={24} color={theme.colors.textSecondary} /> : <BookOpen size={24} color={theme.colors.textSecondary} />}
+                        {/* Start: Content Poster */}
+                        <View style={styles.listPosterContainer}>
+                            {item.image_url ? (
+                                <Image source={{ uri: item.image_url }} style={styles.listPoster} resizeMode="cover" />
+                            ) : (
+                                <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                                    {type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
+                                </View>
+                            )}
+                        </View>
+                        {/* End: Content Poster */}
+
+                        {/* Start: Info Column */}
+                        <View style={styles.listInfo}>
+                            <View>
+                                <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                                    {item.content_title || 'Başlık Yok'}
+                                </Text>
+                                {/* Subtitle: Author/Artist/Director - ONLY if available */}
+                                {(item.content_subtitle || item.creator) && (
+                                    <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                                        {item.content_subtitle || item.creator}
+                                    </Text>
+                                )}
                             </View>
-                        )}
-                        {item.status === 'reading' && (
-                            <View style={styles.readingBadge}>
-                                <BookOpen size={10} color="#FFF" />
+
+                            <View style={styles.listMetaRow}>
+                                {item.status && (
+                                    <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                                        <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
+                                            {getStatusLabel(item.status, type)}
+                                        </Text>
+                                    </View>
+                                )}
+                                {/* Rating if available */}
+                                {item.rating > 0 && (
+                                    <View style={styles.listRating}>
+                                        <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                                        <Text style={styles.listRatingText}>{item.rating}</Text>
+                                    </View>
+                                )}
                             </View>
-                        )}
+                        </View>
+                        {/* End: Info Column */}
+
+                        {/* Optional: Arrow or Action Icon */}
+                        {/* <ChevronRight size={16} color={theme.colors.border} /> */}
                     </TouchableOpacity>
                 ))}
             </View>
@@ -607,7 +663,7 @@ export const ProfileScreen = () => {
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takipçi</Text>
                                 </View>
                                 <Text
-                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                     adjustsFontSizeToFit
                                     numberOfLines={1}
                                 >{stats.follower_count || 0}</Text>
@@ -621,7 +677,7 @@ export const ProfileScreen = () => {
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takip</Text>
                                 </View>
                                 <Text
-                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                     adjustsFontSizeToFit
                                     numberOfLines={1}
                                 >{stats.following_count || 0}</Text>
@@ -632,7 +688,7 @@ export const ProfileScreen = () => {
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Gönderi</Text>
                                 </View>
                                 <Text
-                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                     adjustsFontSizeToFit
                                     numberOfLines={1}
                                 >{userPosts.length || 0}</Text>
@@ -647,7 +703,7 @@ export const ProfileScreen = () => {
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Kitap</Text>
                                 </View>
                                 <Text
-                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                     adjustsFontSizeToFit
                                     numberOfLines={1}
                                 >{stats.booksRead}</Text>
@@ -658,7 +714,7 @@ export const ProfileScreen = () => {
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Film</Text>
                                 </View>
                                 <Text
-                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                     adjustsFontSizeToFit
                                     numberOfLines={1}
                                 >{stats.moviesWatched}</Text>
@@ -669,7 +725,7 @@ export const ProfileScreen = () => {
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Etkinlik</Text>
                                 </View>
                                 <Text
-                                    style={{ fontSize: 20, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
                                     adjustsFontSizeToFit
                                     numberOfLines={1}
                                 >{stats.eventsCount}</Text>
@@ -679,7 +735,12 @@ export const ProfileScreen = () => {
                 </View>
 
                 {/* Tabs */}
-                <View style={[styles.tabContainer, { borderBottomColor: theme.colors.border }]}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={[styles.tabContainer, { borderBottomColor: theme.colors.border }]}
+                    contentContainerStyle={styles.tabContentContainer}
+                >
                     {['posts', 'replies', 'book', 'movie', 'music'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
@@ -696,7 +757,7 @@ export const ProfileScreen = () => {
                             </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
 
                 {/* Content Section */}
                 {/* Animated Content Wrapper */}
@@ -757,6 +818,35 @@ export const ProfileScreen = () => {
                     </View>
                 </TouchableOpacity>
             )}
+
+            <ShareOptionsSheet
+                visible={shareOptionsVisible}
+                onClose={() => setShareOptionsVisible(false)}
+                onSelectDM={handleShareDM}
+                onSelectStory={handleShareStory}
+            />
+
+            <ShareCardModal
+                visible={shareCardVisible}
+                onClose={() => setShareCardVisible(false)}
+                shareType={selectedPostForShare ? "post" : "profile"}
+                title={selectedPostForShare ? (selectedPostForShare.source || '') : (user?.full_name || user?.username || '')}
+                username={user?.username || ''}
+                bio={user?.bio || ''}
+                coverUrl={selectedPostForShare ? selectedPostForShare.image_url : user?.avatar_url}
+                followerCount={stats.follower_count}
+                postCount={userPosts.length}
+                postContent={selectedPostForShare?.comment_text || selectedPostForShare?.content || ''}
+                postAuthor={selectedPostForShare?.user?.full_name || selectedPostForShare?.user?.username || ''}
+                postAuthorAvatar={selectedPostForShare?.user?.avatar_url}
+                quoteText={selectedPostForShare?.quote_text || ''}
+                contentType={selectedPostForShare?.content_type || 'book'}
+                isRepost={!!selectedPostForShare?.original_post_id}
+                originalPostContent={selectedPostForShare?.original_post?.content || ''}
+                originalPostAuthor={selectedPostForShare?.original_post?.user?.full_name || selectedPostForShare?.original_post?.user?.username || ''}
+                originalPostAuthorAvatar={selectedPostForShare?.original_post?.user?.avatar_url}
+                originalQuoteText={selectedPostForShare?.original_post?.quote_text || ''}
+            />
         </View >
     );
 };
@@ -858,7 +948,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     name: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
         // fontFamily: 'PlayfairDisplay-Bold', // Assuming font exists or fallback
     },
@@ -952,16 +1042,19 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     tabContainer: {
-        flexDirection: 'row',
         borderBottomWidth: 1,
         marginBottom: 16,
     },
+    tabContentContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+    },
     tabItem: {
-        flex: 1,
+        paddingHorizontal: 16,
         paddingVertical: 12,
-        alignItems: 'center',
         borderBottomWidth: 2,
         borderBottomColor: 'transparent',
+        marginRight: 8,
     },
     tabText: {
         fontSize: 14,
@@ -970,21 +1063,67 @@ const styles = StyleSheet.create({
     contentArea: {
         minHeight: 200,
     },
-    gridContainer: {
+    listContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 20,
+    },
+    listItem: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+        marginBottom: 8,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(255,255,255,0.1)', // Subtle separator
     },
-    gridItem: {
-        width: (SCREEN_WIDTH - 32 - 16) / 3, // 3 columns, minus padding
-        aspectRatio: 2 / 3,
-        borderRadius: 8,
+    listPosterContainer: {
+        width: 48,
+        height: 72,
+        borderRadius: 6,
         overflow: 'hidden',
-        backgroundColor: '#EEE',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        marginRight: 14,
     },
-    gridImage: {
+    listPoster: {
         width: '100%',
         height: '100%',
+    },
+    listInfo: {
+        flex: 1,
+        height: 72, // Match poster height for alignment
+        justifyContent: 'space-between',
+        paddingVertical: 2,
+    },
+    listTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    listSubtitle: {
+        fontSize: 13,
+    },
+    listMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    listStatusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    listStatusText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    listRating: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    listRatingText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#F59E0B',
     },
     readingBadge: {
         position: 'absolute',

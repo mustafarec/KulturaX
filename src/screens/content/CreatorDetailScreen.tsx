@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, FlatList, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Animated, StatusBar } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
@@ -19,21 +19,36 @@ export const CreatorDetailScreen = ({ route }: any) => {
             setIsLoading(true);
             try {
                 if (type === 'person') {
-                    const [personDetails, personCredits] = await Promise.all([
+                    const [personDetails, creditsData] = await Promise.all([
                         tmdbApi.getPersonDetails(id),
                         tmdbApi.getPersonCredits(id)
                     ]);
                     setDetails(personDetails);
 
-                    // Sadece yönetmenlik veya oyunculuk yaptığı popüler işleri alalım
-                    // Şimdilik cast (oyunculuk) ve crew (yönetmenlik) birleştirilebilir veya filtrelenebilir
-                    // Basitlik için cast kullanıyoruz, yönetmen ise crew'den çekmek gerekebilir
-                    // TMDB getPersonCredits cast ve crew döner.
-                    // Bizim tmdbApi.getPersonCredits sadece cast dönüyor şu an, onu düzeltmemiz gerekebilir.
-                    // Şimdilik cast varsayalım, ama yönetmen için crew lazım.
-                    // API servisini güncellemeden önce burayı cast olarak bırakıyorum, sonra düzeltirim.
+                    // Cast ve Crew (Yönetmen) verilerini birleştir
+                    const cast = creditsData.cast || [];
+                    const crew = creditsData.crew || [];
 
-                    const formattedWorks = personCredits.map((work: any) => ({
+                    // Sadece Yönetmen olanları al
+                    const directed = crew.filter((c: any) => c.job === 'Director');
+
+                    // Hepsini birleştir ve benzersiz yap
+                    const allWorks = [...directed, ...cast];
+
+                    // ID'ye göre unique yap
+                    const uniqueWorksMap = new Map();
+                    allWorks.forEach((work: any) => {
+                        if (!uniqueWorksMap.has(work.id)) {
+                            uniqueWorksMap.set(work.id, work);
+                        }
+                    });
+
+                    const uniqueWorks = Array.from(uniqueWorksMap.values());
+
+                    // Popülerliğe göre sorala (opsiyonel, genelde TMDB zaten sıralı verir ama garanti olsun)
+                    uniqueWorks.sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0));
+
+                    const formattedWorks = uniqueWorks.map((work: any) => ({
                         id: work.id.toString(),
                         title: work.title,
                         image: work.poster_path ? `https://image.tmdb.org/t/p/w500${work.poster_path}` : null,
@@ -182,12 +197,73 @@ export const CreatorDetailScreen = ({ route }: any) => {
         }
     };
 
-    if (isLoading) {
+    // Skeleton Loading Component
+    const SkeletonLoading = () => {
+        const opacity = React.useRef(new Animated.Value(0.3)).current;
+
+        React.useEffect(() => {
+            const animation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(opacity, {
+                        toValue: 0.7,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(opacity, {
+                        toValue: 0.3,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            animation.start();
+            return () => animation.stop();
+        }, [opacity]);
+
+        const skeletonStyle = {
+            backgroundColor: theme.colors.border,
+            opacity: opacity,
+        };
+
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-            </View>
+            <ScrollView style={styles.container}>
+                <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.surface} />
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <ArrowLeft size={24} color={theme.colors.text} />
+                    </TouchableOpacity>
+                    {/* Profile Image Skeleton */}
+                    <Animated.View style={[styles.profileImage, skeletonStyle]} />
+                    {/* Name Skeleton */}
+                    <Animated.View style={[{ width: 180, height: 24, borderRadius: 8, marginBottom: 8 }, skeletonStyle]} />
+                    {/* Info Skeleton */}
+                    <Animated.View style={[{ width: 220, height: 14, borderRadius: 6, marginBottom: 12 }, skeletonStyle]} />
+                    {/* Biography Skeleton */}
+                    <Animated.View style={[{ width: '90%', height: 12, borderRadius: 4, marginBottom: 6 }, skeletonStyle]} />
+                    <Animated.View style={[{ width: '80%', height: 12, borderRadius: 4, marginBottom: 6 }, skeletonStyle]} />
+                    <Animated.View style={[{ width: '60%', height: 12, borderRadius: 4 }, skeletonStyle]} />
+                </View>
+
+                <View style={styles.section}>
+                    {/* Section Title Skeleton */}
+                    <Animated.View style={[{ width: 120, height: 18, borderRadius: 6, marginBottom: 16 }, skeletonStyle]} />
+                    {/* Works Grid Skeleton */}
+                    <View style={styles.worksGrid}>
+                        {[1, 2, 3, 4, 5, 6].map((_, index) => (
+                            <View key={index} style={styles.workCard}>
+                                <Animated.View style={[styles.workImage, skeletonStyle]} />
+                                <Animated.View style={[{ width: '80%', height: 12, borderRadius: 4, marginBottom: 4 }, skeletonStyle]} />
+                                <Animated.View style={[{ width: '50%', height: 10, borderRadius: 4 }, skeletonStyle]} />
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            </ScrollView>
         );
+    };
+
+    if (isLoading) {
+        return <SkeletonLoading />;
     }
 
     return (

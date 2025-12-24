@@ -67,7 +67,7 @@ export const tmdbApi = {
     getPersonCredits: async (id: number) => {
         try {
             const response = await backendApi.get(`/api/tmdb_proxy.php?action=person_credits&id=${id}`);
-            return response.data.cast || [];
+            return response.data || { cast: [], crew: [] };
         } catch (error: any) {
             console.error('TMDB Person Credits Error:', error.response?.data || error.message);
             return [];

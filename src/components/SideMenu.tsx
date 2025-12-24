@@ -58,22 +58,22 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             paddingBottom: 10,
         },
         avatar: {
-            width: 60,
-            height: 60,
-            borderRadius: 30,
-            marginBottom: 12,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            marginBottom: 10,
         },
         avatarPlaceholder: {
-            width: 60,
-            height: 60,
-            borderRadius: 30,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
             backgroundColor: theme.colors.primary,
             justifyContent: 'center',
             alignItems: 'center',
-            marginBottom: 12,
+            marginBottom: 10,
         },
         avatarText: {
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: 'bold',
             color: '#FFFFFF',
         },
@@ -81,12 +81,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
             marginTop: 4,
         },
         name: {
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: 'bold',
             color: theme.colors.text,
         },
         username: {
-            fontSize: 14,
+            fontSize: 13,
             color: theme.colors.textSecondary,
             marginTop: 2,
         },
@@ -102,21 +102,22 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
         menuItem: {
             flexDirection: 'row',
             alignItems: 'center',
-            paddingVertical: 14,
-            paddingHorizontal: 20,
+            paddingVertical: 11,
+            paddingHorizontal: 18,
         },
 
         menuLabel: {
-            fontSize: 16,
+            fontSize: 15,
             color: theme.colors.text,
             fontWeight: '500',
         },
         footer: {
-            padding: 20,
-            paddingTop: 10, // Boşluğu azaltmak için
+            paddingTop: 10,
+            paddingHorizontal: 20,
+            paddingBottom: insets.bottom + 20,
             borderTopWidth: 1,
             borderTopColor: theme.colors.border,
-            alignItems: 'center', // Butonu ortalamak için
+            alignItems: 'center',
         },
 
     }), [theme]);
@@ -214,17 +215,17 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    marginRight: 16,
+                    marginRight: 14,
                     shadowColor: isActive ? theme.colors.primary : "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: isActive ? 0.4 : 0.2, // Stronger shadow for active
-                    shadowRadius: 8,
-                    elevation: isActive ? 8 : 4,
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: isActive ? 0.35 : 0.15,
+                    shadowRadius: 6,
+                    elevation: isActive ? 6 : 3,
                     borderWidth: isActive ? 1.5 : 0, // Highlight border
                     borderColor: theme.colors.surface, // Or a contrasting color
                 }}
@@ -278,14 +279,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                         colors={['#10b981', '#0d9488']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 }}
+                        style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10 }}
                     >
-                        <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                            <Crown size={20} color="#fcd34d" fill="#fcd34d" strokeWidth={2.5} />
+                        <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                            <Crown size={18} color="#fcd34d" fill="#fcd34d" strokeWidth={2.5} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Premium'a Geç</Text>
-                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Özel ayrıcalıklardan yararlan</Text>
+                            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>Premium'a Geç</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>Özel ayrıcalıklardan yararlan</Text>
                         </View>
                     </LinearGradient>
                 </TouchableOpacity>
@@ -382,14 +383,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                                 colors={['#10b981', '#0d9488']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12 }}
+                                style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10 }}
                             >
-                                <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                    <Crown size={20} color="#fcd34d" fill="#fcd34d" />
+                                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                    <Crown size={18} color="#fcd34d" fill="#fcd34d" />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Premium'a Geç</Text>
-                                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Özel ayrıcalıklardan yararlan</Text>
+                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>Premium'a Geç</Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>Özel ayrıcalıklardan yararlan</Text>
                                 </View>
                             </LinearGradient>
                         </TouchableOpacity>

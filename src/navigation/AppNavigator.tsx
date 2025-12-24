@@ -85,7 +85,15 @@ export const AppNavigator = () => {
                         <>
                             <Stack.Screen name="Main" component={MainWithDrawer} />
                             <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
-                            <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
+                            <Stack.Screen
+                                name="ChatDetail"
+                                component={ChatDetailScreen}
+                                options={{
+                                    headerShown: false,
+                                    animation: 'slide_from_right',
+                                    animationDuration: 250,
+                                }}
+                            />
                             <Stack.Screen name="Messages" component={MessageScreen} options={{ headerShown: false }} />
 
                             <Stack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />

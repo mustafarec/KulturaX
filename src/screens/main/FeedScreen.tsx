@@ -18,6 +18,8 @@ import { SuggestedUsers } from '../../components/SuggestedUsers';
 import { useSideMenu } from '../../context/SideMenuContext';
 import { useMessage } from '../../context/MessageContext';
 import { useNotification } from '../../context/NotificationContext';
+import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
+import { ShareCardModal } from '../../components/ShareCardModal';
 import { SharePostModal } from '../../components/SharePostModal';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import { Search, Bell, Ghost, ChevronDown, ChevronUp } from 'lucide-react-native';
@@ -156,6 +158,8 @@ export const FeedScreen = () => {
     const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
     const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [shareCardModalVisible, setShareCardModalVisible] = useState(false);
+    const [sharePostModalVisible, setSharePostModalVisible] = useState(false);
     const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
 
     // Animasyon stili
@@ -207,7 +211,7 @@ export const FeedScreen = () => {
             zIndex: 10,
         },
         headerTitle: {
-            fontSize: 28,
+            fontSize: 23,
             fontFamily: theme.fonts.headings,
             color: theme.colors.primary,
             textAlign: 'center',
@@ -519,6 +523,17 @@ export const FeedScreen = () => {
     const handleShare = (item: any) => {
         setSelectedPostForShare(item);
         setShareModalVisible(true);
+    };
+
+    const handleShareDM = () => {
+        setShareModalVisible(false);
+        // Open SharePostModal to select a user to send the post to
+        setSharePostModalVisible(true);
+    };
+
+    const handleShareStory = () => {
+        setShareModalVisible(false);
+        setShareCardModalVisible(true);
     };
 
     const confirmDelete = async () => {
@@ -881,9 +896,51 @@ export const FeedScreen = () => {
                 </View>
             </Animated.View>
 
-            <SharePostModal
+            <ShareOptionsSheet
                 visible={shareModalVisible}
                 onClose={() => setShareModalVisible(false)}
+                onSelectDM={handleShareDM}
+                onSelectStory={handleShareStory}
+            />
+
+            {(() => {
+                const isRepost = !!selectedPostForShare?.original_post_id;
+                const isQuoteRepost = isRepost && selectedPostForShare?.original_post &&
+                    selectedPostForShare.content !== 'Yeniden paylaşım' &&
+                    selectedPostForShare.content !== selectedPostForShare.original_post.content;
+
+                const displayPost = (isRepost && !isQuoteRepost && selectedPostForShare?.original_post)
+                    ? selectedPostForShare.original_post
+                    : selectedPostForShare;
+
+                return (
+                    <ShareCardModal
+                        visible={shareCardModalVisible}
+                        onClose={() => setShareCardModalVisible(false)}
+                        shareType="post"
+                        title={displayPost?.source || ''}
+                        postContent={displayPost?.comment_text || displayPost?.content || ''}
+                        postAuthor={displayPost?.user?.full_name || displayPost?.user?.username || ''}
+                        postAuthorAvatar={displayPost?.user?.avatar_url}
+                        quoteText={displayPost?.quote_text || ''}
+                        coverUrl={displayPost?.image_url}
+                        contentType={displayPost?.content_type || 'book'}
+
+                        isRepost={isRepost}
+                        isQuoteRepost={isQuoteRepost}
+                        repostedBy={isRepost && !isQuoteRepost ? (selectedPostForShare?.user?.full_name || selectedPostForShare?.user?.username) : undefined}
+
+                        originalPostContent={selectedPostForShare?.original_post?.content || ''}
+                        originalPostAuthor={selectedPostForShare?.original_post?.user?.full_name || selectedPostForShare?.original_post?.user?.username || ''}
+                        originalPostAuthorAvatar={selectedPostForShare?.original_post?.user?.avatar_url}
+                        originalQuoteText={selectedPostForShare?.original_post?.quote_text || ''}
+                    />
+                );
+            })()}
+
+            <SharePostModal
+                visible={sharePostModalVisible}
+                onClose={() => setSharePostModalVisible(false)}
                 post={selectedPostForShare}
             />
 
