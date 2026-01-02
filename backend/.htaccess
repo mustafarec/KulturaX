@@ -1,0 +1,11 @@
+# Protect sensitive files
+<FilesMatch "\.(json|env)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Allow access to normal API endpoints
+<FilesMatch "\.php$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>

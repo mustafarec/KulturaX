@@ -1,0 +1,13 @@
+{
+    "name": "kmf-websocket",
+    "description": "KültüraX WebSocket Server",
+    "require": {
+        "cboden/ratchet": "^0.4.4",
+        "react/socket": "^1.14"
+    },
+    "autoload": {
+        "psr-4": {
+            "KMF\\WebSocket\\": "src/"
+        }
+    }
+}

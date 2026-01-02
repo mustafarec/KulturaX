@@ -1,0 +1,15 @@
+{
+  "name": "kitapmuzikfilm",
+  "displayName": "KültüraX",
+  "expo": {
+    "name": "KültüraX",
+    "slug": "kitapmuzikfilm",
+    "scheme": "kitapmuzikfilm",
+    "android": {
+      "softwareKeyboardLayoutMode": "resize"
+    }
+  },
+  "android": {
+    "package": "com.anonymous.kitapmuzikfilm"
+  }
+}
