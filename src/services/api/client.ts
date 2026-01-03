@@ -2,6 +2,7 @@ import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { secureSet, secureGet, secureDelete, SECURE_KEYS } from '../SecureStorageService';
 import CryptoJS from 'crypto-js';
+import axiosRetry from 'axios-retry';
 
 // API Base URL
 export const API_URL = 'https://mmreeo.online/api';
@@ -23,9 +24,22 @@ const generateApiSignature = (): string => {
 // Create axios instance
 export const apiClient = axios.create({
     baseURL: API_URL,
+    timeout: 10000, // 10 seconds timeout
     headers: {
         'Content-Type': 'application/json',
     },
+});
+
+// Configure retry logic
+axiosRetry(apiClient, {
+    retries: 3,
+    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: (error) => {
+        // Retry on network errors or 5xx server errors
+        // Do not retry on 4xx (client errors)
+        return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+            (error.response?.status ? error.response.status >= 500 : false);
+    }
 });
 
 // Token management - Now using SecureStore for encrypted storage
@@ -66,6 +80,18 @@ apiClient.interceptors.request.use(
     }
 );
 
+// Helper to handle API errors
+export const handleApiError = (error: any): never => {
+    throw error.response ? error.response.data : new Error('Network Error');
+};
+
+// 401 Unauthorized Handling Listener
+let unauthorizedCallback: (() => void) | null = null;
+
+export const onUnauthorized = (callback: () => void) => {
+    unauthorizedCallback = callback;
+};
+
 // Response interceptor - Handle errors
 apiClient.interceptors.response.use(
     (response) => response,
@@ -78,7 +104,19 @@ apiClient.interceptors.response.use(
                 text2: 'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.',
                 visibilityTime: 4000
             });
+            // Let retry-axios handle it if configured, otherwise reject
             return Promise.reject(new Error("Network/SSL Error"));
+        }
+
+        // 401 Unauthorized - Token Expired Logic
+        if (error.response.status === 401) {
+            const errorCode = error.response.data?.code;
+            // Only logout if explicitly TOKEN_EXPIRED or if no specific code is provided (safe fallback)
+            if (errorCode === 'TOKEN_EXPIRED' || !errorCode) {
+                if (unauthorizedCallback) {
+                    unauthorizedCallback();
+                }
+            }
         }
 
         // HTML Error Handling
@@ -92,10 +130,5 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
     }
 );
-
-// Helper to handle API errors
-export const handleApiError = (error: any): never => {
-    throw error.response ? error.response.data : new Error('Network Error');
-};
 
 export default apiClient;

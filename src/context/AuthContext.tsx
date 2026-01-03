@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { authService } from '../services/backendApi';
+import { AppState } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { authService, onUnauthorized } from '../services/api/client';
 import { secureSetObject, secureGetObject, secureDelete, SECURE_KEYS, migrateToSecureStorage } from '../services/SecureStorageService';
 import { registerFCMToken, unregisterFCMToken } from '../services/PushNotificationService';
 
@@ -22,7 +24,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Oturum yenileme (Heartbeat) fonksiyonu
+    const refreshSession = async () => {
+        try {
+            // Aktif kullanıcıyı kontrol et (SecureStore'dan)
+            const currentUser = await secureGetObject<any>(SECURE_KEYS.USER_DATA);
+
+            // Eğer kullanıcı varsa ve ID'si mevcutsa
+            if (currentUser?.id) {
+                // Profil endpoint'ine istek atarak backend'deki "Sliding Expiration" süresini uzat
+                await authService.getProfile(currentUser.id);
+                console.log(`Heartbeat: Session refreshed for user ${currentUser.id}`);
+            }
+        } catch (e) {
+            // Sessiz hata - kullanıcıyı rahatsız etme
+            // Eğer token gerçekten expire olduysa, 401 interceptor bunu yakalayacak
+            console.log('Heartbeat failed (expected if offline):', e);
+        }
+    };
+
+    const logout = async () => {
+        setError(null);
+        try {
+            // Remove token from backend and storage
+            await authService.logout();
+            await unregisterFCMToken();
+
+            await secureDelete(SECURE_KEYS.USER_DATA);
+            setUser(null);
+        } catch (e: any) {
+            setError(e.message);
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
+        // 1. 401 Unauthorized Global Listener
+        // Sadece pasif kullanıcılarda (token expired) çalışır
+        onUnauthorized(() => {
+            console.log('Session expired (401), logging out...');
+            // Loop'a girmemek için mevcut user varsa logout yap
+            logout();
+            Toast.show({
+                type: 'error',
+                text1: 'Oturum Süresi Doldu',
+                text2: 'Güvenliğiniz için çıkış yapıldı. Lütfen tekrar giriş yapın.',
+                visibilityTime: 4000
+            });
+        });
+
+        // 2. Heartbeat Mechanism (Keep Active Users Alive)
+        // Uygulama öne geldiğinde token süresini uzat
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            if (nextAppState === 'active') {
+                refreshSession();
+            }
+        });
+
+        // Periyodik kontrol (Her 1 saatte bir)
+        const interval = setInterval(() => {
+            refreshSession();
+        }, 60 * 60 * 1000);
+
         // Check for stored user data on app start
         const loadUser = async () => {
             try {
@@ -41,6 +106,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     } catch (e) {
                         console.log('FCM auto-registration error:', e);
                     }
+
+                    // Initial Refresh
+                    refreshSession();
                 }
             } catch (e) {
                 console.error('Failed to load user', e);
@@ -49,6 +117,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         };
         loadUser();
+
+        return () => {
+            subscription.remove();
+            clearInterval(interval);
+        };
     }, []);
 
     const login = async (email: string, password: string) => {
@@ -68,6 +141,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } catch (e) {
                 console.log('FCM registration error:', e);
             }
+
+            // Login sonrası hemen heartbeat
+            refreshSession();
 
         } catch (e: any) {
             setError(e.message || 'Login failed');
@@ -114,6 +190,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } catch (e) {
                 console.log('FCM registration error:', e);
             }
+
+            refreshSession();
+
         } catch (e: any) {
             setError(e.message || 'Verification failed');
             console.error(e);
@@ -131,23 +210,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setError(e.message || 'Resend failed');
             console.error(e);
             throw e;
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const logout = async () => {
-        setError(null);
-        try {
-            // Remove token from backend and storage
-            await authService.logout();
-            await unregisterFCMToken();
-
-            await secureDelete(SECURE_KEYS.USER_DATA);
-            setUser(null);
-        } catch (e: any) {
-            setError(e.message);
-            console.error(e);
         } finally {
             setIsLoading(false);
         }
