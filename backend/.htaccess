@@ -1,5 +1,8 @@
-# Protect sensitive files
-<FilesMatch "\.(json|env)$">
+# Disable Directory Listing (Critical for Security)
+Options -Indexes
+
+# Protect sensitive files and directories
+<FilesMatch "^\.|\.env|composer\.(json|lock)|package\.json|package-lock\.json|\.git|\.sql$">
     Order deny,allow
     Deny from all
 </FilesMatch>

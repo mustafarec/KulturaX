@@ -72,6 +72,16 @@ try {
     $notifStmt->bindParam(':data', $notifData);
     $notifStmt->execute();
 
+    // Delete the original follow request notification to prevent "ghost" requests
+    $deleteNotifQuery = "DELETE FROM notifications WHERE user_id = :user_id AND type = 'follow_request' AND JSON_EXTRACT(data, '$.request_id') = :request_id";
+    // Fallback if request_id wasn't stored (legacy)
+    // $deleteNotifQuery = "DELETE FROM notifications WHERE user_id = :user_id AND type = 'follow_request' AND data LIKE :request_pattern";
+    
+    $deleteNotifStmt = $conn->prepare($deleteNotifQuery);
+    $deleteNotifStmt->bindParam(':user_id', $userId);
+    $deleteNotifStmt->bindParam(':request_id', $requestId);
+    $deleteNotifStmt->execute();
+
     $conn->commit();
 
     // Send push
