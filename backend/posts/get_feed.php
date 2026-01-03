@@ -295,8 +295,12 @@ try {
 
     // Search logic
     if (!empty($search)) {
-        $searchTerm = "%$search%";
-        $query .= " AND (p.content LIKE :search OR p.quote_text LIKE :search OR p.comment_text LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.quote_text LIKE :search OR op.comment_text LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
+        // MySQL Full-Text Search with Boolean Mode
+        $query .= " AND (
+            MATCH(p.content, p.quote_text, p.comment_text, p.author, p.source) AGAINST(:search IN BOOLEAN MODE)
+            OR MATCH(u.username, u.full_name) AGAINST(:search IN BOOLEAN MODE)
+            OR MATCH(op.content, op.quote_text, op.comment_text, op.author, op.source) AGAINST(:search IN BOOLEAN MODE)
+        )";
     }
 
     // SMART FEED ALGORİTMASI (Gravity + Seen Penalty)
@@ -304,29 +308,26 @@ try {
     $query .= " ORDER BY 
                 (
                     (
-                        -- 1. Kişisel İlgi Skoru
+                        -- 1. Kişisel İlgi Skoru (Hala dinamik, her kullanıcı için özel)
                         (CASE 
                             WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book
                             WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie
                             WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music
                             ELSE 0
                         END) 
-                        +
-                        -- 2. Global Etkileşim Skoru (OPTIMIZED: Direct column access)
+                        /
                         (
-                            COALESCE(op.view_count, p.view_count, 0) * 0.1 + 
-                            COALESCE(op.like_count, p.like_count, 0) * 5 +
-                            COALESCE(op.comment_count, p.comment_count, 0) * 8 +
-                            COALESCE(op.repost_count, p.repost_count, 0) * 10
+                            -- Gravity (Kişisel Skor için tekrar hesaplanmalı)
+                            POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.5)
                         )
                     )
-                    /
+                    +
                     (
-                        -- 3. Gravity (Zaman Çekimi): Eskidikçe puan düşer
-                        POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.5)
+                        -- 2. Global Skor (Artık veritabanından geliyor - OPTIMIZED)
+                        p.trending_score
                         *
-                        -- 4. Seen Penalty (Görülme Cezası): Görüldüyse puan 5'e bölünür
-                        (CASE WHEN pv.id IS NOT NULL OR opv.id IS NOT NULL THEN 5 ELSE 1 END)
+                         -- 4. Seen Penalty (Görülme Cezası): Görüldüyse puanı direkt düşür
+                        (CASE WHEN pv.id IS NOT NULL OR opv.id IS NOT NULL THEN 0.2 ELSE 1 END)
                     )
                 ) DESC,
                 p.created_at DESC";
@@ -345,7 +346,9 @@ try {
     $stmt->bindParam(':boost_music', $boostMusic);
 
     if (!empty($search)) {
-        $stmt->bindParam(':search', $searchTerm);
+        // Append * to support prefix search in Boolean mode
+        $ftSearch = $search . '*';
+        $stmt->bindParam(':search', $ftSearch);
     }
     $stmt->execute();
 

@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { authService, onUnauthorized } from '../services/api/client';
+import { onUnauthorized } from '../services/api/client';
+import { authService } from '../services/api/authApi';
 import { secureSetObject, secureGetObject, secureDelete, SECURE_KEYS, migrateToSecureStorage } from '../services/SecureStorageService';
 import { registerFCMToken, unregisterFCMToken } from '../services/PushNotificationService';
 
