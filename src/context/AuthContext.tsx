@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { Platform } from 'react-native';
-import { authService, notificationService } from '../services/backendApi';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/backendApi';
+import { secureSetObject, secureGetObject, secureDelete, SECURE_KEYS, migrateToSecureStorage } from '../services/SecureStorageService';
 import { registerFCMToken, unregisterFCMToken } from '../services/PushNotificationService';
 
 interface AuthContextType {
@@ -27,9 +26,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Check for stored user data on app start
         const loadUser = async () => {
             try {
-                const storedUser = await AsyncStorage.getItem('user');
-                if (storedUser) {
-                    const userData = JSON.parse(storedUser);
+                // Run migration from AsyncStorage to SecureStore (one-time)
+                await migrateToSecureStorage();
+
+                const userData = await secureGetObject<any>(SECURE_KEYS.USER_DATA);
+                if (userData) {
                     setUser(userData);
 
                     // Register FCM Token on auto-login
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const userData = data.user || data; // Handle different response structures
 
             setUser(userData);
-            await AsyncStorage.setItem('user', JSON.stringify(userData));
+            await secureSetObject(SECURE_KEYS.USER_DATA, userData);
 
             // Register FCM Token
             try {
@@ -103,7 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const userData = data.user || data;
 
             setUser(userData);
-            await AsyncStorage.setItem('user', JSON.stringify(userData));
+            await secureSetObject(SECURE_KEYS.USER_DATA, userData);
 
             // Register FCM Token
             try {
@@ -142,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await authService.logout();
             await unregisterFCMToken();
 
-            await AsyncStorage.removeItem('user');
+            await secureDelete(SECURE_KEYS.USER_DATA);
             setUser(null);
         } catch (e: any) {
             setError(e.message);
@@ -154,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const updateUser = async (userData: any) => {
         setUser(userData);
-        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await secureSetObject(SECURE_KEYS.USER_DATA, userData);
     };
 
     return (

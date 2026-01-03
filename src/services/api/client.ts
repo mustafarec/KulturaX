@@ -1,10 +1,24 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { secureSet, secureGet, secureDelete, SECURE_KEYS } from '../SecureStorageService';
+import CryptoJS from 'crypto-js';
 
 // API Base URL
 export const API_URL = 'https://mmreeo.online/api';
+
+// API Signature Secret - Must match backend config.php
+const API_SIGNATURE_SECRET = 'KulturaX_2026_SecureAPI_Signature';
+
+/**
+ * Generate API signature for request authentication
+ * Format: timestamp:hmac_sha256(timestamp:secret)
+ */
+const generateApiSignature = (): string => {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const message = `${timestamp}:${API_SIGNATURE_SECRET}`;
+    const signature = CryptoJS.HmacSHA256(message, API_SIGNATURE_SECRET).toString();
+    return `${timestamp}:${signature}`;
+};
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -14,34 +28,36 @@ export const apiClient = axios.create({
     },
 });
 
-// Token management
+// Token management - Now using SecureStore for encrypted storage
 let authToken: string | null = null;
 
 export const setAuthToken = async (token: string) => {
     authToken = token;
-    await AsyncStorage.setItem('authToken', token);
+    await secureSet(SECURE_KEYS.AUTH_TOKEN, token);
 };
 
 export const getAuthToken = async (): Promise<string | null> => {
     if (!authToken) {
-        authToken = await AsyncStorage.getItem('authToken');
+        authToken = await secureGet(SECURE_KEYS.AUTH_TOKEN);
     }
     return authToken;
 };
 
 export const clearAuthToken = async () => {
     authToken = null;
-    await AsyncStorage.removeItem('authToken');
+    await secureDelete(SECURE_KEYS.AUTH_TOKEN);
 };
 
-// Request interceptor - Add token to every request
+// Request interceptor - Add token and API signature to every request
 apiClient.interceptors.request.use(
     async (config) => {
+        // Add API signature for security
+        config.headers['X-App-Signature'] = generateApiSignature();
+
         const token = await getAuthToken();
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
             config.headers['X-Auth-Token'] = token;
-            // Token artık URL'de gönderilmiyor - güvenlik için sadece header kullanılıyor
         }
         return config;
     },

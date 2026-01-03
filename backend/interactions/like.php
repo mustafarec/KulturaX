@@ -56,8 +56,6 @@ try {
                     $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
                     $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
 
-                    file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Like: Owner $ownerId, Sender $senderId\n", FILE_APPEND);
-
                     // Kendine bildirim gelmesini engelle
                     if ($ownerId != $senderId) {
                         $title = "Yeni Beğeni";
@@ -74,7 +72,6 @@ try {
                         if (!$notifStmt->execute()) {
                             $errorInfo = $notifStmt->errorInfo();
                             error_log("Failed to insert like notification: " . implode(" ", $errorInfo));
-                            file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Like Notif Insert Error: " . implode(" ", $errorInfo) . "\n", FILE_APPEND);
                         } else {
                             // DB kaydı başarılı, şimdi Push Bildirim gönder
                             if (file_exists('../notifications/FCM.php')) {
@@ -82,19 +79,14 @@ try {
                                 $fcm = new FCM($conn);
                                 $fcm->sendToUser($ownerId, $title, $message, array("type" => "like", "post_id" => $data->post_id));
                             } else {
-                                file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - FCM.php not found\n", FILE_APPEND);
+                                error_log("FCM.php not found");
                             }
                         }
-                    } else {
-                        file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Like: Owner same as sender, no notification\n", FILE_APPEND);
                     }
-                } else {
-                    file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Like: Post owner not found for post " . $data->post_id . "\n", FILE_APPEND);
                 }
             } catch (Exception $e) {
                 // Bildirim hatası akışı bozmamalı
                 error_log("Notification error in like.php: " . $e->getMessage());
-                file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Like Notif Exception: " . $e->getMessage() . "\n", FILE_APPEND);
             }
         }
 

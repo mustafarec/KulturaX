@@ -8,6 +8,9 @@ $headers = getallheaders();
 if (isset($headers['Authorization']) && preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
     $token = $matches[1];
 
+    // Token cache'ini temizle
+    TokenCache::invalidate($token);
+
     // Token'ı veritabanından sil (NULL yap)
     $query = "UPDATE users SET token = NULL WHERE token = :token";
     $stmt = $conn->prepare($query);

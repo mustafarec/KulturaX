@@ -6,7 +6,11 @@
  * Güvenlik Özellikleri:
  * - Token süre dolumu kontrolü (30 gün)
  * - Otomatik token yenileme (son 7 gün içinde kullanılırsa)
+ * - Token önbellekleme (performans optimizasyonu)
  */
+
+// Token Cache sınıfını yükle
+require_once __DIR__ . '/TokenCache.php';
 
 // Token geçerlilik süresi (saniye cinsinden)
 define('TOKEN_LIFETIME', 30 * 24 * 60 * 60); // 30 gün
@@ -61,7 +65,39 @@ function validateToken() {
         exit;
     }
 
-    // Token ve expiry kontrolü
+    // 1. Önce cache'e bak
+    $cached = TokenCache::get($token);
+    if ($cached !== false) {
+        // Cache hit - Token süre dolumu kontrolü
+        if (!empty($cached['expires_at'])) {
+            $expiresAt = strtotime($cached['expires_at']);
+            $now = time();
+            
+            if ($now > $expiresAt) {
+                // Token süresi dolmuş - cache'i temizle
+                TokenCache::invalidate($token);
+                http_response_code(401);
+                echo json_encode(array(
+                    "message" => "Token süresi dolmuş. Lütfen tekrar giriş yapın.",
+                    "code" => "TOKEN_EXPIRED"
+                ));
+                exit;
+            }
+            
+            // Token yenileme: Son 7 gün kaldıysa süreyi uzat
+            $timeRemaining = $expiresAt - $now;
+            if ($timeRemaining < TOKEN_REFRESH_THRESHOLD) {
+                refreshTokenExpiry($conn, $cached['user_id']);
+                // Cache'i güncelle
+                $newExpiry = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
+                TokenCache::set($token, $cached['user_id'], $newExpiry);
+            }
+        }
+        
+        return $cached['user_id'];
+    }
+
+    // 2. Cache miss - Veritabanından token kontrolü
     $query = "SELECT id, token_expires_at FROM users WHERE token = :token";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':token', $token);
@@ -89,8 +125,12 @@ function validateToken() {
             $timeRemaining = $expiresAt - $now;
             if ($timeRemaining < TOKEN_REFRESH_THRESHOLD) {
                 refreshTokenExpiry($conn, $row['id']);
+                $row['token_expires_at'] = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
             }
         }
+        
+        // 3. Sonucu cache'e yaz
+        TokenCache::set($token, $row['id'], $row['token_expires_at']);
         
         return $row['id'];
     } else {

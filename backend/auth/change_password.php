@@ -67,6 +67,12 @@ try {
     // $invalidate_query = "DELETE FROM user_tokens WHERE user_id = :user_id AND token != :current_token";
     // This would require passing the current token
 
+    // Token cache'ini temizle (güvenlik için)
+    $headers = getallheaders();
+    if (isset($headers['Authorization']) && preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
+        TokenCache::invalidate($matches[1]);
+    }
+
     http_response_code(200);
     echo json_encode(array("message" => "Şifre başarıyla güncellendi."));
 

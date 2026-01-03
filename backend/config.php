@@ -8,21 +8,77 @@ $allowed_origins = [
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
+// API Signature Secret (should match mobile app)
+// This adds an extra layer of security for mobile app requests
+define('API_SIGNATURE_SECRET', 'KulturaX_2026_SecureAPI_Signature');
+define('API_SIGNATURE_TOLERANCE', 300); // 5 minutes tolerance for timestamp
+
+/**
+ * Validate API Signature for mobile app requests
+ * Expected format: HMAC-SHA256(timestamp:secret)
+ * Header: X-App-Signature: timestamp:signature
+ */
+function validateApiSignature() {
+    // Skip validation in development
+    if (isset($_SERVER['HTTP_HOST']) && 
+        (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || 
+         strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)) {
+        return true;
+    }
+    
+    $signatureHeader = $_SERVER['HTTP_X_APP_SIGNATURE'] ?? '';
+    if (empty($signatureHeader)) {
+        return false;
+    }
+    
+    $parts = explode(':', $signatureHeader);
+    if (count($parts) !== 2) {
+        return false;
+    }
+    
+    $timestamp = (int)$parts[0];
+    $signature = $parts[1];
+    
+    // Check timestamp is within tolerance
+    $now = time();
+    if (abs($now - $timestamp) > API_SIGNATURE_TOLERANCE) {
+        error_log("API Signature: Timestamp expired - now: $now, received: $timestamp");
+        return false;
+    }
+    
+    // Validate signature
+    $expectedSignature = hash_hmac('sha256', $timestamp . ':' . API_SIGNATURE_SECRET, API_SIGNATURE_SECRET);
+    
+    if (!hash_equals($expectedSignature, $signature)) {
+        error_log("API Signature: Invalid signature");
+        return false;
+    }
+    
+    return true;
+}
+
 if (in_array($origin, $allowed_origins)) {
     // Bilinen origin - izin ver
     header("Access-Control-Allow-Origin: $origin");
 } elseif (empty($origin)) {
     // Origin header yok - muhtemelen mobil uygulama veya sunucu-sunucu isteği
-    // Mobil uygulamalar origin göndermez, bu yüzden izin veriyoruz
+    // Mobil uygulamalar için signature kontrolü yap (production'da)
+    // Not: Geçiş sürecinde validation zorunlu değil, sadece log
+    if (!validateApiSignature()) {
+        // Geçiş sürecinde sadece uyarı logla, engellemiyoruz
+        // İleride bu satırı uncomment ederek zorunlu yapabilirsiniz:
+        // http_response_code(401);
+        // echo json_encode(["error" => "Invalid API signature"]);
+        // exit();
+    }
     header("Access-Control-Allow-Origin: *");
 } else {
     // Bilinmeyen origin - güvenlik için kısıtlı izin
-    // Not: Tamamen engellemek uygulamayı kırabilir, log'a yaz
     error_log("Unknown CORS origin attempt: " . $origin);
     header("Access-Control-Allow-Origin: https://mmreeo.online");
 }
 
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, X-Auth-Token");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, X-Auth-Token, X-App-Signature, X-App-Timestamp");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 

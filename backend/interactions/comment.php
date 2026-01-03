@@ -93,7 +93,7 @@ try {
                                 $fcm->sendToUser($parentComment['user_id'], $title, $message, array("type" => "reply", "post_id" => $data->post_id));
                             }
                         } else {
-                            file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Reply Notif Insert Error: " . implode(" ", $notifStmt->errorInfo()) . "\n", FILE_APPEND);
+                            error_log("Reply Notif Insert Error: " . implode(" ", $notifStmt->errorInfo()));
                         }
                     }
                 }
@@ -117,7 +117,7 @@ try {
                     $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
                     $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
                     
-                    file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Comment: Owner $ownerId, Sender $senderId\n", FILE_APPEND);
+                    debugLog("Owner $ownerId, Sender $senderId", 'comment');
 
                     // Kendine bildirim gelmesini engelle
                     if ($ownerId != $senderId) {
@@ -136,22 +136,20 @@ try {
                             if (isset($fcm)) {
                                 $fcm->sendToUser($ownerId, $title, $message, array("type" => "comment", "post_id" => $data->post_id));
                             } else {
-                                file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - FCM object not set in comment.php\n", FILE_APPEND);
+                                debugLog("FCM object not set in comment.php", 'comment');
                             }
                         } else {
                             $errorInfo = $notifStmt->errorInfo();
                             error_log("Failed to insert comment notification: " . implode(" ", $errorInfo));
-                            file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Comment Notif Insert Error: " . implode(" ", $errorInfo) . "\n", FILE_APPEND);
                         }
                     } else {
-                        file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Comment: Owner same as sender, no notification\n", FILE_APPEND);
+                        debugLog("Owner same as sender, no notification", 'comment');
                     }
                 } else {
-                    file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Comment: Post owner not found for post " . $data->post_id . "\n", FILE_APPEND);
+                    debugLog("Post owner not found for post " . $data->post_id, 'comment');
                 }
             } catch (Exception $e) {
                 error_log("Notification error in comment.php: " . $e->getMessage());
-                file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Comment Notif Exception: " . $e->getMessage() . "\n", FILE_APPEND);
             }
         } else {
             http_response_code(503);
