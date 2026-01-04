@@ -4,6 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { tmdbApi } from '../../services/tmdbApi';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 
 export const CreatorDetailScreen = ({ route }: any) => {
@@ -13,6 +14,7 @@ export const CreatorDetailScreen = ({ route }: any) => {
     const [isLoading, setIsLoading] = useState(true);
     const navigation = useNavigation();
     const { theme } = useTheme();
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -108,7 +110,7 @@ export const CreatorDetailScreen = ({ route }: any) => {
         },
         backButton: {
             position: 'absolute',
-            top: 20,
+            top: insets.top + 8,
             left: 20,
             zIndex: 10,
             padding: 8,

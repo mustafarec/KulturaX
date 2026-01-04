@@ -18,42 +18,45 @@ define('API_SIGNATURE_TOLERANCE', 300); // 5 minutes tolerance for timestamp
  * Expected format: HMAC-SHA256(timestamp:secret)
  * Header: X-App-Signature: timestamp:signature
  */
-function validateApiSignature() {
+function validateApiSignature()
+{
     // Skip validation in development
-    if (isset($_SERVER['HTTP_HOST']) && 
-        (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || 
-         strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)) {
+    if (
+        isset($_SERVER['HTTP_HOST']) &&
+        (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false ||
+            strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)
+    ) {
         return true;
     }
-    
+
     $signatureHeader = $_SERVER['HTTP_X_APP_SIGNATURE'] ?? '';
     if (empty($signatureHeader)) {
         return false;
     }
-    
+
     $parts = explode(':', $signatureHeader);
     if (count($parts) !== 2) {
         return false;
     }
-    
-    $timestamp = (int)$parts[0];
+
+    $timestamp = (int) $parts[0];
     $signature = $parts[1];
-    
+
     // Check timestamp is within tolerance
     $now = time();
     if (abs($now - $timestamp) > API_SIGNATURE_TOLERANCE) {
         error_log("API Signature: Timestamp expired - now: $now, received: $timestamp");
         return false;
     }
-    
+
     // Validate signature
     $expectedSignature = hash_hmac('sha256', $timestamp . ':' . API_SIGNATURE_SECRET, API_SIGNATURE_SECRET);
-    
+
     if (!hash_equals($expectedSignature, $signature)) {
         error_log("API Signature: Invalid signature");
         return false;
     }
-    
+
     return true;
 }
 
@@ -87,27 +90,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Load environment variables first
-$envFile = __DIR__ . '/.env';
-$env = [];
-if (file_exists($envFile)) {
-    $env = parse_ini_file($envFile);
+// =================================================================
+// Environment Configuration with APCu Cache (Performance Optimization)
+// =================================================================
+$envCacheKey = 'kulturax_env_config';
+$envCacheTTL = 300; // 5 dakika
+
+// APCu varsa cache'den oku
+if (function_exists('apcu_enabled') && apcu_enabled()) {
+    $env = apcu_fetch($envCacheKey, $success);
+    if (!$success) {
+        // Cache miss - dosyadan oku ve cache'le
+        $envFile = __DIR__ . '/.env';
+        if (file_exists($envFile)) {
+            $env = parse_ini_file($envFile);
+            apcu_store($envCacheKey, $env, $envCacheTTL);
+        } else {
+            error_log("Config: .env file not found");
+            $env = [];
+        }
+    }
 } else {
-    error_log("Config: .env file not found");
+    // APCu yok - her seferinde dosyadan oku
+    $envFile = __DIR__ . '/.env';
+    $env = [];
+    if (file_exists($envFile)) {
+        $env = parse_ini_file($envFile);
+    } else {
+        error_log("Config: .env file not found");
+    }
 }
 
 // Database Configuration
-// Prioritize .env values, fallback to defaults if not set
-$host = $env['DB_HOST'];
-$db_name = $env['DB_NAME'];
-$username = $env['DB_USER'];
-$password = $env['DB_PASS'];
+$host = $env['DB_HOST'] ?? 'localhost';
+$db_name = $env['DB_NAME'] ?? '';
+$username = $env['DB_USER'] ?? '';
+$password = $env['DB_PASS'] ?? '';
 
 try {
-    $conn = new PDO("mysql:host=" . $host . ";dbname=" . $db_name . ";charset=utf8mb4", $username, $password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $exception) {
-    echo json_encode(array("message" => "Connection error: " . $exception->getMessage()));
+    // PDO ile veritabanı bağlantısı - Persistent Connection aktif
+    $conn = new PDO(
+        "mysql:host=" . $host . ";dbname=" . $db_name . ";charset=utf8mb4",
+        $username,
+        $password,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_PERSISTENT => true,  // Bağlantı yeniden kullanımı
+            PDO::ATTR_EMULATE_PREPARES => true,  // Mevcut sorgularla uyumluluk için
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]
+    );
+} catch (PDOException $exception) {
+    http_response_code(500);
+    echo json_encode(["message" => "Database connection error"]);
+    error_log("Config DB Error: " . $exception->getMessage());
     exit();
 }
 
@@ -126,18 +162,19 @@ define('TICKETMASTER_API_KEY', $env['TICKETMASTER_API_KEY'] ?? '');
  * Get Client IP Address
  * Handles Cloudflare and Proxy headers
  */
-function getClientIp() {
+function getClientIp()
+{
     if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
         $_SERVER['REMOTE_ADDR'] = $_SERVER["HTTP_CF_CONNECTING_IP"];
         return $_SERVER["HTTP_CF_CONNECTING_IP"];
     }
-    
+
     if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         // Handle multiple IPs in X-Forwarded-For (take the first one)
         $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
         return trim($ips[0]);
     }
-    
+
     return $_SERVER['REMOTE_ADDR'];
 }
 ?>

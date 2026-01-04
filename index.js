@@ -12,5 +12,5 @@ import App from './App';
 import { setupBackgroundHandler } from './src/services/PushNotificationService';
 setupBackgroundHandler();
 
-AppRegistry.registerComponent('main', () => App);
+AppRegistry.registerComponent('kitapmuzikfilm', () => App);
 

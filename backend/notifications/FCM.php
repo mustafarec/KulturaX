@@ -3,19 +3,22 @@
  * Firebase Cloud Messaging Push Notification Handler
  * Uses FCM HTTP v1 API for sending push notifications
  */
-class FCM {
+class FCM
+{
     private $conn;
     private $projectId;
     private $serviceAccountPath;
     private $accessToken;
     private $tokenExpiry;
 
-    public function __construct($db) {
+    public function __construct($db)
+    {
         $this->conn = $db;
         $this->loadCredentials();
     }
 
-    private function loadCredentials() {
+    private function loadCredentials()
+    {
         $envFile = __DIR__ . '/../.env';
         if (file_exists($envFile)) {
             $env = parse_ini_file($envFile);
@@ -28,7 +31,8 @@ class FCM {
     /**
      * Get OAuth 2.0 access token using service account credentials
      */
-    private function getAccessToken() {
+    private function getAccessToken()
+    {
         // Return cached token if still valid
         if ($this->accessToken && $this->tokenExpiry && time() < $this->tokenExpiry) {
             return $this->accessToken;
@@ -101,14 +105,16 @@ class FCM {
         return $this->accessToken;
     }
 
-    private function base64UrlEncode($data) {
+    private function base64UrlEncode($data)
+    {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 
     /**
-     * Send notification to a specific user
+     * Send notification to a specific user (synchronous)
      */
-    public function sendToUser($userId, $title, $message, $data = null) {
+    public function sendToUser($userId, $title, $message, $data = null)
+    {
         if (empty($this->projectId)) {
             return false;
         }
@@ -134,13 +140,49 @@ class FCM {
     }
 
     /**
+     * Send notification asynchronously (queued for background processing)
+     * 
+     * Bu method bildirimi kuyruğa ekler ve hemen döner.
+     * Gerçek gönderim process_queue.php tarafından yapılır.
+     * 
+     * @param int $userId Hedef kullanıcı ID
+     * @param string $title Bildirim başlığı
+     * @param string $message Bildirim mesajı
+     * @param array $data Ekstra veri
+     * @param string $priority 'high' veya 'normal'
+     * @return bool Kuyruğa ekleme başarısı
+     */
+    public function sendToUserAsync($userId, $title, $message, $data = null, $priority = 'normal')
+    {
+        try {
+            require_once __DIR__ . '/NotificationQueue.php';
+
+            $queue = new NotificationQueue($this->conn);
+            $success = $queue->push($userId, $title, $message, $data ?? [], $priority);
+
+            if (!$success) {
+                // Kuyruk başarısız olursa senkron gönder (fallback)
+                error_log("NotificationQueue push failed, falling back to sync");
+                return $this->sendToUser($userId, $title, $message, $data);
+            }
+
+            return true;
+        } catch (Exception $e) {
+            error_log("sendToUserAsync error: " . $e->getMessage());
+            // Fallback to sync
+            return $this->sendToUser($userId, $title, $message, $data);
+        }
+    }
+
+    /**
      * Send a single notification to a device token
      */
-    private function sendNotification($accessToken, $token, $title, $message, $data) {
+    private function sendNotification($accessToken, $token, $title, $message, $data)
+    {
         // Build data payload - all values must be strings
         $dataPayload = [
-            'title' => (string)$title,
-            'body' => (string)$message,
+            'title' => (string) $title,
+            'body' => (string) $message,
         ];
 
         // Merge additional data
@@ -187,8 +229,10 @@ class FCM {
             $responseData = json_decode($response, true);
             if (isset($responseData['error']['details'])) {
                 foreach ($responseData['error']['details'] as $detail) {
-                    if (isset($detail['errorCode']) && 
-                        in_array($detail['errorCode'], ['UNREGISTERED', 'INVALID_ARGUMENT'])) {
+                    if (
+                        isset($detail['errorCode']) &&
+                        in_array($detail['errorCode'], ['UNREGISTERED', 'INVALID_ARGUMENT'])
+                    ) {
                         // Token is invalid, remove it from database
                         $this->removeInvalidToken($token);
                     }
@@ -205,7 +249,8 @@ class FCM {
     /**
      * Get all device tokens for a user
      */
-    private function getUserTokens($userId) {
+    private function getUserTokens($userId)
+    {
         $query = "SELECT token FROM device_tokens WHERE user_id = :user_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $userId);
@@ -221,7 +266,8 @@ class FCM {
     /**
      * Remove invalid token from database
      */
-    private function removeInvalidToken($token) {
+    private function removeInvalidToken($token)
+    {
         try {
             $query = "DELETE FROM device_tokens WHERE token = :token";
             $stmt = $this->conn->prepare($query);

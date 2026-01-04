@@ -9,10 +9,10 @@ $userId = requireAuth();
 
 $data = json_decode(file_get_contents("php://input"));
 
-if(
+if (
     !empty($data->receiver_id) &&
     !empty($data->content)
-){
+) {
     // 1. Rate Limiting: Kullanıcı başına dakikada 10 mesaj
     checkRateLimit($conn, $userId, 'send_message', 10, 60);
 
@@ -37,8 +37,8 @@ if(
     }
 
     // Reply desteği
-    $replyToId = !empty($data->reply_to_id) ? (int)$data->reply_to_id : null;
-    
+    $replyToId = !empty($data->reply_to_id) ? (int) $data->reply_to_id : null;
+
     // client_id desteği (optimistic UI için)
     // Security: Sanitize and limit client_id to prevent injection attacks
     $clientId = null;
@@ -65,14 +65,14 @@ if(
                     reply_to_id = :reply_to_id, 
                     client_id = :client_id, 
                     created_at = NOW()";
-                    
+
         $stmt = $conn->prepare($query);
         $stmt->bindParam(':sender_id', $userId);
         $stmt->bindParam(':receiver_id', $data->receiver_id);
         $stmt->bindParam(':content', $data->content);
         $stmt->bindParam(':reply_to_id', $replyToId, PDO::PARAM_INT);
         $stmt->bindParam(':client_id', $clientId);
-        
+
         $stmt->execute();
         $messageId = $conn->lastInsertId();
     } catch (PDOException $e) {
@@ -85,14 +85,14 @@ if(
                         content = :content, 
                         reply_to_id = :reply_to_id, 
                         created_at = NOW()";
-                        
+
             $stmt = $conn->prepare($query);
             $stmt->bindParam(':sender_id', $userId);
             $stmt->bindParam(':receiver_id', $data->receiver_id);
             $stmt->bindParam(':content', $data->content);
             $stmt->bindParam(':reply_to_id', $replyToId, PDO::PARAM_INT);
-            
-            if($stmt->execute()){
+
+            if ($stmt->execute()) {
                 $messageId = $conn->lastInsertId();
             } else {
                 throw $e; // Re-throw if it wasn't a column error
@@ -102,7 +102,7 @@ if(
         }
     }
 
-    if($messageId){
+    if ($messageId) {
         // Get the created message details (handle missing client_id column in select too)
         $newMessage = null;
         try {
@@ -121,7 +121,7 @@ if(
                 throw $e; // Re-throw other PDO exceptions
             }
         }
-        
+
         // 4. Auto-accept permission: Eğer ben mesaj atıyorsam, karşı tarafın bana mesaj atmasını kabul etmişimdir.
         // Bu sayede takipleşme bitse bile konuşma gelen kutumda kalır.
         $permQuery = "INSERT INTO message_permissions (user_id, partner_id, status) VALUES (:sender_id, :receiver_id, 'accepted') ON DUPLICATE KEY UPDATE status = 'accepted'";
@@ -133,15 +133,15 @@ if(
         http_response_code(201);
         echo json_encode(array(
             "message" => "Message sent.",
-            "id" => (int)$messageId,
+            "id" => (int) $messageId,
             "created_at" => $newMessage['created_at']
         ));
-        
+
         // Send Push Notification & Create DB Notification
         try {
-            $senderId = (int)$userId;
-            $receiverId = (int)$data->receiver_id;
-            
+            $senderId = (int) $userId;
+            $receiverId = (int) $data->receiver_id;
+
             // Gönderen kullanıcı adını al
             $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
             $senderStmt = $conn->prepare($senderQuery);
@@ -149,22 +149,22 @@ if(
             $senderStmt->execute();
             $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
             $senderName = $sender ? $sender['username'] : "Biri";
-            
+
             $title = "Yeni Mesaj: @$senderName";
             $message = (strlen($data->content) > 50) ? substr($data->content, 0, 47) . "..." : $data->content;
-            
+
             // 1. Veritabanına Kaydet (İPTAL EDİLDİ: Mesajlar için bildirim tablosuna kayıt atılmıyor artık)
             /*
             try {
                 $notifData = json_encode(array("sender_id" => $senderId));
                 $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'message', :title, :message, :data)";
                 $notifStmt = $conn->prepare($notifQuery);
-                
+
                 $notifStmt->bindParam(':user_id', $receiverId);
                 $notifStmt->bindParam(':title', $title);
                 $notifStmt->bindParam(':message', $message);
                 $notifStmt->bindParam(':data', $notifData);
-                
+
                 if (!$notifStmt->execute()) {
                     $errorInfo = $notifStmt->errorInfo();
                     error_log("Failed to insert message notification: " . implode(" ", $errorInfo));
@@ -175,27 +175,27 @@ if(
                 file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Message Notif Exception: " . $e->getMessage() . "\n", FILE_APPEND);
             }
             */
-            
-            // 2. Push Bildirim Gönder (FCM)
+
+            // 2. Push Bildirim Gönder (FCM - Asenkron)
+            // Bildirim kuyruğa eklenir, cron job ile işlenir
             if (file_exists('../notifications/FCM.php')) {
                 include_once '../notifications/FCM.php';
                 $fcm = new FCM($conn);
-                $fcm->sendToUser($receiverId, $title, $message, array(
-                    "type" => "message", 
-                    "sender_id" => (string)$senderId,
+                // Async: Kuyruğa ekle ve hemen dön (API yanıt süresini azaltır)
+                $fcm->sendToUserAsync($receiverId, $title, $message, array(
+                    "type" => "message",
+                    "sender_id" => (string) $senderId,
                     "sender_name" => $senderName
-                ));
+                ), 'high'); // Mesajlar yüksek öncelikli
             }
         } catch (Exception $e) {
             error_log("General notification error in send.php: " . $e->getMessage());
         }
-    }
-    else{
+    } else {
         http_response_code(503);
         echo json_encode(array("message" => "Unable to send message."));
     }
-}
-else{
+} else {
     http_response_code(400);
     echo json_encode(array("message" => "Incomplete data."));
 }
