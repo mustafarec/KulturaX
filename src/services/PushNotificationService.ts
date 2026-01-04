@@ -57,6 +57,10 @@ export async function initPushNotifications() {
 
         // Handle foreground messages
         messaging().onMessage(async (remoteMessage) => {
+            // If notification payload exists, system MAY have already shown it
+            // For data-only messages, we need to display manually
+            // With notification+data, system shows notification in background
+            // but in foreground, system doesn't show - we handle it
             await displayNotification(remoteMessage.data);
         });
 
@@ -100,6 +104,15 @@ export async function initPushNotifications() {
 export function setupBackgroundHandler() {
     // Handle background messages
     messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+        // If FCM has notification payload, system already shows the notification
+        // We only need to call displayNotification for data-only messages
+        // Check if notification payload exists
+        if (remoteMessage.notification) {
+            // System already displayed notification, skip manual display
+            console.log('[FCM] Background: System handled notification');
+            return;
+        }
+        // Data-only message - we need to display manually
         await displayNotification(remoteMessage.data);
     });
 

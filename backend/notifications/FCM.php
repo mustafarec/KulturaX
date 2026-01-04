@@ -161,16 +161,16 @@ class FCM
             $success = $queue->push($userId, $title, $message, $data ?? [], $priority);
 
             if (!$success) {
-                // Kuyruk başarısız olursa senkron gönder (fallback)
-                error_log("NotificationQueue push failed, falling back to sync");
-                return $this->sendToUser($userId, $title, $message, $data);
+                // Kuyruk başarısız - sadece logla, fallback yapma (çift bildirim önleme)
+                error_log("NotificationQueue push failed for user: $userId");
+                return false;
             }
 
             return true;
         } catch (Exception $e) {
+            // Hata durumunda fallback yapma
             error_log("sendToUserAsync error: " . $e->getMessage());
-            // Fallback to sync
-            return $this->sendToUser($userId, $title, $message, $data);
+            return false;
         }
     }
 
@@ -192,18 +192,43 @@ class FCM
             }
         }
 
-        // Data-only message for full control on client side
+        // FCM v1 API payload with both notification and data
+        // notification: System-level display (reliable for background/killed state)
+        // data: Custom handling in app (foreground processing by app code)
         $payload = [
             'message' => [
                 'token' => $token,
-                'data' => $dataPayload,
-                // High priority for immediate delivery
-                'android' => [
-                    'priority' => 'high'
+                // Notification payload - Android will show this automatically when app is in background/killed
+                'notification' => [
+                    'title' => (string) $title,
+                    'body' => (string) $message
                 ],
+                // Data payload - for custom app handling in foreground
+                'data' => $dataPayload,
+                // Android specific settings
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'channel_id' => 'messages',  // Must match channel created in app
+                        'sound' => 'default',
+                        'default_vibrate_timings' => true,
+                        'default_light_settings' => true
+                    ]
+                ],
+                // iOS specific settings  
                 'apns' => [
                     'headers' => [
                         'apns-priority' => '10'
+                    ],
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => (string) $title,
+                                'body' => (string) $message
+                            ],
+                            'sound' => 'default',
+                            'badge' => 1
+                        ]
                     ]
                 ]
             ]
