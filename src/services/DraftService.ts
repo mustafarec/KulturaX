@@ -7,7 +7,7 @@ const generateId = () => {
 
 export interface Draft {
     id: string;
-    type: 'thought' | 'review' | 'book' | 'event';
+    type: 'thought' | 'review' | 'book' | 'event' | 'quote';
     data: any;
     createdAt: number;
 }

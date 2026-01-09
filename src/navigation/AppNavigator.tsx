@@ -4,6 +4,10 @@ import { AuthNavigator } from './AuthNavigator';
 import { TabNavigator } from './TabNavigator';
 import { useAuth } from '../context/AuthContext';
 import { CreateQuoteScreen } from '../screens/social/CreateQuoteScreen';
+import { CreateThoughtScreen } from '../screens/social/CreateThoughtScreen';
+import { CreateReviewScreen } from '../screens/social/CreateReviewScreen';
+import { CreateBookScreen } from '../screens/social/CreateBookScreen';
+import { CreateEventScreen } from '../screens/social/CreateEventScreen';
 import { ChatScreen } from '../screens/social/ChatScreen';
 import { FollowListScreen } from '../screens/social/FollowListScreen';
 import { PopularUsersScreen } from '../screens/social/PopularUsersScreen';
@@ -152,6 +156,42 @@ export const AppNavigator = () => {
                             <Stack.Screen
                                 name="CreateQuote"
                                 component={CreateQuoteScreen}
+                                options={{
+                                    presentation: 'modal',
+                                    animation: 'slide_from_bottom',
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="CreateThought"
+                                component={CreateThoughtScreen}
+                                options={{
+                                    presentation: 'modal',
+                                    animation: 'slide_from_bottom',
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="CreateReview"
+                                component={CreateReviewScreen}
+                                options={{
+                                    presentation: 'modal',
+                                    animation: 'slide_from_bottom',
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="CreateBook"
+                                component={CreateBookScreen}
+                                options={{
+                                    presentation: 'modal',
+                                    animation: 'slide_from_bottom',
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="CreateEvent"
+                                component={CreateEventScreen}
                                 options={{
                                     presentation: 'modal',
                                     animation: 'slide_from_bottom',

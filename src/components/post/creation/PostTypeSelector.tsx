@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { MessageSquare, Pencil, BookOpen, Calendar } from 'lucide-react-native';
+import { MessageSquare, Pencil, BookOpen, Calendar, Quote } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../../context/ThemeContext';
 import { Card } from '../../ui/Card';
 
-export type CreateTab = 'thought' | 'review' | 'book' | 'event';
+export type CreateTab = 'thought' | 'review' | 'book' | 'event' | 'quote';
 
 interface PostTypeSelectorProps {
     onSelectType: (type: CreateTab) => void;
@@ -42,6 +42,13 @@ export const PostTypeSelector: React.FC<PostTypeSelectorProps> = ({ onSelectType
             description: 'Konser veya tiyatro kaydı',
             icon: Calendar,
             gradientColors: ['#059669', '#059669CC'], // Emerald-600
+        },
+        {
+            id: 'quote' as CreateTab,
+            label: 'Alıntı Ekle',
+            description: 'Kitap, film veya müzikten alıntı',
+            icon: Quote,
+            gradientColors: ['#0ea5e9', '#0ea5e9CC'], // Sky-500
         },
     ];
 
