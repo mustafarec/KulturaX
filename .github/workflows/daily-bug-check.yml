@@ -1,0 +1,55 @@
+# This workflow runs daily to check for bugs in the KulturaX repository.
+# It performs linting, testing, and a prebuild check.
+#
+# REQUIRED REPOSITORY SECRETS:
+#   SMTP_HOST: Address of the SMTP server (e.g., smtp.gmail.com)
+#   SMTP_PORT: Port of the SMTP server (e.g., 587)
+#   SMTP_USERNAME: Username for the SMTP server
+#   SMTP_PASSWORD: Password or app-specific password for the SMTP server
+name: Daily Bug Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * *'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run prebuild check for Android
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Send email on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: 'KulturaX Daily Bug Check Failed'
+          to: info@trendziraat.com
+          from: GitHub Actions <actions@github.com>
+          body: |
+            The daily bug check for the KulturaX repository has failed.
+            Please check the workflow run for more details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
