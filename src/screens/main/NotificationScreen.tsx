@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter, Animated, Alert } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, Image, DeviceEventEmitter, Animated, Alert, ViewToken } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -39,6 +39,65 @@ export const NotificationScreen = () => {
     const [menuPosition, setMenuPosition] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
     const moreButtonRef = useRef<View>(null);
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+
+    // Auto-mark visible notifications as read after 3 seconds
+    const visibleTimersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+    const notificationsRef = useRef(notifications);
+    notificationsRef.current = notifications;
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50,
+        minimumViewTime: 0,
+    }).current;
+
+    const markNotificationAsReadWithDelay = useCallback(async (notificationId: number) => {
+        const notification = notificationsRef.current.find(n => n.id === notificationId);
+        if (!notification || notification.is_read || !user) return;
+
+        try {
+            await notificationService.markAsRead(user.id, notificationId);
+            setNotifications(prev =>
+                prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+            );
+            decrementUnreadCount();
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    }, [user, decrementUnreadCount]);
+
+    const onViewableItemsChanged = useCallback(({ viewableItems, changed }: { viewableItems: ViewToken[], changed: ViewToken[] }) => {
+        const currentlyVisible = new Set(viewableItems.map(item => (item.item as Notification).id));
+
+        // Start timers for newly visible unread notifications
+        for (const item of viewableItems) {
+            const notification = item.item as Notification;
+            if (!notification.is_read && !visibleTimersRef.current.has(notification.id)) {
+                const timer = setTimeout(() => {
+                    markNotificationAsReadWithDelay(notification.id);
+                    visibleTimersRef.current.delete(notification.id);
+                }, 3000);
+                visibleTimersRef.current.set(notification.id, timer);
+            }
+        }
+
+        // Clear timers for items that are no longer visible
+        for (const [id, timer] of visibleTimersRef.current.entries()) {
+            if (!currentlyVisible.has(id)) {
+                clearTimeout(timer);
+                visibleTimersRef.current.delete(id);
+            }
+        }
+    }, [markNotificationAsReadWithDelay]);
+
+    // Cleanup timers on unmount
+    useEffect(() => {
+        return () => {
+            for (const timer of visibleTimersRef.current.values()) {
+                clearTimeout(timer);
+            }
+            visibleTimersRef.current.clear();
+        };
+    }, []);
 
     const fetchNotifications = async () => {
         if (!user) return;
@@ -642,6 +701,8 @@ export const NotificationScreen = () => {
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <BellRing size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
