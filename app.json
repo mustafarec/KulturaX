@@ -6,7 +6,8 @@
     "slug": "kitapmuzikfilm",
     "scheme": "kitapmuzikfilm",
     "android": {
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.anonymous.kitapmuzikfilm"
     }
   },
   "android": {
