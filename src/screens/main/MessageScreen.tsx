@@ -172,9 +172,9 @@ export const MessageScreen = () => {
             marginRight: 16,
         },
         avatar: {
-            width: 56,
-            height: 56,
-            borderRadius: 28,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
         },
         placeholderAvatar: {
             backgroundColor: theme.colors.secondary,
@@ -182,7 +182,7 @@ export const MessageScreen = () => {
             alignItems: 'center',
         },
         placeholderText: {
-            fontSize: 24,
+            fontSize: 16,
             fontWeight: 'bold',
             color: theme.colors.text,
         },

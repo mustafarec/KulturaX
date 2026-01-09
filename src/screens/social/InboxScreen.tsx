@@ -159,9 +159,9 @@ export const InboxScreen = () => {
             marginRight: theme.spacing.m,
         },
         avatarWrapper: {
-            width: 56,
-            height: 56,
-            borderRadius: 28,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             overflow: 'hidden',
         },
         avatar: {
@@ -176,7 +176,7 @@ export const InboxScreen = () => {
             alignItems: 'center',
         },
         avatarLetter: {
-            fontSize: 24,
+            fontSize: 18,
             fontWeight: 'bold',
             color: '#fff',
             fontFamily: theme.fonts.headings,

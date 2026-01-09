@@ -46,8 +46,7 @@ const CustomToast: React.FC<CustomToastProps> = ({ text1, text2, type, props }) 
                 shadowColor: theme.shadows.default.shadowColor,
             }
         ]}>
-            {/* Side accent bar */}
-            <View style={[styles.accentBar, { backgroundColor: sideBarColor }]} />
+
 
             <View style={styles.contentContainer}>
                 <View style={styles.iconContainer}>
