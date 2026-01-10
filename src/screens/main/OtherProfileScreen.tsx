@@ -10,9 +10,10 @@ import { ReviewCard } from '../../components/ReviewCard';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import Toast from 'react-native-toast-message';
 import { ThemedDialog } from '../../components/ThemedDialog';
-import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock, Ban, UserMinus, Star } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock, Ban, UserMinus, Star, Crown } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { ContentType } from '../../types/models';
 
 const { width } = Dimensions.get('window');
 
@@ -371,6 +372,19 @@ export const OtherProfileScreen = () => {
             color: theme.colors.textSecondary,
             fontSize: 16,
         },
+        premiumBadge: {
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: '#10b981',
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 3,
+            borderColor: theme.colors.background,
+        },
     }), [theme]);
 
     const [profile, setProfile] = useState<any>(null);
@@ -689,7 +703,7 @@ export const OtherProfileScreen = () => {
         }
     };
 
-    const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
+    const handleContentPress = (type: ContentType, id: string) => {
         (navigation as any).navigate('ContentDetail', { id: id, type: type });
     };
 
@@ -1029,6 +1043,12 @@ export const OtherProfileScreen = () => {
                                 <Text style={{ color: theme.colors.textSecondary, fontSize: 32, fontWeight: '600' }}>
                                     {(profile.full_name || profile.username || '?').charAt(0).toUpperCase()}
                                 </Text>
+                            </View>
+                        )}
+                        {/* Premium Badge */}
+                        {profile.is_premium && (
+                            <View style={styles.premiumBadge}>
+                                <Crown size={16} color="#fcd34d" fill="#fcd34d" />
                             </View>
                         )}
                     </View>

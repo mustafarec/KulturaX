@@ -13,6 +13,7 @@ import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { useAuth } from '../../context/AuthContext';
 import { MoreHorizontal, Trash } from 'lucide-react-native';
+import { ContentType } from '../../types/models';
 
 export const PostDetailScreen = () => {
     const route = useRoute();
@@ -190,7 +191,7 @@ export const PostDetailScreen = () => {
         inputRef.current?.focus();
     };
 
-    const handleContentPress = (type: 'book' | 'movie', id: string, title?: string) => {
+    const handleContentPress = (type: ContentType, id: string, title?: string) => {
         // Track click for analytics
         clickTrackingService.trackClick(type, id, title, 'post_detail');
 

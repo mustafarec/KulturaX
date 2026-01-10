@@ -1,4 +1,59 @@
 <?php
+// =================================================================
+// Environment Configuration with APCu Cache (Performance Optimization)
+// =================================================================
+$envCacheKey = 'kulturax_env_config';
+$envCacheTTL = 300; // 5 dakika
+
+// APCu varsa cache'den oku
+if (function_exists('apcu_enabled') && apcu_enabled()) {
+    $env = apcu_fetch($envCacheKey, $success);
+    if (!$success) {
+        // Cache miss - dosyadan oku ve cache'le
+        $envFile = __DIR__ . '/.env';
+        if (file_exists($envFile)) {
+            $env = parse_ini_file($envFile);
+            apcu_store($envCacheKey, $env, $envCacheTTL);
+        } else {
+            error_log("Config: .env file not found");
+            $env = [];
+        }
+    }
+} else {
+    // APCu yok - her seferinde dosyadan oku
+    $envFile = __DIR__ . '/.env';
+    $env = [];
+    if (file_exists($envFile)) {
+        $env = parse_ini_file($envFile);
+    } else {
+        error_log("Config: .env file not found");
+    }
+}
+
+// Database Configuration
+$host = $env['DB_HOST'] ?? 'localhost';
+$db_name = $env['DB_NAME'] ?? '';
+$username = $env['DB_USER'] ?? '';
+$password = $env['DB_PASS'] ?? '';
+
+// API Signature Secret - Will be loaded from .env after env parsing
+// Fallback is empty to enforce .env usage for security
+define('API_SIGNATURE_SECRET_FALLBACK', '');
+define('API_SIGNATURE_TOLERANCE', 300); // 5 minutes tolerance for timestamp
+// API Signature Secret from .env
+define('API_SIGNATURE_SECRET', $env['API_SIGNATURE_SECRET'] ?? API_SIGNATURE_SECRET_FALLBACK);
+
+// Define API Constants from .env
+define('SPOTIFY_CLIENT_ID', $env['SPOTIFY_CLIENT_ID'] ?? '');
+define('SPOTIFY_CLIENT_SECRET', $env['SPOTIFY_CLIENT_SECRET'] ?? '');
+define('SPOTIFY_REDIRECT_URI', $env['SPOTIFY_REDIRECT_URI'] ?? '');
+
+define('LASTFM_API_KEY', $env['LASTFM_API_KEY'] ?? '');
+define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
+
+define('GENIUS_ACCESS_TOKEN', $env['GENIUS_ACCESS_TOKEN'] ?? '');
+define('TICKETMASTER_API_KEY', $env['TICKETMASTER_API_KEY'] ?? '');
+
 $allowed_origins = [
     "https://mmreeo.online",
     "http://localhost:8081", // React Native Debugger
@@ -7,11 +62,6 @@ $allowed_origins = [
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-
-// API Signature Secret (should match mobile app)
-// This adds an extra layer of security for mobile app requests
-define('API_SIGNATURE_SECRET', 'KulturaX_2026_SecureAPI_Signature');
-define('API_SIGNATURE_TOLERANCE', 300); // 5 minutes tolerance for timestamp
 
 /**
  * Validate API Signature for mobile app requests
@@ -90,43 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// =================================================================
-// Environment Configuration with APCu Cache (Performance Optimization)
-// =================================================================
-$envCacheKey = 'kulturax_env_config';
-$envCacheTTL = 300; // 5 dakika
-
-// APCu varsa cache'den oku
-if (function_exists('apcu_enabled') && apcu_enabled()) {
-    $env = apcu_fetch($envCacheKey, $success);
-    if (!$success) {
-        // Cache miss - dosyadan oku ve cache'le
-        $envFile = __DIR__ . '/.env';
-        if (file_exists($envFile)) {
-            $env = parse_ini_file($envFile);
-            apcu_store($envCacheKey, $env, $envCacheTTL);
-        } else {
-            error_log("Config: .env file not found");
-            $env = [];
-        }
-    }
-} else {
-    // APCu yok - her seferinde dosyadan oku
-    $envFile = __DIR__ . '/.env';
-    $env = [];
-    if (file_exists($envFile)) {
-        $env = parse_ini_file($envFile);
-    } else {
-        error_log("Config: .env file not found");
-    }
-}
-
-// Database Configuration
-$host = $env['DB_HOST'] ?? 'localhost';
-$db_name = $env['DB_NAME'] ?? '';
-$username = $env['DB_USER'] ?? '';
-$password = $env['DB_PASS'] ?? '';
-
 try {
     // PDO ile veritabanı bağlantısı - Persistent Connection aktif
     $conn = new PDO(
@@ -146,17 +159,6 @@ try {
     error_log("Config DB Error: " . $exception->getMessage());
     exit();
 }
-
-// Define API Constants from .env
-define('SPOTIFY_CLIENT_ID', $env['SPOTIFY_CLIENT_ID'] ?? '');
-define('SPOTIFY_CLIENT_SECRET', $env['SPOTIFY_CLIENT_SECRET'] ?? '');
-define('SPOTIFY_REDIRECT_URI', $env['SPOTIFY_REDIRECT_URI'] ?? '');
-
-define('LASTFM_API_KEY', $env['LASTFM_API_KEY'] ?? '');
-define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
-
-define('GENIUS_ACCESS_TOKEN', $env['GENIUS_ACCESS_TOKEN'] ?? '');
-define('TICKETMASTER_API_KEY', $env['TICKETMASTER_API_KEY'] ?? '');
 
 /**
  * Get Client IP Address

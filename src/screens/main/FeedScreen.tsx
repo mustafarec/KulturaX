@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, LayoutAnimation, UIManager, Platform, Dimensions, ScrollView, BackHandler, DeviceEventEmitter } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, Dimensions, ScrollView, BackHandler, DeviceEventEmitter } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import Toast from 'react-native-toast-message';
+import { Post, ContentType } from '../../types/models';
 
 // Custom Hooks
 import { useFeed } from '../../hooks/useFeed';
@@ -28,22 +29,25 @@ import { SharePostModal } from '../../components/SharePostModal';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 
 // Contexts
-import { useSideMenu } from '../../context/SideMenuContext';
 import { useMessage } from '../../context/MessageContext';
 import { useNotification } from '../../context/NotificationContext';
 
 // Icons
 import { Search, Bell, Ghost, ChevronDown, ChevronUp } from 'lucide-react-native';
 
+// Styles
+import { getStyles } from './styles/FeedScreen.styles';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const UnreadBadge = () => {
     const { unreadCount } = useMessage();
     const { theme } = useTheme();
+    const styles = getStyles(theme);
     if (unreadCount === 0) return null;
     return (
-        <View style={{ position: 'absolute', right: -6, top: -4, backgroundColor: theme.colors.error, borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: theme.colors.surface }}>
-            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+        <View style={styles.unreadBadge}>
+            <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
         </View>
     );
 };
@@ -51,10 +55,11 @@ const UnreadBadge = () => {
 const NotificationBadge = () => {
     const { unreadCount } = useNotification();
     const { theme } = useTheme();
+    const styles = getStyles(theme);
     if (unreadCount === 0) return null;
     return (
-        <View style={{ position: 'absolute', right: -6, top: -4, backgroundColor: theme.colors.primary, borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: theme.colors.surface }}>
-            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+        <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
         </View>
     );
 };
@@ -65,6 +70,7 @@ export const FeedScreen = () => {
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
+    const styles = getStyles(theme);
 
     // Interaction Hooks
     const { handleLike, handleToggleSave, handleDirectRepost, handleQuoteRepost, handleContentPress: handleContentPressHook, handleUserPress } = usePostInteractions({ onUpdatePost: handlePostUpdate });
@@ -82,14 +88,14 @@ export const FeedScreen = () => {
     // Modals
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
-    const [selectedPostForOptions, setSelectedPostForOptions] = useState<any>(null);
+    const [selectedPostForOptions, setSelectedPostForOptions] = useState<Post | null>(null);
     const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
     // Share Modals
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const [shareCardModalVisible, setShareCardModalVisible] = useState(false);
     const [sharePostModalVisible, setSharePostModalVisible] = useState(false);
-    const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
+    const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(null);
 
     // Animation Value for Tab Slide
     const translateX = useSharedValue(0);
@@ -122,10 +128,6 @@ export const FeedScreen = () => {
         if (searchQuery.trim().length > 0) {
             wasSearchUsed.current = true;
             const timer = setTimeout(() => {
-                fetchFeed('search', searchQuery); // Use special Logic inside useFeed or handle here
-                // Note: useFeed handles 'search' if we configured it correctly, 
-                // but currently useFeed expects specific tabs. 
-                // Let's pass the active tab as target but with searchQuery.
                 const targetTab = activeMainTab === 'following' ? 'following' : activeSubTab;
                 fetchFeed(targetTab, searchQuery);
             }, 500);
@@ -171,7 +173,7 @@ export const FeedScreen = () => {
         fetchFeed(targetTab, searchQuery, true);
     }, [activeMainTab, activeSubTab, searchQuery, fetchFeed]);
 
-    const handleContentWrap = (type: 'book' | 'movie' | 'music', id: string, title?: string) => {
+    const handleContentWrap = (type: ContentType, id: string, title?: string) => {
         clickTrackingService.trackClick(type, id, title, 'feed');
         handleContentPressHook(type, id);
     };
@@ -218,7 +220,6 @@ export const FeedScreen = () => {
 
 
     // --- RENDER ---
-    const styles = getStyles(theme);
     const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
     const renderItem = ({ item }: { item: any }) => {
@@ -247,10 +248,6 @@ export const FeedScreen = () => {
                 onLike={() => handleLike(item)}
                 onSave={() => handleToggleSave(item)}
                 onRepost={() => handleDirectRepost(item)}
-
-            // We don't usually pass onUpdatePost to PostCard unless it manages its OWN state internally again.
-            // PostCard usually managed local state. If we pass props, it should update. 
-            // But `handleLike` updates the LIST. So we are good.
             />
         );
     };
@@ -282,7 +279,6 @@ export const FeedScreen = () => {
         );
     };
 
-    // Get Data helper
     const getFeedData = (tab: string) => {
         switch (tab) {
             case 'following': return feeds.following;
@@ -293,6 +289,13 @@ export const FeedScreen = () => {
             default: return [];
         }
     };
+
+    const subCategories = [
+        { id: 'trend', label: 'Tümü' },
+        { id: 'movie', label: 'Film' },
+        { id: 'book', label: 'Kitap' },
+        { id: 'music', label: 'Müzik' }
+    ];
 
     return (
         <View style={styles.container}>
@@ -333,11 +336,20 @@ export const FeedScreen = () => {
 
             {/* Sub-Tabs */}
             {activeMainTab === 'forYou' && isSubCategoriesVisible && (
-                <View style={{ paddingVertical: 10 }}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
-                        {[{ id: 'trend', label: 'Tümü' }, { id: 'movie', label: 'Film' }, { id: 'book', label: 'Kitap' }, { id: 'music', label: 'Müzik' }].map((item) => (
-                            <TouchableOpacity key={item.id} onPress={() => setActiveSubTab(item.id as any)} style={{ paddingVertical: 6, paddingHorizontal: 16, backgroundColor: activeSubTab === item.id ? theme.colors.primary : theme.colors.surface, borderRadius: 20, borderWidth: 1, borderColor: activeSubTab === item.id ? theme.colors.primary : theme.colors.border }}>
-                                <Text style={{ color: activeSubTab === item.id ? '#FFF' : theme.colors.text, fontSize: 13, fontWeight: activeSubTab === item.id ? '600' : '400', fontFamily: theme.fonts.main }}>{item.label}</Text>
+                <View style={styles.subCategoryContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subCategoryScrollContent}>
+                        {subCategories.map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                onPress={() => setActiveSubTab(item.id as any)}
+                                style={[
+                                    styles.subCategoryItem,
+                                    activeSubTab === item.id ? styles.subCategoryItemActive : styles.subCategoryItemInactive
+                                ]}>
+                                <Text style={[
+                                    styles.subCategoryText,
+                                    activeSubTab === item.id ? styles.subCategoryTextActive : styles.subCategoryTextInactive
+                                ]}>{item.label}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -394,26 +406,3 @@ export const FeedScreen = () => {
     );
 };
 
-const getStyles = (theme: any) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight! + 10 : 60, paddingBottom: 5, backgroundColor: 'rgba(255,255,255,0)', zIndex: 10 },
-    headerTitle: { fontSize: 23, fontFamily: theme.fonts.headings, color: theme.colors.primary, textAlign: 'center' },
-    searchContainer: { paddingHorizontal: 20, backgroundColor: theme.colors.surface, zIndex: 9, overflow: 'hidden', justifyContent: 'center', marginTop: -10 },
-    searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.inputBackground, borderRadius: theme.borderRadius.l, paddingHorizontal: 16, height: 48, borderWidth: 0 },
-    searchInput: { flex: 1, marginLeft: 8, fontSize: 15, color: theme.colors.text, height: '100%', paddingVertical: 0, fontFamily: theme.fonts.main },
-    tabsContainer: { flexDirection: 'row', backgroundColor: theme.colors.background, paddingHorizontal: 20, paddingVertical: 10, zIndex: 9, gap: 12 },
-    tab: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, backgroundColor: 'transparent', borderWidth: 1, borderColor: 'transparent' },
-    activeTab: { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-    tabText: { fontSize: 15, color: theme.colors.textSecondary, fontWeight: '600', fontFamily: theme.fonts.main },
-    activeTabText: { color: '#FFFFFF', fontWeight: '700' },
-    headerLeft: { width: 50 },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    pageTitleContainer: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-    headerLogo: { width: 150, height: 40, resizeMode: 'contain', tintColor: theme.colors.primary },
-    contentWrapper: { flexDirection: 'row', width: SCREEN_WIDTH * 5, flex: 1 },
-    page: { width: SCREEN_WIDTH, flex: 1 },
-    listContainer: { paddingBottom: 100, paddingTop: 8, paddingHorizontal: 16 },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 100 },
-    emptyText: { fontSize: 16, color: theme.colors.textSecondary, fontFamily: theme.fonts.main, marginTop: 16 },
-});

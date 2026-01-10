@@ -12,6 +12,7 @@ import { ArrowLeft, Box, Music, Film, Book, Palette, Globe, Cpu, Gamepad2, Hash 
 import { useAuth } from '../../context/AuthContext';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ContentType } from '../../types/models';
 
 export const TopicDetailScreen = () => {
     const route = useRoute();
@@ -90,7 +91,7 @@ export const TopicDetailScreen = () => {
         setShareModalVisible(true);
     };
 
-    const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
+    const handleContentPress = (type: ContentType, id: string) => {
         (navigation as any).navigate('ContentDetail', { id, type });
     };
 

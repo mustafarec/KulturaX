@@ -237,7 +237,7 @@ export const TabNavigator = () => {
                     options={{
                         tabBarIcon: ({ color, focused }) => {
                             const { user } = useAuth();
-                            const showBadge = user && user.is_email_verified == 0;
+                            const showBadge = user && !user.is_email_verified;
                             const size = focused ? iconSize * activeIconScale : iconSize;
 
                             return (

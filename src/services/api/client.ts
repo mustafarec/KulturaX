@@ -3,12 +3,13 @@ import Toast from 'react-native-toast-message';
 import { secureSet, secureGet, secureDelete, SECURE_KEYS } from '../SecureStorageService';
 import CryptoJS from 'crypto-js';
 import axiosRetry from 'axios-retry';
+import { API_URL as ENV_API_URL, API_SIGNATURE_SECRET as ENV_API_SECRET } from '@env';
 
-// API Base URL
-export const API_URL = 'https://mmreeo.online/api';
+// API Base URL - from environment variable with fallback
+export const API_URL = ENV_API_URL || 'https://mmreeo.online/api';
 
-// API Signature Secret - Must match backend config.php
-const API_SIGNATURE_SECRET = 'KulturaX_2026_SecureAPI_Signature';
+// API Signature Secret - from environment variable (Must match backend config.php)
+const API_SIGNATURE_SECRET = ENV_API_SECRET || '';
 
 /**
  * Generate API signature for request authentication

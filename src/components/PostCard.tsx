@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { formatRelativeTime } from '../utils/dateUtils';
+import { DefaultImages, getDefaultAvatar } from '../utils/DefaultImages';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Repeat, MoreVertical, Heart, MessageCircle, Share, Bookmark, Quote, BookOpen } from 'lucide-react-native';
@@ -8,9 +9,11 @@ import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { usePostInteractions, PostUpdateFn } from '../hooks/usePostInteractions';
 import { RepostMenu } from './RepostMenu';
+import { Post, ContentType } from '../types/models';
+import { getStyles } from './styles/PostCard.styles';
 
 interface PostCardProps {
-    post: any;
+    post: Post;
     onPress?: () => void;
     onLike?: () => void;
     onComment?: () => void;
@@ -19,7 +22,7 @@ interface PostCardProps {
     onUserPress?: (userId?: number) => void;
     onReposterPress?: () => void;
     currentUserId?: number;
-    onContentPress?: (type: 'book' | 'movie', id: string) => void;
+    onContentPress?: (type: ContentType, id: string) => void;
     onSave?: () => void;
     isSaved?: boolean;
     onShare?: () => void;
@@ -59,12 +62,12 @@ const PostCardComponent: React.FC<PostCardProps> = ({
     // --- INSTANT FEEDBACK STATE ---
     // Performans için beğeni durumunu local state'te tutuyoruz
     const [localIsLiked, setLocalIsLiked] = useState(!!displayPost.is_liked);
-    const [localLikeCount, setLocalLikeCount] = useState(parseInt(displayPost.like_count || '0', 10));
+    const [localLikeCount, setLocalLikeCount] = useState(parseInt(String(displayPost.like_count || '0'), 10));
 
     // Prop değişirse local state'i güncelle (örn: başka bir yerden beğenilirse)
     React.useEffect(() => {
         setLocalIsLiked(!!displayPost.is_liked);
-        setLocalLikeCount(parseInt(displayPost.like_count || '0', 10));
+        setLocalLikeCount(parseInt(String(displayPost.like_count || '0'), 10));
     }, [displayPost.is_liked, displayPost.like_count]);
 
     // Initialize Hook
@@ -139,170 +142,12 @@ const PostCardComponent: React.FC<PostCardProps> = ({
         if (post.original_post) {
             displayUser = post.original_post.user;
         } else if (post.author) {
-            displayUser = { username: post.author, full_name: post.author, avatar_url: null };
+            displayUser = { id: 0, username: post.author, full_name: post.author, avatar_url: undefined };
         }
     }
 
-    const styles = StyleSheet.create({
-        container: {
-            marginBottom: theme.spacing.m,
-            borderBottomWidth: 0,
-        },
-        header: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: theme.spacing.s,
-            paddingRight: 20,
-        },
-        optionsButton: {
-            position: 'absolute',
-            top: 12, // Aligned with typical padding
-            right: 12,
-            zIndex: 10,
-            padding: 4,
-        },
-        userInfo: {
-            flex: 1,
-            marginLeft: theme.spacing.s,
-        },
-        name: {
-            fontSize: 16,
-            fontWeight: '600',
-            color: theme.colors.text,
-            fontFamily: 'Roboto-Regular',
-        },
-        meta: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginTop: 2,
-            flexWrap: 'wrap',
-        },
-        username: {
-            fontSize: 13,
-            color: theme.colors.textSecondary,
-            fontFamily: theme.fonts.main,
-        },
-        dot: {
-            marginHorizontal: 4,
-            color: theme.colors.textSecondary,
-            fontSize: 10,
-        },
-        time: {
-            fontSize: 13,
-            color: theme.colors.textSecondary,
-            fontFamily: theme.fonts.main,
-        },
-        content: {
-            fontSize: 15,
-            lineHeight: 22,
-            color: theme.colors.text,
-            marginBottom: theme.spacing.m,
-            fontFamily: theme.fonts.main,
-        },
-        bookCard: {
-            backgroundColor: theme.colors.muted,
-            borderRadius: theme.borderRadius.m,
-            padding: theme.spacing.m,
-            flexDirection: 'row',
-            marginBottom: theme.spacing.m,
-        },
-        bookCover: {
-            width: 60,
-            height: 90,
-            borderRadius: theme.borderRadius.s,
-            backgroundColor: theme.colors.secondary,
-        },
-        bookInfo: {
-            flex: 1,
-            marginLeft: theme.spacing.m,
-            justifyContent: 'center',
-        },
-        bookTitle: {
-            fontSize: 16,
-            fontWeight: '700',
-            color: theme.colors.primary,
-            fontFamily: theme.fonts.headings || theme.fonts.main,
-            marginBottom: 4,
-        },
-        bookAuthor: {
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-            fontFamily: theme.fonts.main,
-        },
-        quoteBox: {
-            backgroundColor: theme.colors.background,
-            borderLeftWidth: 3,
-            borderLeftColor: theme.colors.primary,
-            padding: theme.spacing.m,
-            borderRadius: theme.borderRadius.s,
-            marginBottom: theme.spacing.m,
-        },
-        quoteText: {
-            fontSize: 16,
-            fontStyle: 'italic',
-            color: theme.colors.text,
-            fontFamily: theme.fonts.quote || theme.fonts.main,
-            lineHeight: 24,
-        },
-        embeddedPostContainer: {
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            marginTop: 12,
-            marginBottom: 12,
-            backgroundColor: theme.colors.surface,
-        },
-        embeddedHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 8,
-        },
-        embeddedAvatar: {
-            width: 24,
-            height: 24,
-            borderRadius: 12,
-            backgroundColor: theme.colors.border,
-            marginRight: 8,
-        },
-        embeddedName: {
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: theme.colors.text,
-        },
-        embeddedUsername: {
-            fontSize: 12,
-            color: theme.colors.textSecondary,
-        },
-        embeddedContent: {
-            fontSize: 14,
-            color: theme.colors.text,
-            marginBottom: 8,
-        },
-        embeddedImage: {
-            width: '100%',
-            height: 150,
-            borderRadius: 8,
-            marginTop: 8,
-        },
-        footer: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingTop: theme.spacing.s,
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
-        },
-        actionBtn: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 8,
-        },
-        actionText: {
-            fontSize: 13,
-            marginLeft: 6,
-            fontWeight: '500',
-        }
-    });
+    // Optimize styles with useMemo
+    const styles = React.useMemo(() => getStyles(theme), [theme]);
 
     const isBlackTheme = theme.id === 'black';
     const interactionColors = {
@@ -388,10 +233,10 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                     {/* Book Details */}
                     <TouchableOpacity
                         style={styles.bookCard}
-                        onPress={() => handleContent(displayPost.content_type, displayPost.content_id)}
+                        onPress={() => handleContent(displayPost.content_type!, displayPost.content_id!)}
                     >
                         <Image
-                            source={{ uri: displayPost.image_url || 'https://via.placeholder.com/150' }}
+                            source={{ uri: displayPost.image_url || DefaultImages.placeholder }}
                             style={styles.bookCover}
                             resizeMode="cover"
                         />
@@ -422,10 +267,10 @@ const PostCardComponent: React.FC<PostCardProps> = ({
             {!(displayPost.content_type === 'book' || displayPost.content_type === 'movie') && displayPost.image_url && (
                 <TouchableOpacity
                     style={styles.bookCard}
-                    onPress={() => handleContent(displayPost.content_type, displayPost.content_id)}
+                    onPress={() => handleContent(displayPost.content_type!, displayPost.content_id!)}
                 >
                     <Image
-                        source={{ uri: displayPost.image_url || 'https://via.placeholder.com/150' }}
+                        source={{ uri: displayPost.image_url || DefaultImages.placeholder }}
                         style={styles.bookCover}
                         resizeMode="cover"
                     />
@@ -466,7 +311,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                         }}
                     >
                         <Image
-                            source={{ uri: post.original_post.user.avatar_url || 'https://via.placeholder.com/50' }}
+                            source={{ uri: post.original_post.user.avatar_url || getDefaultAvatar(post.original_post.user.username || 'User', 50) }}
                             style={styles.embeddedAvatar}
                         />
                         <View style={{ flex: 1 }}>

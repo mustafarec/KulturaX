@@ -17,6 +17,7 @@ import ImagePicker from 'react-native-image-crop-picker';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
 import { ShareCardModal } from '../../components/ShareCardModal';
+import { ContentType } from '../../types/models';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -212,7 +213,7 @@ export const ProfileScreen = () => {
         }
     }, [libraryItems]);
 
-    const handleContentPress = (type: 'book' | 'movie' | 'music', id: string) => {
+    const handleContentPress = (type: ContentType, id: string) => {
         (navigation as any).navigate('ContentDetail', { id: id, type: type });
     };
 

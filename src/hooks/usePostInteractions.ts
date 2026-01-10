@@ -5,6 +5,7 @@ import { interactionService, postService } from '../services/backendApi';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { ContentType } from '../types/models';
 
 export type PostUpdateFn = (updatedPost: any) => void;
 
@@ -183,7 +184,7 @@ export const usePostInteractions = ({ onUpdatePost }: UsePostInteractionsProps) 
     }, [navigation]);
 
     // VIEW / CONTENT
-    const handleContentPress = useCallback((type: 'book' | 'movie' | 'music', id: string) => {
+    const handleContentPress = useCallback((type: ContentType, id: string) => {
         (navigation as any).navigate('ContentDetail', { id, type });
     }, [navigation]);
 

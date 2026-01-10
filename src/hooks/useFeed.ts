@@ -3,16 +3,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { postService, userService } from '../services/backendApi';
 import { useAuth } from '../context/AuthContext';
+import { Post, FeedItem } from '../types/models';
 
 const FEEDBACK_STORAGE_KEY = '@last_feedback_time';
 const FEEDBACK_COOLDOWN = 12 * 60 * 60 * 1000; // 12 hours
 
 export interface FeedState {
-    trend: any[];
-    following: any[];
-    movie: any[];
-    book: any[];
-    music: any[];
+    trend: FeedItem[];
+    following: FeedItem[];
+    movie: FeedItem[];
+    book: FeedItem[];
+    music: FeedItem[];
 }
 
 export const useFeed = () => {
@@ -38,7 +39,7 @@ export const useFeed = () => {
     const [refreshing, setRefreshing] = useState(false);
 
     // Helpers to update state safely
-    const setFeedData = useCallback((tab: keyof FeedState, data: any[]) => {
+    const setFeedData = useCallback((tab: keyof FeedState, data: FeedItem[]) => {
         setFeeds(prev => ({ ...prev, [tab]: data }));
     }, []);
 
@@ -47,7 +48,7 @@ export const useFeed = () => {
     }, []);
 
     // Update ALL feeds (for sync like/save status across tabs)
-    const updateAllFeeds = useCallback((updater: (feed: any[]) => any[]) => {
+    const updateAllFeeds = useCallback((updater: (feed: FeedItem[]) => FeedItem[]) => {
         setFeeds(prev => ({
             trend: updater(prev.trend),
             following: updater(prev.following),
@@ -57,7 +58,7 @@ export const useFeed = () => {
         }));
     }, []);
 
-    const handlePostUpdate = useCallback((updater: (post: any) => any) => {
+    const handlePostUpdate = useCallback((updater: (post: FeedItem) => FeedItem) => {
         updateAllFeeds((list) => list.map(updater));
     }, [updateAllFeeds]);
 
@@ -91,7 +92,7 @@ export const useFeed = () => {
 
         try {
             const filter = tab === 'trend' ? '' : tab;
-            let feedData = [];
+            let feedData: FeedItem[] = [];
 
             if (searchQuery.trim().length > 0) {
                 // Search
@@ -102,8 +103,8 @@ export const useFeed = () => {
                 const safePosts = Array.isArray(posts) ? posts : [];
                 const safeUsers = Array.isArray(users) ? users : [];
 
-                const markedPosts = safePosts.map((p: any) => ({ ...p, type: 'post' }));
-                const markedUsers = safeUsers.map((u: any) => ({ ...u, type: 'user', id: `user_${u.id}`, originalId: u.id }));
+                const markedPosts = safePosts.map((p: any) => ({ ...p, type: 'post' } as FeedItem));
+                const markedUsers = safeUsers.map((u: any) => ({ ...u, type: 'user', id: `user_${u.id}`, originalId: u.id } as FeedItem));
                 feedData = [...markedUsers, ...markedPosts];
             } else {
                 // Normal Feed
@@ -118,7 +119,7 @@ export const useFeed = () => {
                     console.error('Feed API Error:', posts);
                     feedData = [];
                 } else {
-                    feedData = posts.map((p: any) => ({ ...p, type: 'post' }));
+                    feedData = posts.map((p: any) => ({ ...p, type: 'post' } as FeedItem));
                 }
 
                 // Injections (Suggested Users & Feedback) - Only for Trend
@@ -141,14 +142,18 @@ export const useFeed = () => {
                         for (let i = feedData.length - 1; i >= 0; i--) {
                             if (feedbackInjected) break;
                             const targetPost = feedData[i];
-                            if (targetPost && targetPost.type === 'post' && targetPost.request_feedback) {
-                                feedData.splice(i + 1, 0, {
-                                    type: 'feedback',
-                                    id: `feedback_${targetPost.id}_${now}`,
-                                    targetPostId: targetPost.id
-                                });
-                                feedbackInjected = true;
-                                AsyncStorage.setItem(FEEDBACK_STORAGE_KEY, now.toString());
+                            if (targetPost && targetPost.type === 'post' && targetPost.user) { // Added implicit check
+                                // Note: We need to cast or ensure properties exist. For now trusting FeedItem structure for post type.
+                                const postItem = targetPost as unknown as Post; // Safe cast if we knew it was a post but FeedItem is union
+                                if (postItem.request_feedback) {
+                                    feedData.splice(i + 1, 0, {
+                                        type: 'feedback',
+                                        id: `feedback_${targetPost.id}_${now}`,
+                                        targetPostId: Number(targetPost.id)
+                                    });
+                                    feedbackInjected = true;
+                                    AsyncStorage.setItem(FEEDBACK_STORAGE_KEY, now.toString());
+                                }
                             }
                         }
                     }

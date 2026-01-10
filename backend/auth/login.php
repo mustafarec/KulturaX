@@ -33,7 +33,7 @@ if (!Validator::validateString($data->password, 1, 255)) {
 }
 
 try {
-    $query = "SELECT id, email, password, username, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified, is_frozen, frozen_at FROM users WHERE email = :email LIMIT 1";
+    $query = "SELECT id, email, password, username, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified, is_frozen, frozen_at, is_premium FROM users WHERE email = :email LIMIT 1";
     $stmt = $conn->prepare($query);
 
     $email = Validator::sanitizeInput($data->email);
@@ -61,6 +61,8 @@ try {
             http_response_code(200);
             
             unset($row['password']);
+            // Convert is_premium to boolean for proper JavaScript handling
+            $row['is_premium'] = (bool)($row['is_premium'] ?? false);
             echo json_encode(array(
                 "message" => "Giriş başarılı.",
                 "token" => $token,

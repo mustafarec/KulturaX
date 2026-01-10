@@ -5,15 +5,16 @@ import { onUnauthorized } from '../services/api/client';
 import { authService } from '../services/api/authApi';
 import { secureSetObject, secureGetObject, secureDelete, SECURE_KEYS, migrateToSecureStorage } from '../services/SecureStorageService';
 import { registerFCMToken, unregisterFCMToken } from '../services/PushNotificationService';
+import { User } from '../types/models';
 
 interface AuthContextType {
-    user: any | null;
+    user: User | null;
     login: (email: string, password: string) => Promise<void>;
     signup: (email: string, password: string, name: string, surname: string, username: string, birthDate?: string, gender?: string) => Promise<any>;
     verifyEmail: (email: string, code: string) => Promise<void>;
     resendEmailCode: (email: string) => Promise<void>;
     logout: () => Promise<void>;
-    updateUser: (userData: any) => Promise<void>;
+    updateUser: (userData: Partial<User>) => Promise<void>;
     isLoading: boolean;
     error: string | null;
 }
@@ -21,7 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [user, setUser] = useState<any | null>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 // Run migration from AsyncStorage to SecureStore (one-time)
                 await migrateToSecureStorage();
 
-                const userData = await secureGetObject<any>(SECURE_KEYS.USER_DATA);
+                const userData = await secureGetObject<User>(SECURE_KEYS.USER_DATA);
                 if (userData) {
                     setUser(userData);
 
@@ -216,9 +217,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const updateUser = async (userData: any) => {
-        setUser(userData);
-        await secureSetObject(SECURE_KEYS.USER_DATA, userData);
+    const updateUser = async (userData: Partial<User>) => {
+        if (!user) return;
+        const updatedUser = { ...user, ...userData };
+        setUser(updatedUser);
+        await secureSetObject(SECURE_KEYS.USER_DATA, updatedUser);
     };
 
     return (

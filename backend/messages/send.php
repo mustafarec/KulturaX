@@ -76,50 +76,24 @@ if (
         $stmt->execute();
         $messageId = $conn->lastInsertId();
     } catch (PDOException $e) {
-        // Fallback: If client_id column doesn't exist, insert without it
-        // Check if the error is related to an unknown column
-        if (strpos($e->getMessage(), 'Unknown column \'client_id\'') !== false || strpos($e->getMessage(), 'SQLSTATE[42S22]') !== false) {
-            $query = "INSERT INTO messages SET 
-                        sender_id = :sender_id, 
-                        receiver_id = :receiver_id, 
-                        content = :content, 
-                        reply_to_id = :reply_to_id, 
-                        created_at = NOW()";
-
-            $stmt = $conn->prepare($query);
-            $stmt->bindParam(':sender_id', $userId);
-            $stmt->bindParam(':receiver_id', $data->receiver_id);
-            $stmt->bindParam(':content', $data->content);
-            $stmt->bindParam(':reply_to_id', $replyToId, PDO::PARAM_INT);
-
-            if ($stmt->execute()) {
-                $messageId = $conn->lastInsertId();
-            } else {
-                throw $e; // Re-throw if it wasn't a column error
-            }
-        } else {
-            throw $e; // Re-throw other PDO exceptions
-        }
+        // Log detailed error and return 500
+        error_log("Message Insert Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(array("message" => "Mesaj gönderilirken sunucu hatası oluştu."));
+        exit;
     }
 
     if ($messageId) {
-        // Get the created message details (handle missing client_id column in select too)
-        $newMessage = null;
+        // Get the created message details
         try {
             $getMsg = $conn->prepare("SELECT id, created_at, client_id FROM messages WHERE id = :id");
             $getMsg->bindParam(':id', $messageId);
             $getMsg->execute();
             $newMessage = $getMsg->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            // Fallback for SELECT if client_id column doesn't exist
-            if (strpos($e->getMessage(), 'Unknown column \'client_id\'') !== false || strpos($e->getMessage(), 'SQLSTATE[42S22]') !== false) {
-                $getMsg = $conn->prepare("SELECT id, created_at FROM messages WHERE id = :id");
-                $getMsg->bindParam(':id', $messageId);
-                $getMsg->execute();
-                $newMessage = $getMsg->fetch(PDO::FETCH_ASSOC);
-            } else {
-                throw $e; // Re-throw other PDO exceptions
-            }
+             error_log("Message Select Error: " . $e->getMessage());
+             // Continue execution as message is sent, just response might lack details
+             $newMessage = ['created_at' => date('Y-m-d H:i:s')];
         }
 
         // 4. Auto-accept permission: Eğer ben mesaj atıyorsam, karşı tarafın bana mesaj atmasını kabul etmişimdir.

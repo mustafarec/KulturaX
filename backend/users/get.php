@@ -17,7 +17,7 @@ try {
         // Diğer alanları (full_name, bio, avatar_url) ayrı ayrı çekmeyi dene veya varsayılan değer ata
         // Bu, eğer sütunlar yoksa hatayı önler
         try {
-            $detailQuery = "SELECT full_name, bio, avatar_url, header_image_url, location, website, is_email_verified, is_private, is_frozen FROM users WHERE id = :user_id";
+            $detailQuery = "SELECT full_name, bio, avatar_url, header_image_url, location, website, is_email_verified, is_private, is_frozen, is_premium FROM users WHERE id = :user_id";
             $detailStmt = $conn->prepare($detailQuery);
             $detailStmt->bindParam(':user_id', $user_id);
             $detailStmt->execute();
@@ -99,6 +99,8 @@ try {
             $user['following_count'] = 0;
         }
 
+        // Convert is_premium to boolean for proper JavaScript handling
+        $user['is_premium'] = (bool)($user['is_premium'] ?? false);
         echo json_encode($user);
     } else {
         http_response_code(404);

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Crown } from 'lucide-react-native';
+import { Crown, Check } from 'lucide-react-native';
 import { PremiumModal } from './PremiumModal';
+import { useAuth } from '../context/AuthContext';
 
 interface PremiumButtonProps {
     style?: any;
@@ -22,6 +23,30 @@ interface PremiumButtonProps {
  */
 export const PremiumButton: React.FC<PremiumButtonProps> = ({ style }) => {
     const [modalVisible, setModalVisible] = useState(false);
+    const { user } = useAuth();
+
+    // Kullanıcı zaten premium ise farklı görünüm göster
+    if (user?.is_premium) {
+        return (
+            <View style={style}>
+                <LinearGradient
+                    colors={['#10b981', '#0d9488']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10 }}
+                >
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                        <Crown size={18} color="#fcd34d" fill="#fcd34d" strokeWidth={2.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>Premium Üye</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>Tüm ayrıcalıklardan yararlanıyorsun</Text>
+                    </View>
+                    <Check size={20} color="white" />
+                </LinearGradient>
+            </View>
+        );
+    }
 
     return (
         <>
