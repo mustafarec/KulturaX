@@ -2,6 +2,8 @@
   <uses-permission android:name="android.permission.INTERNET"/>
   <!-- Removed deprecated storage permissions - using scoped storage on Android 10+ -->
   <uses-permission android:name="android.permission.VIBRATE"/>
+  <!-- Required for Android 13+ (API 33) to show notifications -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <!-- SYSTEM_ALERT_WINDOW only needed for dev debugging overlay -->
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <queries>

@@ -7,7 +7,7 @@ import notifee, {
 } from '@notifee/react-native';
 import * as NavigationService from './NavigationService';
 import { notificationService } from './backendApi';
-import { Platform, DeviceEventEmitter, NativeModules } from 'react-native';
+import { Platform, DeviceEventEmitter, NativeModules, PermissionsAndroid } from 'react-native';
 
 const { ChatPrefs } = NativeModules;
 
@@ -43,12 +43,35 @@ async function createChannels() {
 // Initialize push notifications
 export async function initPushNotifications() {
     try {
-        // Request permission
-        const authStatus = await messaging().requestPermission();
-        const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED
-            || authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        let enabled = false;
+
+        // Request notification permission
+        if (Platform.OS === 'android') {
+            // Android 13+ (API 33) requires POST_NOTIFICATIONS runtime permission
+            if (Platform.Version >= 33) {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+                    {
+                        title: 'Bildirim İzni',
+                        message: 'Mesajlar ve etkinlikler hakkında bildirim almak için izin verin.',
+                        buttonPositive: 'İzin Ver',
+                        buttonNegative: 'Reddet',
+                    }
+                );
+                enabled = granted === PermissionsAndroid.RESULTS.GRANTED;
+            } else {
+                // Android 12 and below don't need runtime permission
+                enabled = true;
+            }
+        } else {
+            // iOS - use Firebase messaging permission
+            const authStatus = await messaging().requestPermission();
+            enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED
+                || authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        }
 
         if (!enabled) {
+            console.log('FCM: Notification permission denied');
             return;
         }
 
