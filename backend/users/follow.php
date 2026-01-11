@@ -9,8 +9,8 @@ $data = json_decode(file_get_contents("php://input"));
 
 if (!empty($data->followed_id)) {
     try {
-        $targetUserId = (int)$data->followed_id;
-        
+        $targetUserId = (int) $data->followed_id;
+
         // Cannot follow yourself
         if ($userId == $targetUserId) {
             http_response_code(400);
@@ -40,7 +40,7 @@ if (!empty($data->followed_id)) {
             $stmt->bindParam(':follower_id', $userId);
             $stmt->bindParam(':followed_id', $targetUserId);
             $stmt->execute();
-            
+
             echo json_encode(array(
                 "is_following" => false,
                 "request_status" => null
@@ -63,7 +63,7 @@ if (!empty($data->followed_id)) {
                         $delStmt = $conn->prepare($deleteRequest);
                         $delStmt->bindParam(':id', $existingRequest['id']);
                         $delStmt->execute();
-                        
+
                         echo json_encode(array(
                             "is_following" => false,
                             "request_status" => null,
@@ -75,10 +75,10 @@ if (!empty($data->followed_id)) {
                         $upStmt = $conn->prepare($updateRequest);
                         $upStmt->bindParam(':id', $existingRequest['id']);
                         $upStmt->execute();
-                        
+
                         // Notify target user
                         createFollowRequestNotification($conn, $userId, $targetUserId);
-                        
+
                         echo json_encode(array(
                             "is_following" => false,
                             "request_status" => "pending",
@@ -92,12 +92,12 @@ if (!empty($data->followed_id)) {
                     $insStmt->bindParam(':requester_id', $userId);
                     $insStmt->bindParam(':target_id', $targetUserId);
                     $insStmt->execute();
-                    
+
                     $requestId = $conn->lastInsertId();
-                    
+
                     // Notify target user
                     createFollowRequestNotification($conn, $userId, $targetUserId, $requestId);
-                    
+
                     echo json_encode(array(
                         "is_following" => false,
                         "request_status" => "pending",
@@ -131,9 +131,23 @@ if (!empty($data->followed_id)) {
     echo json_encode(array("message" => "Incomplete data."));
 }
 
-// Helper function to create follow notification
-function createFollowNotification($conn, $senderId, $receiverId) {
+// FCM include - sadece bir kez yükle
+$fcmLoaded = false;
+$fcm = null;
+if (file_exists('../notifications/FCM.php')) {
+    include_once '../notifications/FCM.php';
+    $fcmLoaded = true;
+}
+
+/**
+ * Base notification function - DRY prensibi için
+ */
+function createNotificationBase($conn, $senderId, $receiverId, $type, $title, $messageTemplate, $extraData = [])
+{
+    global $fcmLoaded, $fcm;
+
     try {
+        // Sender username'i al
         $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
         $senderStmt = $conn->prepare($senderQuery);
         $senderStmt->bindParam(':sender_id', $senderId);
@@ -141,63 +155,60 @@ function createFollowNotification($conn, $senderId, $receiverId) {
         $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
         $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
 
-        $title = "Yeni Takipçi";
-        $message = "@$senderName seni takip etmeye başladı.";
-        $notifData = json_encode(array("sender_id" => $senderId));
+        // Mesajı formatla
+        $message = str_replace('{username}', "@$senderName", $messageTemplate);
 
-        $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'follow', :title, :message, :data)";
+        // Notification data
+        $notifData = array_merge(["sender_id" => $senderId], $extraData);
+
+        // Veritabanına kaydet
+        $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, :type, :title, :message, :data)";
         $notifStmt = $conn->prepare($notifQuery);
         $notifStmt->bindParam(':user_id', $receiverId);
+        $notifStmt->bindParam(':type', $type);
         $notifStmt->bindParam(':title', $title);
         $notifStmt->bindParam(':message', $message);
-        $notifStmt->bindParam(':data', $notifData);
+        $dataJson = json_encode($notifData);
+        $notifStmt->bindParam(':data', $dataJson);
         $notifStmt->execute();
 
-        // Send Push Notification
-        if (file_exists('../notifications/FCM.php')) {
-            include_once '../notifications/FCM.php';
-            $fcm = new FCM($conn);
-            $fcm->sendToUser($receiverId, $title, $message, array("type" => "follow", "sender_id" => $senderId));
+        // Push Notification gönder
+        if ($fcmLoaded) {
+            if ($fcm === null) {
+                $fcm = new FCM($conn);
+            }
+            $pushData = array_merge(["type" => $type, "sender_id" => $senderId], $extraData);
+            $fcm->sendToUser($receiverId, $title, $message, $pushData);
         }
     } catch (Exception $e) {
-        error_log("Notification error in follow.php: " . $e->getMessage());
+        error_log("Notification error in follow.php ($type): " . $e->getMessage());
     }
 }
 
+// Helper function to create follow notification
+function createFollowNotification($conn, $senderId, $receiverId)
+{
+    createNotificationBase(
+        $conn,
+        $senderId,
+        $receiverId,
+        'follow',
+        'Yeni Takipçi',
+        '{username} seni takip etmeye başladı.'
+    );
+}
+
 // Helper function to create follow request notification
-function createFollowRequestNotification($conn, $senderId, $receiverId, $requestId = null) {
-    try {
-        $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
-        $senderStmt = $conn->prepare($senderQuery);
-        $senderStmt->bindParam(':sender_id', $senderId);
-        $senderStmt->execute();
-        $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
-        $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
-
-        $title = "Takip İsteği";
-        $message = "@$senderName seni takip etmek istiyor.";
-        $notifData = json_encode(array(
-            "sender_id" => $senderId, 
-            "type" => "follow_request",
-            "request_id" => $requestId
-        ));
-
-        $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'follow_request', :title, :message, :data)";
-        $notifStmt = $conn->prepare($notifQuery);
-        $notifStmt->bindParam(':user_id', $receiverId);
-        $notifStmt->bindParam(':title', $title);
-        $notifStmt->bindParam(':message', $message);
-        $notifStmt->bindParam(':data', $notifData);
-        $notifStmt->execute();
-
-        // Send Push Notification
-        if (file_exists('../notifications/FCM.php')) {
-            include_once '../notifications/FCM.php';
-            $fcm = new FCM($conn);
-            $fcm->sendToUser($receiverId, $title, $message, array("type" => "follow_request", "sender_id" => $senderId, "request_id" => $requestId));
-        }
-    } catch (Exception $e) {
-        error_log("Notification error in follow.php: " . $e->getMessage());
-    }
+function createFollowRequestNotification($conn, $senderId, $receiverId, $requestId = null)
+{
+    createNotificationBase(
+        $conn,
+        $senderId,
+        $receiverId,
+        'follow_request',
+        'Takip İsteği',
+        '{username} seni takip etmek istiyor.',
+        ["request_id" => $requestId]
+    );
 }
 ?>

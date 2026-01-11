@@ -91,9 +91,9 @@ if (
             $getMsg->execute();
             $newMessage = $getMsg->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-             error_log("Message Select Error: " . $e->getMessage());
-             // Continue execution as message is sent, just response might lack details
-             $newMessage = ['created_at' => date('Y-m-d H:i:s')];
+            error_log("Message Select Error: " . $e->getMessage());
+            // Continue execution as message is sent, just response might lack details
+            $newMessage = ['created_at' => date('Y-m-d H:i:s')];
         }
 
         // 4. Auto-accept permission: Eğer ben mesaj atıyorsam, karşı tarafın bana mesaj atmasını kabul etmişimdir.
@@ -127,30 +127,7 @@ if (
             $title = "Yeni Mesaj: @$senderName";
             $message = (strlen($data->content) > 50) ? substr($data->content, 0, 47) . "..." : $data->content;
 
-            // 1. Veritabanına Kaydet (İPTAL EDİLDİ: Mesajlar için bildirim tablosuna kayıt atılmıyor artık)
-            /*
-            try {
-                $notifData = json_encode(array("sender_id" => $senderId));
-                $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'message', :title, :message, :data)";
-                $notifStmt = $conn->prepare($notifQuery);
-
-                $notifStmt->bindParam(':user_id', $receiverId);
-                $notifStmt->bindParam(':title', $title);
-                $notifStmt->bindParam(':message', $message);
-                $notifStmt->bindParam(':data', $notifData);
-
-                if (!$notifStmt->execute()) {
-                    $errorInfo = $notifStmt->errorInfo();
-                    error_log("Failed to insert message notification: " . implode(" ", $errorInfo));
-                    file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Message Notif Insert Error: " . implode(" ", $errorInfo) . "\n", FILE_APPEND);
-                }
-            } catch (Exception $e) {
-                error_log("Notification insert error in send.php: " . $e->getMessage());
-                file_put_contents('../debug_log.txt', date('Y-m-d H:i:s') . " - Message Notif Exception: " . $e->getMessage() . "\n", FILE_APPEND);
-            }
-            */
-
-            // 2. Push Bildirim Gönder (FCM - Asenkron)
+            // Push Bildirim Gönder (FCM - Asenkron)
             // Bildirim kuyruğa eklenir, cron job ile işlenir
             if (file_exists('../notifications/FCM.php')) {
                 include_once '../notifications/FCM.php';

@@ -24,7 +24,7 @@ if (empty($contentRaw)) {
 }
 
 // Girdi validasyonu
-if(empty($contentRaw) || !isset($data->source)) {
+if (empty($contentRaw) || !isset($data->source)) {
     http_response_code(400);
     echo json_encode(array("message" => "Eksik veri."));
     exit;
@@ -56,20 +56,20 @@ try {
     $quote_text = $quote_text ? Validator::sanitizeInput($quote_text) : null;
     $comment_text = $comment_text ? Validator::sanitizeInput($comment_text) : null;
     $content = Validator::sanitizeInput($contentRaw);
-    
+
     $source = Validator::sanitizeInput($data->source);
     $author = isset($data->author) ? Validator::sanitizeInput($data->author) : '';
-    $original_post_id = isset($data->original_post_id) ? (int)$data->original_post_id : null;
+    $original_post_id = isset($data->original_post_id) ? (int) $data->original_post_id : null;
     $content_type = (isset($data->content_type) && !empty($data->content_type)) ? Validator::sanitizeInput($data->content_type) : 'general';
     $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
     $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
     $image_url = isset($data->image_url) ? filter_var($data->image_url, FILTER_SANITIZE_URL) : null;
-    $topic_id = isset($data->topic_id) ? (int)$data->topic_id : null;
+    $topic_id = isset($data->topic_id) ? (int) $data->topic_id : null;
 
     // Duplicate Repost Check
     // Sadece basit repost (alıntı/yorum metni olmayan veya 'Yeniden paylaşım' içerikli) için kontrol et
     $isSimpleRepost = empty($quote_text) && (empty($comment_text) || $comment_text === 'Yeniden paylaşım');
-    
+
     if ($original_post_id && $isSimpleRepost) {
         // Mevcut repost'u ara (basit repost olanlar - quote/comment boş veya 'Yeniden paylaşım')
         $checkDupQuery = "SELECT id FROM posts WHERE user_id = :user_id AND original_post_id = :original_post_id 
@@ -91,7 +91,7 @@ try {
             $deleteQuery = "DELETE FROM posts WHERE id = :id";
             $deleteStmt = $conn->prepare($deleteQuery);
             $deleteStmt->bindParam(':id', $existingId);
-            
+
             if ($deleteStmt->execute()) {
                 // Orijinal post'un repost_count'unu düşür
                 $updateCounterQuery = "UPDATE posts SET repost_count = GREATEST(0, repost_count - 1) WHERE id = :original_id";
@@ -103,9 +103,9 @@ try {
                 echo json_encode(array("message" => "Repost geri alındı.", "unreposted" => true, "post_id" => $existingId));
                 exit;
             } else {
-                 http_response_code(500);
-                 echo json_encode(array("message" => "Repost geri alınamadı."));
-                 exit;
+                http_response_code(500);
+                echo json_encode(array("message" => "Repost geri alınamadı."));
+                exit;
             }
         }
     }
@@ -122,11 +122,10 @@ try {
     $stmt->bindParam(':original_post_id', $original_post_id);
     $stmt->bindParam(':content_type', $content_type);
     $stmt->bindParam(':content_id', $content_id);
-    $stmt->bindParam(':content_id', $content_id);
     $stmt->bindParam(':image_url', $image_url);
     $stmt->bindParam(':topic_id', $topic_id);
 
-    if($stmt->execute()){
+    if ($stmt->execute()) {
         $newPostId = $conn->lastInsertId();
 
         // Bildirim Mantığı (Repost ve Alıntı için)

@@ -102,40 +102,61 @@ const PostCardComponent: React.FC<PostCardProps> = ({
     const handleContent = onContentPress || interactions.handleContentPress;
     const handleUser = onUserPress || interactions.handleUserPress;
 
-    let displayComment = '';
-    let displayQuote = '';
+    // OPTIMIZED: useMemo to cache JSON parsing result
+    const { displayComment, displayQuote } = React.useMemo(() => {
+        let comment = '';
+        let quote = '';
 
-    if (displayPost.quote_text != null || displayPost.comment_text != null) {
-        displayQuote = displayPost.quote_text || '';
-        displayComment = displayPost.comment_text || '';
-    }
+        if (displayPost.quote_text != null || displayPost.comment_text != null) {
+            quote = displayPost.quote_text || '';
+            comment = displayPost.comment_text || '';
+        }
 
-    if (!displayQuote && !displayComment && displayPost.content) {
-        try {
-            if (displayPost.content.startsWith('{')) {
-                const parsed = JSON.parse(displayPost.content);
-                if (parsed.quote !== undefined) {
-                    displayComment = parsed.comment;
-                    displayQuote = parsed.quote;
+        if (!quote && !comment && displayPost.content) {
+            try {
+                if (displayPost.content.startsWith('{')) {
+                    const parsed = JSON.parse(displayPost.content);
+                    if (parsed.quote !== undefined) {
+                        comment = parsed.comment;
+                        quote = parsed.quote;
+                    } else {
+                        quote = displayPost.content;
+                    }
                 } else {
-                    displayQuote = displayPost.content;
+                    const isContentType = displayPost.content_type === 'book' ||
+                        displayPost.content_type === 'movie' ||
+                        displayPost.content_type === 'music';
+                    const hasSource = displayPost.source &&
+                        displayPost.source !== 'Paylaşım' &&
+                        displayPost.source !== 'App' &&
+                        displayPost.source !== 'Düşünce';
+
+                    if (isContentType || hasSource) {
+                        quote = displayPost.content;
+                    } else {
+                        comment = displayPost.content;
+                    }
                 }
-            } else {
-                if (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music' || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce')) {
-                    displayQuote = displayPost.content;
+            } catch (e) {
+                // Fallback logic
+                const isContentType = displayPost.content_type === 'book' ||
+                    displayPost.content_type === 'movie' ||
+                    displayPost.content_type === 'music';
+                const hasSource = displayPost.source &&
+                    displayPost.source !== 'Paylaşım' &&
+                    displayPost.source !== 'App' &&
+                    displayPost.source !== 'Düşünce';
+
+                if (isContentType || hasSource) {
+                    quote = displayPost.content;
                 } else {
-                    displayComment = displayPost.content;
+                    comment = displayPost.content;
                 }
-            }
-        } catch (e) {
-            // Fallback logic
-            if (displayPost.content_type === 'book' || displayPost.content_type === 'movie' || displayPost.content_type === 'music' || (displayPost.source && displayPost.source !== 'Paylaşım' && displayPost.source !== 'App' && displayPost.source !== 'Düşünce')) {
-                displayQuote = displayPost.content;
-            } else {
-                displayComment = displayPost.content;
             }
         }
-    }
+
+        return { displayComment: comment, displayQuote: quote };
+    }, [displayPost.content, displayPost.quote_text, displayPost.comment_text, displayPost.content_type, displayPost.source]);
 
     let displayUser = post.user;
     if (isRepost && !isQuoteRepost) {

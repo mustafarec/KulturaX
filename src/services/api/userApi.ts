@@ -1,5 +1,11 @@
 import { apiClient, handleApiError } from './client';
 
+/**
+ * User Service - Tüm kullanıcı API işlemleri
+ * 
+ * Hata yönetimi: handleApiError kullanılmayan fonksiyonlar
+ * hatayı caller'a fırlatır (try-catch olmadan).
+ */
 export const userService = {
     uploadAvatar: async (userId: number, formData: FormData) => {
         try {
@@ -8,7 +14,7 @@ export const userService = {
             });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -20,7 +26,7 @@ export const userService = {
             const response = await apiClient.get(url);
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -31,7 +37,7 @@ export const userService = {
             });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -40,7 +46,7 @@ export const userService = {
             const response = await apiClient.post('/users/follow.php', { followed_id: followedId });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -49,15 +55,20 @@ export const userService = {
             const response = await apiClient.post('/users/check_follow.php', { follower_id: followerId, followed_id: followedId });
             return response.data;
         } catch (error: any) {
+            // Özel durum: hata varsa false dön
             return { is_following: false };
         }
     },
 
     savePreference: async (userId: number, key: string, value: string, expiresInHours?: number) => {
-        const response = await apiClient.post('/users/set_preference.php', {
-            key, value, expires_in_hours: expiresInHours
-        });
-        return response.data;
+        try {
+            const response = await apiClient.post('/users/set_preference.php', {
+                key, value, expires_in_hours: expiresInHours
+            });
+            return response.data;
+        } catch (error: any) {
+            return handleApiError(error);
+        }
     },
 
     search: async (query: string) => {
@@ -65,7 +76,7 @@ export const userService = {
             const response = await apiClient.get(`/users/search.php?query=${encodeURIComponent(query)}`);
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -76,23 +87,35 @@ export const userService = {
             const response = await apiClient.get(url);
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
     blockUser: async (blockedId: number) => {
-        const response = await apiClient.post('/users/block_user.php', { blocked_id: blockedId });
-        return response.data;
+        try {
+            const response = await apiClient.post('/users/block_user.php', { blocked_id: blockedId });
+            return response.data;
+        } catch (error: any) {
+            return handleApiError(error);
+        }
     },
 
     unblockUser: async (blockedId: number) => {
-        const response = await apiClient.post('/users/unblock_user.php', { blocked_id: blockedId });
-        return response.data;
+        try {
+            const response = await apiClient.post('/users/unblock_user.php', { blocked_id: blockedId });
+            return response.data;
+        } catch (error: any) {
+            return handleApiError(error);
+        }
     },
 
     getBlockedUsers: async () => {
-        const response = await apiClient.get('/users/get_blocked_users.php');
-        return response.data;
+        try {
+            const response = await apiClient.get('/users/get_blocked_users.php');
+            return response.data;
+        } catch (error: any) {
+            return handleApiError(error);
+        }
     },
 
     getPopularUsers: async () => {
@@ -100,7 +123,7 @@ export const userService = {
             const response = await apiClient.get('/users/popular_users.php');
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -109,7 +132,7 @@ export const userService = {
             const response = await apiClient.get(`/users/suggested_users.php?user_id=${userId}`);
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -118,7 +141,7 @@ export const userService = {
             const response = await apiClient.post('/users/mute_user.php', { muted_id: mutedId });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -127,7 +150,7 @@ export const userService = {
             const response = await apiClient.post('/users/unmute_user.php', { muted_id: mutedId });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -136,7 +159,7 @@ export const userService = {
             const response = await apiClient.get('/users/get_muted_users.php');
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -145,7 +168,7 @@ export const userService = {
             const response = await apiClient.post('/users/update_privacy.php', { is_private: isPrivate });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -154,7 +177,7 @@ export const userService = {
             const response = await apiClient.get('/users/get_follow_requests.php');
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -163,7 +186,7 @@ export const userService = {
             const response = await apiClient.post('/users/accept_follow_request.php', { request_id: requestId });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     },
 
@@ -172,7 +195,7 @@ export const userService = {
             const response = await apiClient.post('/users/reject_follow_request.php', { request_id: requestId });
             return response.data;
         } catch (error: any) {
-            handleApiError(error);
+            return handleApiError(error);
         }
     }
 };

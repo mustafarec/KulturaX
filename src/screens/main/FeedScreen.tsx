@@ -222,7 +222,8 @@ export const FeedScreen = () => {
     // --- RENDER ---
     const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
-    const renderItem = ({ item }: { item: any }) => {
+    // OPTIMIZED: useCallback prevents function re-creation on every render
+    const renderItem = React.useCallback(({ item }: { item: any }) => {
         if (item.type === 'suggested_users') return <SuggestedUsers />;
         if (item.type === 'feedback') return <FeedbackCard onFeedback={(interested) => handleFeedbackAction(item.targetPostId, interested, item.id)} onDismiss={() => handleFeedbackDismiss(item.id)} />;
         if (item.type === 'user') return <UserCard user={{ id: item.originalId, username: item.username, name: item.name, surname: item.surname, avatar_url: item.avatar_url }} onPress={() => handleUserPress(item.originalId)} />;
@@ -250,7 +251,7 @@ export const FeedScreen = () => {
                 onRepost={() => handleDirectRepost(item)}
             />
         );
-    };
+    }, [navigation, user?.id, handleUserPress, handleContentWrap, handleOptionsPress, handleLike, handleToggleSave, handleDirectRepost, handleFeedbackAction, handleFeedbackDismiss]);
 
     const renderList = (data: any[], loading: boolean) => {
         if (loading) {

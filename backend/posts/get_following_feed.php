@@ -11,6 +11,8 @@ $authenticatedUserId = requireAuth();
 $user_id = $authenticatedUserId; // Kimlik doğrulanan kullanıcı
 
 try {
+    // OPTIMIZED: Using denormalized counters from posts table instead of correlated subqueries
+    // Reduces 12 subqueries to 6 (only user-specific checks remain)
     $query = "SELECT 
                 p.*, 
                 u.username, 
@@ -25,19 +27,26 @@ try {
                 ou.username as op_username,
                 ou.full_name as op_full_name,
                 ou.avatar_url as op_avatar_url,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'like') as like_count,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'comment') as comment_count,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id) as repost_count,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
-                (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
                 
-                (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like') as op_like_count,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'comment') as op_comment_count,
-                (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id) as op_repost_count,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,
-                (SELECT COUNT(*) FROM bookmarks WHERE post_id = op.id AND user_id = :user_id) as op_is_saved,
+                -- Use denormalized counters (already maintained by create.php, like.php etc.)
+                p.like_count,
+                p.comment_count,
+                p.repost_count,
+                
+                -- User-specific checks (cannot be denormalized, use EXISTS for performance)
+                EXISTS(SELECT 1 FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
+                EXISTS(SELECT 1 FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
+                EXISTS(SELECT 1 FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
+                
+                -- Original post counters (denormalized)
+                op.like_count as op_like_count,
+                op.comment_count as op_comment_count,
+                op.repost_count as op_repost_count,
+                
+                -- Original post user-specific checks
+                EXISTS(SELECT 1 FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
+                EXISTS(SELECT 1 FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,
+                EXISTS(SELECT 1 FROM bookmarks WHERE post_id = op.id AND user_id = :user_id) as op_is_saved,
                 
                 op.image_url as op_image_url,
                 op.content_type as op_content_type,
@@ -99,12 +108,12 @@ try {
 
     $posts = array();
 
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         // Convert is_liked, is_reposted, is_saved to boolean
         $row['is_liked'] = $row['is_liked'] > 0;
         $row['is_reposted'] = $row['is_reposted'] > 0;
         $row['is_saved'] = $row['is_saved'] > 0;
-        
+
         // Structure user object
         $row['user'] = array(
             'id' => $row['user_id'],
@@ -165,7 +174,7 @@ try {
         unset($row['op_repost_count']);
         unset($row['op_is_reposted']);
         unset($row['op_is_saved']);
-        
+
         array_push($posts, $row);
     }
 

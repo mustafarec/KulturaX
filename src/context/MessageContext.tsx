@@ -1,7 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { useAuth } from './AuthContext';
 import { messageService } from '../services/backendApi';
 import * as Notifications from 'expo-notifications';
+
+// Polling interval - 15s for shared hosting (was 5s)
+const POLLING_INTERVAL = 15000;
 
 interface MessageContextType {
     unreadCount: number;
@@ -19,6 +23,20 @@ export const MessageProvider = ({ children }: { children: ReactNode }) => {
     const [currentChatUserId, setCurrentChatUserId] = useState<number | null>(null);
     const { user } = useAuth();
     const userId = user?.id;
+
+    // Track app state for smart polling
+    const appState = useRef(AppState.currentState);
+    const [isActive, setIsActive] = useState(true);
+
+    // Listen to app state changes
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            // Only poll when app is active
+            setIsActive(nextAppState === 'active');
+            appState.current = nextAppState;
+        });
+        return () => subscription?.remove();
+    }, []);
 
     const refreshUnreadCount = useCallback(async () => {
         if (!userId) {
@@ -53,11 +71,21 @@ export const MessageProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
+    // OPTIMIZED: Smart polling
+    // - Only polls when app is active
+    // - Pauses when user is in a chat (they'll see messages via WebSocket/chat hook)
+    // - Uses 15s interval instead of 5s to reduce server load
     useEffect(() => {
         refreshUnreadCount();
-        const interval = setInterval(refreshUnreadCount, 5000); // Sync with inbox refresh
+
+        // Skip polling if app is inactive or user is in a chat
+        if (!isActive || currentChatUserId) {
+            return;
+        }
+
+        const interval = setInterval(refreshUnreadCount, POLLING_INTERVAL);
         return () => clearInterval(interval);
-    }, [userId, refreshUnreadCount]);
+    }, [userId, refreshUnreadCount, isActive, currentChatUserId]);
 
     const value = useMemo(() => ({
         unreadCount,

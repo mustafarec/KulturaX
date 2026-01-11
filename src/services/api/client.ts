@@ -1,3 +1,15 @@
+/**
+ * API Client - KültüraX
+ * 
+ * Axios tabanlı HTTP istemcisi.
+ * Özellikler:
+ * - Otomatik retry (3 deneme, exponential backoff)
+ * - API signature (HMAC-SHA256)
+ * - Token yönetimi (SecureStore ile şifreli)
+ * - 401 Unauthorized handling
+ * - Network error handling
+ */
+
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { secureSet, secureGet, secureDelete, SECURE_KEYS } from '../SecureStorageService';
@@ -5,11 +17,88 @@ import CryptoJS from 'crypto-js';
 import axiosRetry from 'axios-retry';
 import { API_URL as ENV_API_URL, API_SIGNATURE_SECRET as ENV_API_SECRET } from '@env';
 
-// API Base URL - from environment variable with fallback
+// =============================================================================
+// Configuration
+// =============================================================================
+
+/** API Base URL - from environment variable with fallback */
 export const API_URL = ENV_API_URL || 'https://mmreeo.online/api';
 
-// API Signature Secret - from environment variable (Must match backend config.php)
+/** API Signature Secret - from environment variable (Must match backend config.php) */
 const API_SIGNATURE_SECRET = ENV_API_SECRET || '';
+
+// =============================================================================
+// Token Management (Encapsulated)
+// =============================================================================
+
+/**
+ * Token Manager - Encapsulates token state and operations
+ * Avoids global mutable state by using closure
+ */
+const createTokenManager = () => {
+    let cachedToken: string | null = null;
+
+    return {
+        /** Set auth token (cache + secure storage) */
+        set: async (token: string): Promise<void> => {
+            cachedToken = token;
+            await secureSet(SECURE_KEYS.AUTH_TOKEN, token);
+        },
+
+        /** Get auth token (from cache or secure storage) */
+        get: async (): Promise<string | null> => {
+            if (!cachedToken) {
+                cachedToken = await secureGet(SECURE_KEYS.AUTH_TOKEN);
+            }
+            return cachedToken;
+        },
+
+        /** Clear auth token */
+        clear: async (): Promise<void> => {
+            cachedToken = null;
+            await secureDelete(SECURE_KEYS.AUTH_TOKEN);
+        }
+    };
+};
+
+// Token manager instance
+const tokenManager = createTokenManager();
+
+// Exported token functions (backwards compatible)
+export const setAuthToken = tokenManager.set;
+export const getAuthToken = tokenManager.get;
+export const clearAuthToken = tokenManager.clear;
+
+// =============================================================================
+// Unauthorized Callback Management
+// =============================================================================
+
+/**
+ * Unauthorized callback manager
+ */
+const createUnauthorizedHandler = () => {
+    let callback: (() => void) | null = null;
+
+    return {
+        set: (cb: () => void) => {
+            callback = cb;
+        },
+        invoke: () => {
+            if (callback) {
+                callback();
+            }
+        }
+    };
+};
+
+const unauthorizedHandler = createUnauthorizedHandler();
+
+/** Register callback for 401 Unauthorized events */
+export const onUnauthorized = unauthorizedHandler.set;
+
+// =============================================================================
+// API Signature Generation
+// =============================================================================
 
 /**
  * Generate API signature for request authentication
@@ -22,7 +111,11 @@ const generateApiSignature = (): string => {
     return `${timestamp}:${signature}`;
 };
 
-// Create axios instance
+// =============================================================================
+// Axios Instance
+// =============================================================================
+
+/** Axios instance with default configuration */
 export const apiClient = axios.create({
     baseURL: API_URL,
     timeout: 10000, // 10 seconds timeout
@@ -43,25 +136,9 @@ axiosRetry(apiClient, {
     }
 });
 
-// Token management - Now using SecureStore for encrypted storage
-let authToken: string | null = null;
-
-export const setAuthToken = async (token: string) => {
-    authToken = token;
-    await secureSet(SECURE_KEYS.AUTH_TOKEN, token);
-};
-
-export const getAuthToken = async (): Promise<string | null> => {
-    if (!authToken) {
-        authToken = await secureGet(SECURE_KEYS.AUTH_TOKEN);
-    }
-    return authToken;
-};
-
-export const clearAuthToken = async () => {
-    authToken = null;
-    await secureDelete(SECURE_KEYS.AUTH_TOKEN);
-};
+// =============================================================================
+// Interceptors
+// =============================================================================
 
 // Request interceptor - Add token and API signature to every request
 apiClient.interceptors.request.use(
@@ -69,7 +146,7 @@ apiClient.interceptors.request.use(
         // Add API signature for security
         config.headers['X-App-Signature'] = generateApiSignature();
 
-        const token = await getAuthToken();
+        const token = await tokenManager.get();
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
             config.headers['X-Auth-Token'] = token;
@@ -80,18 +157,6 @@ apiClient.interceptors.request.use(
         return Promise.reject(error);
     }
 );
-
-// Helper to handle API errors
-export const handleApiError = (error: any): never => {
-    throw error.response ? error.response.data : new Error('Network Error');
-};
-
-// 401 Unauthorized Handling Listener
-let unauthorizedCallback: (() => void) | null = null;
-
-export const onUnauthorized = (callback: () => void) => {
-    unauthorizedCallback = callback;
-};
 
 // Response interceptor - Handle errors
 apiClient.interceptors.response.use(
@@ -105,18 +170,15 @@ apiClient.interceptors.response.use(
                 text2: 'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.',
                 visibilityTime: 4000
             });
-            // Let retry-axios handle it if configured, otherwise reject
             return Promise.reject(new Error("Network/SSL Error"));
         }
 
         // 401 Unauthorized - Token Expired Logic
         if (error.response.status === 401) {
             const errorCode = error.response.data?.code;
-            // Only logout if explicitly TOKEN_EXPIRED or if no specific code is provided (safe fallback)
+            // Only logout if explicitly TOKEN_EXPIRED or if no specific code is provided
             if (errorCode === 'TOKEN_EXPIRED' || !errorCode) {
-                if (unauthorizedCallback) {
-                    unauthorizedCallback();
-                }
+                unauthorizedHandler.invoke();
             }
         }
 
@@ -131,5 +193,18 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// =============================================================================
+// Error Handling
+// =============================================================================
+
+/**
+ * Handle API errors - throws formatted error
+ * @param error - Axios error object
+ * @returns never - always throws
+ */
+export const handleApiError = (error: any): never => {
+    throw error.response ? error.response.data : new Error('Network Error');
+};
 
 export default apiClient;

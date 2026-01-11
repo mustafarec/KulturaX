@@ -207,32 +207,55 @@ export const ChatDetailScreen = () => {
     // This is exactly what Inverted FlatList expects.
     const reversedMessages = messages;
 
-    // Search Logic
-    const handleSearchTextChange = useCallback((text: string) => {
-        setSearchText(text);
-        if (!text.trim()) {
+    // OPTIMIZED: Pre-compute lowercase content for search
+    const searchableMessages = useMemo(() =>
+        reversedMessages.map((msg, index) => ({
+            index,
+            lowerContent: msg.content.toLowerCase()
+        })),
+        [reversedMessages]
+    );
+
+    // OPTIMIZED: Debounced search text
+    const [debouncedSearchText, setDebouncedSearchText] = useState('');
+
+    useEffect(() => {
+        if (!searchText.trim()) {
+            setDebouncedSearchText('');
             setSearchMatches([]);
             setCurrentMatchIndex(-1);
             return;
         }
 
-        const matches: number[] = [];
-        reversedMessages.forEach((msg, index) => {
-            if (msg.content.toLowerCase().includes(text.toLowerCase())) {
-                matches.push(index);
-            }
-        });
+        const timer = setTimeout(() => {
+            setDebouncedSearchText(searchText);
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [searchText]);
+
+    // OPTIMIZED: Memoized search results
+    useEffect(() => {
+        if (!debouncedSearchText.trim()) return;
+
+        const lowerSearch = debouncedSearchText.toLowerCase();
+        const matches = searchableMessages
+            .filter(m => m.lowerContent.includes(lowerSearch))
+            .map(m => m.index);
 
         setSearchMatches(matches);
         if (matches.length > 0) {
-            setCurrentMatchIndex(matches.length - 1); // Start from the newest match (bottom/first in inverted list logic, but visually bottom)
-            // Or start from 0 if you want to jump to the most recent message found at the bottom
-            scrollToMatch(matches[0]); // Let's jump to the most recent one (index 0 in matches array usually means index X in reversed list)
+            scrollToMatch(matches[0]);
             setCurrentMatchIndex(0);
         } else {
             setCurrentMatchIndex(-1);
         }
-    }, [reversedMessages]);
+    }, [debouncedSearchText, searchableMessages]);
+
+    // Simple text change handler (no heavy processing)
+    const handleSearchTextChange = useCallback((text: string) => {
+        setSearchText(text);
+    }, []);
 
     const scrollToMatch = (index: number) => {
         flatListRef.current?.scrollToIndex({

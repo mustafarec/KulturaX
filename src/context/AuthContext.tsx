@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
 import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { onUnauthorized } from '../services/api/client';
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         setError(null);
         try {
             // Remove token from backend and storage
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         // 1. 401 Unauthorized Global Listener

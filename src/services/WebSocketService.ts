@@ -6,6 +6,12 @@
 
 type MessageHandler = (data: any) => void;
 
+// WebSocket Constants
+const WS_RECONNECT_MAX_ATTEMPTS = 5;
+const WS_RECONNECT_INITIAL_DELAY = 1000; // 1 second
+const WS_RECONNECT_MAX_DELAY = 30000; // 30 seconds
+const WS_HEARTBEAT_INTERVAL = 30000; // 30 seconds
+
 interface WebSocketConfig {
     url: string;
     userId: number;
@@ -18,10 +24,11 @@ interface WebSocketConfig {
 class WebSocketService {
     private ws: WebSocket | null = null;
     private config: WebSocketConfig | null = null;
-    private messageHandlers: Map<string, MessageHandler[]> = new Map();
+    // OPTIMIZED: Set instead of Array for O(1) handler removal
+    private messageHandlers: Map<string, Set<MessageHandler>> = new Map();
     private reconnectAttempts = 0;
-    private maxReconnectAttempts = 5;
-    private reconnectDelay = 1000; // Start with 1 second
+    private maxReconnectAttempts = WS_RECONNECT_MAX_ATTEMPTS;
+    private reconnectDelay = WS_RECONNECT_INITIAL_DELAY;
     private heartbeatInterval: NodeJS.Timeout | null = null;
     private isConnecting = false;
 
@@ -147,25 +154,21 @@ class WebSocketService {
 
     /**
      * Subscribe to message type
+     * OPTIMIZED: Using Set for O(1) add/remove
      */
     on(type: string, handler: MessageHandler): void {
         if (!this.messageHandlers.has(type)) {
-            this.messageHandlers.set(type, []);
+            this.messageHandlers.set(type, new Set());
         }
-        this.messageHandlers.get(type)!.push(handler);
+        this.messageHandlers.get(type)!.add(handler);
     }
 
     /**
      * Unsubscribe from message type
+     * OPTIMIZED: Set.delete() is O(1) vs Array.indexOf() which is O(n)
      */
     off(type: string, handler: MessageHandler): void {
-        const handlers = this.messageHandlers.get(type);
-        if (handlers) {
-            const index = handlers.indexOf(handler);
-            if (index !== -1) {
-                handlers.splice(index, 1);
-            }
-        }
+        this.messageHandlers.get(type)?.delete(handler);
     }
 
     /**
@@ -210,7 +213,7 @@ class WebSocketService {
         }, this.reconnectDelay);
 
         // Exponential backoff
-        this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
+        this.reconnectDelay = Math.min(this.reconnectDelay * 2, WS_RECONNECT_MAX_DELAY);
     }
 
     /**
@@ -219,7 +222,7 @@ class WebSocketService {
     private startHeartbeat(): void {
         this.heartbeatInterval = setInterval(() => {
             this.send({ type: 'ping' });
-        }, 30000); // Every 30 seconds
+        }, WS_HEARTBEAT_INTERVAL);
     }
 
     /**

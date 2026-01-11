@@ -7,13 +7,14 @@ include_once '../auth_middleware.php';
 
 
 // DEBUG LOGGING DISABLED FOR PRODUCTION
-function debugLog($message) {
+function debugLog($message)
+{
     // Production'da log yazılmıyor
     // Geliştirme için: error_log($message);
 }
 
 // Rate limiting - IP bazlı, 3 kayıt/saat
-$ip = $_SERVER['REMOTE_ADDR'];
+$ip = getClientIp();
 checkRateLimit($conn, $ip, 'register_attempt', 3, 3600);
 
 // $data = json_decode(file_get_contents("php://input")); DELETED - moved down
@@ -27,7 +28,7 @@ if ($data) {
 }
 
 // Girdi validasyonu
-if(!isset($data->email) || !isset($data->password) || !isset($data->name) || !isset($data->surname) || !isset($data->username)){
+if (!isset($data->email) || !isset($data->password) || !isset($data->name) || !isset($data->surname) || !isset($data->username)) {
     debugLog("Validation failed: Missing fields.");
     http_response_code(400);
     echo json_encode(array("message" => "Lütfen zorunlu alanları doldurunuz (Email, Şifre, İsim, Soyisim, Kullanıcı Adı)."));
@@ -56,15 +57,15 @@ try {
     // Email kontrolü
     $check_query = "SELECT id FROM users WHERE email = :email OR username = :username";
     $check_stmt = $conn->prepare($check_query);
-    
+
     $email = Validator::sanitizeInput($data->email);
     $username = Validator::sanitizeInput($data->username);
-    
+
     $check_stmt->bindParam(':email', $email);
     $check_stmt->bindParam(':username', $username);
     $check_stmt->execute();
 
-    if($check_stmt->rowCount() > 0){
+    if ($check_stmt->rowCount() > 0) {
         debugLog("User registration failed: User already exists (Email: $email, Username: $username)");
         http_response_code(400);
         echo json_encode(array("message" => "Bu email veya kullanıcı adı zaten kayıtlı."));
@@ -76,7 +77,7 @@ try {
     $surname = Validator::sanitizeInput($data->surname);
     $birth_date = isset($data->birth_date) ? Validator::sanitizeInput($data->birth_date) : null;
     $gender = isset($data->gender) ? Validator::sanitizeInput($data->gender) : null;
-    
+
     // Yaşı doğum tarihinden hesapla
     $age = null;
     if ($birth_date) {
@@ -94,7 +95,7 @@ try {
     // Insert new user
     $sql = "INSERT INTO users (email, password, name, surname, username, birth_date, gender, is_email_verified, email_verification_code, verification_expires_at, age) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    
+
     if ($stmt->execute([$email, $password_hash, $name, $surname, $username, $birth_date, $gender, $verificationCode, $expiresAt, $age])) {
         $userId = $conn->lastInsertId();
         debugLog("User inserted successfully. ID: $userId");

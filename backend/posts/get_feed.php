@@ -11,7 +11,7 @@ $user_id = $authenticatedUserId;
 try {
     // --- 1. Filter: 'replies' Special Handling ---
     $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
-    
+
     if ($filter == 'replies') {
         $target_user_id = isset($_GET['user_id']) ? $_GET['user_id'] : $user_id;
 
@@ -49,40 +49,40 @@ try {
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':target_user_id', $target_user_id);
         $stmt->execute();
-        
+
         $posts = array();
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
-             // Manual simple formatting for replies (different structure than posts)
-             $row['is_liked'] = $row['is_liked'] > 0;
-             $row['user'] = array(
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Manual simple formatting for replies (different structure than posts)
+            $row['is_liked'] = $row['is_liked'] > 0;
+            $row['user'] = array(
                 'id' => $row['user_id'],
                 'username' => $row['username'],
                 'full_name' => $row['full_name'],
                 'avatar_url' => $row['avatar_url'],
-                'is_premium' => (bool)($row['is_premium'] ?? false)
-             );
+                'is_premium' => (bool) ($row['is_premium'] ?? false)
+            );
 
-             if ($row['op_id']) {
-                 $row['original_post'] = array(
-                     'id' => $row['op_id'],
-                     'content' => $row['op_content'],
-                     'user' => array(
-                         'id' => $row['op_user_id'],
-                         'username' => $row['op_username'],
-                         'full_name' => $row['op_full_name'],
-                         'avatar_url' => $row['op_avatar_url'],
-                         'is_premium' => (bool)($row['op_is_premium'] ?? false)
-                     )
-                 );
-             }
-             
-             // Cleanup
-             unset($row['username'], $row['full_name'], $row['avatar_url'], $row['is_premium']);
-             unset($row['op_id'], $row['op_content'], $row['op_user_id'], $row['op_username'], $row['op_full_name'], $row['op_avatar_url'], $row['op_is_premium']);
+            if ($row['op_id']) {
+                $row['original_post'] = array(
+                    'id' => $row['op_id'],
+                    'content' => $row['op_content'],
+                    'user' => array(
+                        'id' => $row['op_user_id'],
+                        'username' => $row['op_username'],
+                        'full_name' => $row['op_full_name'],
+                        'avatar_url' => $row['op_avatar_url'],
+                        'is_premium' => (bool) ($row['op_is_premium'] ?? false)
+                    )
+                );
+            }
 
-             array_push($posts, $row);
+            // Cleanup
+            unset($row['username'], $row['full_name'], $row['avatar_url'], $row['is_premium']);
+            unset($row['op_id'], $row['op_content'], $row['op_user_id'], $row['op_username'], $row['op_full_name'], $row['op_avatar_url'], $row['op_is_premium']);
+
+            array_push($posts, $row);
         }
-        
+
         echo json_encode($posts);
         exit;
     }
@@ -92,26 +92,22 @@ try {
     $scores = calculateAffinityScores($user_id, $conn);
     // ---------------------------------------------------------
 
-    // Pre-fetch 'show_more' preferences
+    // Pre-fetch preferences (optimized: single query for both types)
     $showMoreTypes = [];
-    $smQuery = "SELECT p.content_type FROM post_feedback pf 
-                JOIN posts p ON pf.post_id = p.id 
-                WHERE pf.user_id = :user_id AND pf.type = 'show_more'";
-    $smStmt = $conn->prepare($smQuery);
-    $smStmt->execute([':user_id' => $user_id]);
-    while($row = $smStmt->fetch(PDO::FETCH_ASSOC)) {
-        if($row['content_type']) $showMoreTypes[$row['content_type']] = true;
-    }
-
-    // Fetch 'not_interested' preferences
     $dislikedTypes = [];
-    $niQuery = "SELECT p.content_type FROM post_feedback pf 
-                JOIN posts p ON pf.post_id = p.id 
-                WHERE pf.user_id = :user_id AND pf.type = 'not_interested'";
-    $niStmt = $conn->prepare($niQuery);
-    $niStmt->execute([':user_id' => $user_id]);
-    while($row = $niStmt->fetch(PDO::FETCH_ASSOC)) {
-        if($row['content_type']) $dislikedTypes[$row['content_type']] = true;
+    $prefQuery = "SELECT pf.type, p.content_type FROM post_feedback pf 
+                  JOIN posts p ON pf.post_id = p.id 
+                  WHERE pf.user_id = :user_id AND pf.type IN ('show_more', 'not_interested')";
+    $prefStmt = $conn->prepare($prefQuery);
+    $prefStmt->execute([':user_id' => $user_id]);
+    while ($row = $prefStmt->fetch(PDO::FETCH_ASSOC)) {
+        if ($row['content_type']) {
+            if ($row['type'] === 'show_more') {
+                $showMoreTypes[$row['content_type']] = true;
+            } else {
+                $dislikedTypes[$row['content_type']] = true;
+            }
+        }
     }
 
     // Fetch posts where user already gave feed feedback
@@ -119,13 +115,14 @@ try {
     $ffQuery = "SELECT post_id FROM feed_feedback WHERE user_id = :user_id";
     $ffStmt = $conn->prepare($ffQuery);
     $ffStmt->execute([':user_id' => $user_id]);
-    while($row = $ffStmt->fetch(PDO::FETCH_ASSOC)) {
+    while ($row = $ffStmt->fetch(PDO::FETCH_ASSOC)) {
         $givenFeedbackPosts[$row['post_id']] = true;
     }
 
     $boostBook = isset($showMoreTypes['book']) ? 50 : 0;
     $boostMovie = isset($showMoreTypes['movie']) ? 50 : 0;
     $boostMusic = isset($showMoreTypes['music']) ? 50 : 0;
+
 
 
     // --- 3. Main Feed Query ---
@@ -153,18 +150,19 @@ try {
                 p.comment_count,
                 p.repost_count,
                 
-                (SELECT COUNT(*) FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
-                (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
+                -- OPTIMIZED: EXISTS stops at first match, faster than COUNT(*)
+                EXISTS(SELECT 1 FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
+                EXISTS(SELECT 1 FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
+                EXISTS(SELECT 1 FROM bookmarks WHERE post_id = p.id AND user_id = :user_id) as is_saved,
                 p.is_pinned,
                 
                 op.like_count as op_like_count,
                 op.comment_count as op_comment_count,
                 op.repost_count as op_repost_count,
                 
-                (SELECT COUNT(*) FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
-                (SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,
-                (SELECT COUNT(*) FROM bookmarks WHERE post_id = op.id AND user_id = :user_id) as op_is_saved,
+                EXISTS(SELECT 1 FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
+                EXISTS(SELECT 1 FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,
+                EXISTS(SELECT 1 FROM bookmarks WHERE post_id = op.id AND user_id = :user_id) as op_is_saved,
                 
                 op.image_url as op_image_url,
                 op.content_type as op_content_type,
@@ -201,12 +199,12 @@ try {
 
     $whereClause = " WHERE pf_exclude.id IS NULL AND bu_exclude.id IS NULL
                       AND (u.is_frozen = 0 OR u.is_frozen IS NULL)
-                      AND (u.is_private = 0 OR u.is_private IS NULL OR p.user_id = :user_id OR f_privacy.id IS NOT NULL)"; 
+                      AND (u.is_private = 0 OR u.is_private IS NULL OR p.user_id = :user_id OR f_privacy.id IS NOT NULL)";
 
     // Filters
     $filter = isset($_GET['filter']) ? $_GET['filter'] : '';
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-    
+
     if ($filter == 'book') {
         $whereClause .= " AND (p.content_type = 'book' OR op.content_type = 'book')";
     } elseif ($filter == 'movie') {
@@ -214,7 +212,7 @@ try {
     } elseif ($filter == 'music') {
         $whereClause .= " AND (p.content_type = 'music' OR op.content_type = 'music')";
     }
-    
+
     $query .= $whereClause;
 
     // Search logic
@@ -261,12 +259,12 @@ try {
         $ftSearch = $search . '*';
         $stmt->bindParam(':search', $ftSearch);
     }
-    
+
     $stmt->execute();
 
     $posts = array();
 
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         // Use helper function to format row
         $formattedPost = formatPostRow($row, $scores, $dislikedTypes, $givenFeedbackPosts);
         array_push($posts, $formattedPost);
