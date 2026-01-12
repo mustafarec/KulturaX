@@ -14,6 +14,7 @@ import { ThemedDialog } from '../../components/ThemedDialog';
 import { useAuth } from '../../context/AuthContext';
 import { MoreHorizontal, Trash } from 'lucide-react-native';
 import { ContentType } from '../../types/models';
+import { NativeAdComment } from '../../components/ads';
 
 export const PostDetailScreen = () => {
     const route = useRoute();
@@ -618,12 +619,19 @@ export const PostDetailScreen = () => {
                         <Text style={styles.commentsTitle}>Yorumlar ({comments.length})</Text>
                         {isCommentsLoading ? (
                             <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginTop: 20 }} />
-                        ) : comments.length === 0 ? (
-                            <View style={styles.emptyComments}>
-                                <Text style={styles.emptyCommentsText}>Henüz yorum yok. İlk yorumu sen yap!</Text>
-                            </View>
                         ) : (
-                            organizedComments.map(item => renderCommentItem(item))
+                            <>
+                                {/* Sponsorlu Reklam - Yorumlar Başında */}
+                                <NativeAdComment />
+
+                                {comments.length === 0 ? (
+                                    <View style={styles.emptyComments}>
+                                        <Text style={styles.emptyCommentsText}>Henüz yorum yok. İlk yorumu sen yap!</Text>
+                                    </View>
+                                ) : (
+                                    organizedComments.map(item => renderCommentItem(item))
+                                )}
+                            </>
                         )}
                     </View>
                 </ScrollView>

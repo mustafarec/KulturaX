@@ -9,7 +9,10 @@
     "updates": {
       "enabled": true,
       "fallbackToCacheTimeout": 30000,
-      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b"
+      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
@@ -25,7 +28,7 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "androidAppId": "ca-app-pub-5897178396326522~6231785630",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ]

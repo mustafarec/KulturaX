@@ -20,13 +20,12 @@ const TEST_AD_UNITS = {
 };
 
 // Production Ad Unit IDs
-// TODO: AdMob panelinden alınan gerçek ID'lerle değiştirin
 const PRODUCTION_AD_UNITS = {
     android: {
-        banner: 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY', // Gerçek Android Banner ID
+        banner: 'ca-app-pub-5897178396326522/9516424523', // KültüraX Feed Banner
     },
     ios: {
-        banner: 'ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ', // Gerçek iOS Banner ID
+        banner: 'ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ', // TODO: iOS Banner ID
     },
 };
 
