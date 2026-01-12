@@ -5,9 +5,21 @@
     "name": "KültüraX",
     "slug": "kitapmuzikfilm",
     "scheme": "kitapmuzikfilm",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 30000,
+      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b"
+    },
     "android": {
       "softwareKeyboardLayoutMode": "resize"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "737ac828-d618-4700-a799-c0d71b68ba6b"
+      }
+    },
+    "ios": {}
   },
   "android": {
     "package": "com.anonymous.kitapmuzikfilm"

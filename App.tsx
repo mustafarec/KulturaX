@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -21,6 +21,10 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SuperwallProvider } from 'expo-superwall';
 import { SUPERWALL_IOS_API_KEY, SUPERWALL_ANDROID_API_KEY } from '@env';
 
+// Update Service
+import { checkForUpdates, applyOTAUpdate, openStore, UpdateCheckResult } from './src/services/UpdateService';
+import { UpdateModal } from './src/components/UpdateModal';
+
 // API Keys from .env
 const SUPERWALL_API_KEYS = {
   ios: SUPERWALL_IOS_API_KEY || '',
@@ -28,9 +32,41 @@ const SUPERWALL_API_KEYS = {
 };
 
 function App(): React.JSX.Element {
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
   useEffect(() => {
     initPushNotifications();
+    checkForAppUpdates();
   }, []);
+
+  const checkForAppUpdates = async () => {
+    try {
+      const result = await checkForUpdates();
+
+      // OTA güncelleme varsa otomatik uygula
+      if (result.hasOTAUpdate) {
+        await applyOTAUpdate();
+        return; // Uygulama restart olacak
+      }
+
+      // Native güncelleme varsa modal göster
+      if (result.hasNativeUpdate) {
+        setUpdateInfo(result);
+        setShowUpdateModal(true);
+      }
+    } catch (error) {
+      console.warn('Update check failed:', error);
+    }
+  };
+
+  const handleUpdate = () => {
+    openStore(updateInfo?.updateUrl);
+  };
+
+  const handleLater = () => {
+    setShowUpdateModal(false);
+  };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -45,6 +81,14 @@ function App(): React.JSX.Element {
                       <PostHubProvider>
                         <NotificationProvider>
                           <AppNavigator />
+                          <UpdateModal
+                            visible={showUpdateModal}
+                            isForceUpdate={updateInfo?.isForceUpdate || false}
+                            latestVersion={updateInfo?.latestVersion}
+                            releaseNotes={updateInfo?.releaseNotes}
+                            onUpdate={handleUpdate}
+                            onLater={handleLater}
+                          />
                         </NotificationProvider>
                       </PostHubProvider>
                     </WebSocketProvider>
