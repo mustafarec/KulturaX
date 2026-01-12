@@ -25,6 +25,9 @@ import { SUPERWALL_IOS_API_KEY, SUPERWALL_ANDROID_API_KEY } from '@env';
 import { checkForUpdates, applyOTAUpdate, openStore, UpdateCheckResult } from './src/services/UpdateService';
 import { UpdateModal } from './src/components/UpdateModal';
 
+// Ad Service
+import { initializeAds } from './src/services/AdService';
+
 // API Keys from .env
 const SUPERWALL_API_KEYS = {
   ios: SUPERWALL_IOS_API_KEY || '',
@@ -37,6 +40,7 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     initPushNotifications();
+    initializeAds(); // Google Mobile Ads SDK başlat
     checkForAppUpdates();
   }, []);
 

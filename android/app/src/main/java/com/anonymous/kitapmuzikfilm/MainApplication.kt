@@ -18,18 +18,13 @@ import expo.modules.ReactNativeHostWrapper
 
 class MainApplication : Application(), ReactApplication {
 
-  companion object {
-    var instance: MainApplication? = null
-      private set
-  }
-
   override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
       this,
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
-              // Add custom native modules
-              add(ChatPrefsPackage())
+              // Packages that cannot be autolinked yet can be added manually here, for example:
+              // add(MyReactNativePackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
@@ -45,7 +40,6 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
-    instance = this
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {

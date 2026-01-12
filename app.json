@@ -12,16 +12,30 @@
       "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b"
     },
     "android": {
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.anonymous.kitapmuzikfilm"
     },
     "extra": {
       "eas": {
         "projectId": "737ac828-d618-4700-a799-c0d71b68ba6b"
       }
     },
-    "ios": {}
+    "ios": {},
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
+    ]
   },
   "android": {
     "package": "com.anonymous.kitapmuzikfilm"
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
   }
 }

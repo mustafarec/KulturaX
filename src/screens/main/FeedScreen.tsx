@@ -27,6 +27,7 @@ import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
 import { ShareCardModal } from '../../components/ShareCardModal';
 import { SharePostModal } from '../../components/SharePostModal';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
+import { AdBanner } from '../../components/ads/AdBanner';
 
 // Contexts
 import { useMessage } from '../../context/MessageContext';
@@ -223,7 +224,13 @@ export const FeedScreen = () => {
     const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
     // OPTIMIZED: useCallback prevents function re-creation on every render
-    const renderItem = React.useCallback(({ item }: { item: any }) => {
+    // AD_INTERVAL: Her kaç postta bir reklam gösterileceği
+    const AD_INTERVAL = 5;
+
+    const renderItem = React.useCallback(({ item, index }: { item: any; index: number }) => {
+        // Reklam ekleme: Her AD_INTERVAL postta bir (premium değilse)
+        const showAdBefore = !user?.is_premium && index > 0 && index % AD_INTERVAL === 0;
+
         if (item.type === 'suggested_users') return <SuggestedUsers />;
         if (item.type === 'feedback') return <FeedbackCard onFeedback={(interested) => handleFeedbackAction(item.targetPostId, interested, item.id)} onDismiss={() => handleFeedbackDismiss(item.id)} />;
         if (item.type === 'user') return <UserCard user={{ id: item.originalId, username: item.username, name: item.name, surname: item.surname, avatar_url: item.avatar_url }} onPress={() => handleUserPress(item.originalId)} />;
@@ -231,7 +238,7 @@ export const FeedScreen = () => {
         const isRepost = !!item.original_post_id;
         const isQuoteRepost = isRepost && item.original_post && item.content !== 'Yeniden paylaşım' && item.content !== item.original_post.content;
 
-        return (
+        const postCard = (
             <PostCard
                 post={item}
                 onPress={() => { /* Detail Navigation or expand */ }}
@@ -251,7 +258,19 @@ export const FeedScreen = () => {
                 onRepost={() => handleDirectRepost(item)}
             />
         );
-    }, [navigation, user?.id, handleUserPress, handleContentWrap, handleOptionsPress, handleLike, handleToggleSave, handleDirectRepost, handleFeedbackAction, handleFeedbackDismiss]);
+
+        // Reklam + Post birlikte render
+        if (showAdBefore) {
+            return (
+                <>
+                    <AdBanner />
+                    {postCard}
+                </>
+            );
+        }
+
+        return postCard;
+    }, [navigation, user?.id, user?.is_premium, handleUserPress, handleContentWrap, handleOptionsPress, handleLike, handleToggleSave, handleDirectRepost, handleFeedbackAction, handleFeedbackDismiss]);
 
     const renderList = (data: any[], loading: boolean) => {
         if (loading) {
