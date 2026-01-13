@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { PostCard } from '../../components/PostCard';
 import { Avatar } from '../../components/ui/Avatar';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
+import { Skeleton, SkeletonCircle } from '../../components/Skeleton';
 import LinearGradient from 'react-native-linear-gradient';
 import { Share2, MoreVertical, Film, BookOpen, Heart, MessageCircle, Bookmark, Settings, Repeat, Music, Ghost, Camera, Crown, MapPin, Link, Calendar, Users, UserPlus, MessageSquare, Package, Star } from 'lucide-react-native';
 import { postService, userService, libraryService, reviewService, interactionService } from '../../services/backendApi';
@@ -51,6 +52,7 @@ export const ProfileScreen = () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [isStatsLoading, setIsStatsLoading] = useState(true);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [currentlyReading, setCurrentlyReading] = useState<any>(null);
 
@@ -147,6 +149,7 @@ export const ProfileScreen = () => {
 
     const fetchProfileStats = async () => {
         if (!user) return;
+        if (!refreshing) setIsStatsLoading(true);
         try {
             const data = await userService.getUserProfile(user.id);
             setStats(prev => ({
@@ -156,6 +159,8 @@ export const ProfileScreen = () => {
             }));
         } catch (error) {
             console.error('Stats fetch error:', error);
+        } finally {
+            setIsStatsLoading(false);
         }
     };
 
@@ -291,6 +296,7 @@ export const ProfileScreen = () => {
     // Repost logic handled by PostCard internal hook
 
     const handleUpdatePhoto = async (type: 'avatar' | 'header') => {
+        if (!user) return;
         const isAvatar = type === 'avatar';
         try {
             const image = await ImagePicker.openPicker({
@@ -540,6 +546,68 @@ export const ProfileScreen = () => {
         );
     };
 
+    // Profile Header Skeleton - OtherProfileScreen'deki gibi
+    const ProfileHeaderSkeleton = () => (
+        <View style={styles.profileHeaderContent}>
+            {/* Avatar Row Skeleton */}
+            <View style={styles.avatarRow}>
+                <View style={styles.avatarContainer}>
+                    <SkeletonCircle size={100} />
+                </View>
+                <View style={styles.headerActions}>
+                    <Skeleton width={44} height={44} borderRadius={12} />
+                    <Skeleton width={44} height={44} borderRadius={12} />
+                </View>
+            </View>
+
+            {/* User Info Skeleton */}
+            <View style={styles.userInfo}>
+                <Skeleton width={150} height={24} borderRadius={6} style={{ marginBottom: 8 }} />
+                <Skeleton width={100} height={16} borderRadius={4} style={{ marginBottom: 16 }} />
+                <Skeleton width="100%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
+                <Skeleton width="70%" height={14} borderRadius={4} style={{ marginBottom: 16 }} />
+
+                {/* Meta Row Skeleton */}
+                <View style={{ flexDirection: 'row', gap: 16 }}>
+                    <Skeleton width={80} height={14} borderRadius={4} />
+                    <Skeleton width={100} height={14} borderRadius={4} />
+                </View>
+            </View>
+
+            {/* Stats Grid Skeleton */}
+            <View style={styles.statsGrid}>
+                <View style={styles.socialStatsRow}>
+                    <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Skeleton width={60} height={12} borderRadius={4} style={{ marginBottom: 8 }} />
+                        <Skeleton width={30} height={20} borderRadius={4} />
+                    </View>
+                    <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Skeleton width={60} height={12} borderRadius={4} style={{ marginBottom: 8 }} />
+                        <Skeleton width={30} height={20} borderRadius={4} />
+                    </View>
+                    <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Skeleton width={60} height={12} borderRadius={4} style={{ marginBottom: 8 }} />
+                        <Skeleton width={30} height={20} borderRadius={4} />
+                    </View>
+                </View>
+                <View style={styles.activityStatsRow}>
+                    <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Skeleton width={50} height={12} borderRadius={4} style={{ marginBottom: 8 }} />
+                        <Skeleton width={30} height={20} borderRadius={4} />
+                    </View>
+                    <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Skeleton width={50} height={12} borderRadius={4} style={{ marginBottom: 8 }} />
+                        <Skeleton width={30} height={20} borderRadius={4} />
+                    </View>
+                    <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                        <Skeleton width={50} height={12} borderRadius={4} style={{ marginBottom: 8 }} />
+                        <Skeleton width={30} height={20} borderRadius={4} />
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+
     const EmptyState = ({ icon: IconComponent, text }: { icon: any, text: string }) => (
         <View style={styles.emptyContainer}>
             <IconComponent size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 16 }} />
@@ -675,11 +743,15 @@ export const ProfileScreen = () => {
                                     <Users size={14} color={theme.colors.primary} />
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takipçi</Text>
                                 </View>
-                                <Text
-                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
-                                    adjustsFontSizeToFit
-                                    numberOfLines={1}
-                                >{stats.follower_count || 0}</Text>
+                                {isStatsLoading ? (
+                                    <Skeleton width={30} height={20} borderRadius={4} />
+                                ) : (
+                                    <Text
+                                        style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                        adjustsFontSizeToFit
+                                        numberOfLines={1}
+                                    >{stats.follower_count || 0}</Text>
+                                )}
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
@@ -689,22 +761,30 @@ export const ProfileScreen = () => {
                                     <UserPlus size={14} color={theme.colors.primary} />
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Takip</Text>
                                 </View>
-                                <Text
-                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
-                                    adjustsFontSizeToFit
-                                    numberOfLines={1}
-                                >{stats.following_count || 0}</Text>
+                                {isStatsLoading ? (
+                                    <Skeleton width={30} height={20} borderRadius={4} />
+                                ) : (
+                                    <Text
+                                        style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                        adjustsFontSizeToFit
+                                        numberOfLines={1}
+                                    >{stats.following_count || 0}</Text>
+                                )}
                             </TouchableOpacity>
                             <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                     <MessageSquare size={14} color={theme.colors.primary} />
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Gönderi</Text>
                                 </View>
-                                <Text
-                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
-                                    adjustsFontSizeToFit
-                                    numberOfLines={1}
-                                >{userPosts.length || 0}</Text>
+                                {isLoading && !refreshing ? (
+                                    <Skeleton width={30} height={20} borderRadius={4} />
+                                ) : (
+                                    <Text
+                                        style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                        adjustsFontSizeToFit
+                                        numberOfLines={1}
+                                    >{userPosts.length || 0}</Text>
+                                )}
                             </View>
                         </View>
 
@@ -715,33 +795,45 @@ export const ProfileScreen = () => {
                                     <BookOpen size={14} color={theme.colors.primary} />
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Kitap</Text>
                                 </View>
-                                <Text
-                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
-                                    adjustsFontSizeToFit
-                                    numberOfLines={1}
-                                >{stats.booksRead}</Text>
+                                {isStatsLoading ? (
+                                    <Skeleton width={30} height={20} borderRadius={4} />
+                                ) : (
+                                    <Text
+                                        style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                        adjustsFontSizeToFit
+                                        numberOfLines={1}
+                                    >{stats.booksRead}</Text>
+                                )}
                             </View>
                             <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                     <Film size={14} color={theme.colors.primary} />
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Film</Text>
                                 </View>
-                                <Text
-                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
-                                    adjustsFontSizeToFit
-                                    numberOfLines={1}
-                                >{stats.moviesWatched}</Text>
+                                {isStatsLoading ? (
+                                    <Skeleton width={30} height={20} borderRadius={4} />
+                                ) : (
+                                    <Text
+                                        style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                        adjustsFontSizeToFit
+                                        numberOfLines={1}
+                                    >{stats.moviesWatched}</Text>
+                                )}
                             </View>
                             <View style={[styles.activityCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                     <Calendar size={14} color={theme.colors.primary} />
                                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>Etkinlik</Text>
                                 </View>
-                                <Text
-                                    style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
-                                    adjustsFontSizeToFit
-                                    numberOfLines={1}
-                                >{stats.eventsCount}</Text>
+                                {isStatsLoading ? (
+                                    <Skeleton width={30} height={20} borderRadius={4} />
+                                ) : (
+                                    <Text
+                                        style={{ fontSize: 17, fontWeight: '800', color: theme.colors.text, fontFamily: theme.fonts.headings }}
+                                        adjustsFontSizeToFit
+                                        numberOfLines={1}
+                                    >{stats.eventsCount}</Text>
+                                )}
                             </View>
                         </View>
                     </View>
