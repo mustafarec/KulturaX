@@ -76,9 +76,8 @@ export const authService = {
 
     getProfile: async (userId: number) => {
         try {
-            // Using existing endpoint if available or minimal profile fetch
-            // Ideally we should have a specific endpoint for session refreshment or profile fetch
-            const response = await apiClient.get('/users/profile.php', { params: { user_id: userId } });
+            // Using existing endpoint for session refreshment / profile fetch
+            const response = await apiClient.get('/users/get.php', { params: { user_id: userId } });
             return response.data;
         } catch (error: any) {
             handleApiError(error);
