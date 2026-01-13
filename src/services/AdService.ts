@@ -32,11 +32,17 @@ const PRODUCTION_AD_UNITS = {
 // Development modunda test ID'leri kullan
 const IS_DEVELOPMENT = __DEV__;
 
+// GEÇİCİ: Production'da da test reklamları kullan
+// AdMob uygulama incelemesi tamamlandıktan sonra false yapın
+const USE_TEST_ADS_IN_PRODUCTION = true;
+
 /**
  * Platform ve environment'a göre doğru Ad Unit ID'yi döndürür
  */
 export const getAdUnitId = (type: 'banner'): string => {
-    const adUnits = IS_DEVELOPMENT ? TEST_AD_UNITS : PRODUCTION_AD_UNITS;
+    // Test reklamları kullan: development modunda veya flag açıksa
+    const useTestAds = IS_DEVELOPMENT || USE_TEST_ADS_IN_PRODUCTION;
+    const adUnits = useTestAds ? TEST_AD_UNITS : PRODUCTION_AD_UNITS;
     const platformAds = Platform.OS === 'ios' ? adUnits.ios : adUnits.android;
     return platformAds[type];
 };

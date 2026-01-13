@@ -32,8 +32,9 @@ export const NativeAdComment: React.FC<NativeAdCommentProps> = memo(({ style }) 
         return null;
     }
 
-    // Reklam yüklenemediyse boş alan gösterme
+    // Reklam yüklenemediyse hata logla (debug için)
     if (hasError) {
+        console.log('[NativeAdComment] Ad failed to load, hiding component');
         return null;
     }
 
@@ -56,8 +57,14 @@ export const NativeAdComment: React.FC<NativeAdCommentProps> = memo(({ style }) 
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,
                     }}
-                    onAdLoaded={() => setIsLoaded(true)}
-                    onAdFailedToLoad={() => setHasError(true)}
+                    onAdLoaded={() => {
+                        console.log('[NativeAdComment] Ad loaded successfully');
+                        setIsLoaded(true);
+                    }}
+                    onAdFailedToLoad={(error) => {
+                        console.error('[NativeAdComment] Ad failed to load:', error);
+                        setHasError(true);
+                    }}
                 />
             </View>
         </View>

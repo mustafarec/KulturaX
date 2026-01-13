@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Image, Keyboard } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform, Image, Keyboard } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { postService, interactionService, clickTrackingService } from '../../services/backendApi';
@@ -22,6 +23,7 @@ export const PostDetailScreen = () => {
     const { postId, autoFocusComment } = route.params as { postId: number; autoFocusComment?: boolean };
     const { theme } = useTheme();
     const { user: currentUser } = useAuth();
+    const insets = useSafeAreaInsets();
 
     const [post, setPost] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -43,6 +45,23 @@ export const PostDetailScreen = () => {
     const [deleteCommentDialogVisible, setDeleteCommentDialogVisible] = useState(false);
     const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
     const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+    // Keyboard visibility tracking for Android SafeArea fix
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => setIsKeyboardVisible(true)
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setIsKeyboardVisible(false)
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     const handleOptionsPress = (position: { x: number, y: number, width: number, height: number }) => {
         setMenuPosition(position);
@@ -427,8 +446,9 @@ export const PostDetailScreen = () => {
         },
         inputWrapper: {
             borderTopWidth: 1,
-            borderTopColor: theme.colors.border, // Was rgba(0,0,0,0.05)
-            backgroundColor: theme.colors.background, // Was #FFFFFF
+            borderTopColor: theme.colors.border,
+            backgroundColor: theme.colors.background,
+            paddingBottom: insets.bottom,
         },
         replyBar: {
             flexDirection: 'row',
@@ -474,7 +494,7 @@ export const PostDetailScreen = () => {
         disabledButton: {
             backgroundColor: theme.colors.secondary, // Was #BDC3C7
         },
-    }), [theme]);
+    }), [theme, isKeyboardVisible, insets.bottom]);
 
     const renderCommentItem = (item: any) => {
         const isReply = !!item.parent_id;
@@ -574,9 +594,9 @@ export const PostDetailScreen = () => {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'left', 'right']}>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior="padding"
                 style={styles.container}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                keyboardVerticalOffset={Platform.OS === 'android' ? -insets.bottom : 0}
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
