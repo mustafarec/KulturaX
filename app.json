@@ -29,7 +29,7 @@
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-5897178396326522~6231785630",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+          "iosAppId": "ca-app-pub-5897178396326522~2550479358"
         }
       ]
     ]
@@ -38,7 +38,7 @@
     "package": "com.anonymous.kitapmuzikfilm"
   },
   "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
-    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
+    "android_app_id": "ca-app-pub-5897178396326522~6231785630",
+    "ios_app_id": "ca-app-pub-5897178396326522~2550479358"
   }
 }

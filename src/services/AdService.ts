@@ -22,10 +22,10 @@ const TEST_AD_UNITS = {
 // Production Ad Unit IDs
 const PRODUCTION_AD_UNITS = {
     android: {
-        banner: 'ca-app-pub-5897178396326522/9516424523', // KültüraX Feed Banner
+        banner: 'ca-app-pub-5897178396326522/9516424523', // KültüraX Android Feed Banner
     },
     ios: {
-        banner: 'ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ', // TODO: iOS Banner ID
+        banner: 'ca-app-pub-5897178396326522/9782936269', // KültüraX iOS Feed Banner
     },
 };
 

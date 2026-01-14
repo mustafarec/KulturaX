@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal, Dimensions, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import DatePicker from 'react-native-date-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -401,23 +401,36 @@ export const SignupScreen = () => {
                 </Text>
             </TouchableOpacity>
 
-            <DatePicker
-                modal
-                open={openDate}
-                date={date}
-                mode="date"
-                locale="tr"
-                title="Doğum Tarihi Seçiniz"
-                confirmText="Onayla"
-                cancelText="İptal"
-                onConfirm={(selectedDate: Date) => {
-                    setOpenDate(false);
-                    setDate(selectedDate);
-                    const formatted = selectedDate.toISOString().split('T')[0];
-                    setBirthDate(formatted);
-                }}
-                onCancel={() => setOpenDate(false)}
-            />
+            {openDate && (
+                <DateTimePicker
+                    value={date}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedDate) => {
+                        if (Platform.OS === 'android') {
+                            setOpenDate(false);
+                        }
+                        if (event.type === 'set' && selectedDate) {
+                            setDate(selectedDate);
+                            const formatted = selectedDate.toISOString().split('T')[0];
+                            setBirthDate(formatted);
+                        }
+                        if (Platform.OS === 'ios') {
+                            // iOS'ta modal kapatma için ayrı buton gerekebilir
+                        }
+                    }}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
+                />
+            )}
+            {openDate && Platform.OS === 'ios' && (
+                <TouchableOpacity
+                    onPress={() => setOpenDate(false)}
+                    style={{ alignItems: 'center', padding: 10, backgroundColor: theme.colors.primary, borderRadius: 8, marginBottom: 10 }}
+                >
+                    <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>Tamam</Text>
+                </TouchableOpacity>
+            )}
 
             <TouchableOpacity onPress={() => setOpenGender(true)} style={styles.input}>
                 <Text style={{ color: gender ? theme.colors.text : theme.colors.textSecondary }}>
