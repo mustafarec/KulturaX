@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Animated, Dimensions, Modal, TouchableWithoutFeedback, Easing, ScrollView } from 'react-native';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { User, Search, MessageCircle, Star, Settings, Moon, Sun, Bookmark, LogOut, Crown, FileText } from 'lucide-react-native';
+import { User, Search, MessageCircle, Star, Settings, Moon, Sun, Bookmark, LogOut, Crown, FileText, Activity } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { ThemeSelectorModal } from './ThemeSelectorModal';
@@ -284,6 +284,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                 // Usually 'Main' is the stack, so we might need context. 
                 // For now leaving manual active checks or broad assumption.
                 />
+                <MenuItem IconComponent={Activity} label="Etkinliklerim" onPress={() => handleNavigation('MyActivities')} />
                 <MenuItem IconComponent={Search} label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} />
                 <MenuItem IconComponent={MessageCircle} label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                 <MenuItem IconComponent={Star} label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />
@@ -363,6 +364,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, isDrawer = false 
                     <ScrollView style={styles.menuItems} showsVerticalScrollIndicator={false}>
                         <PremiumButton style={{ marginBottom: 15, marginHorizontal: 20 }} />
                         <MenuItem IconComponent={User} label="Profil" onPress={() => handleNavigation('Main', { screen: 'Profile' })} />
+                        <MenuItem IconComponent={Activity} label="Etkinliklerim" onPress={() => handleNavigation('MyActivities')} />
                         <MenuItem IconComponent={Search} label="Keşfet" onPress={() => handleNavigation('Main', { screen: 'Discovery' })} />
                         <MenuItem IconComponent={MessageCircle} label="Mesajlar" onPress={() => handleNavigation('Main', { screen: 'Messages' })} />
                         <MenuItem IconComponent={Star} label="Popüler Kullanıcılar" onPress={() => handleNavigation('PopularUsers')} />

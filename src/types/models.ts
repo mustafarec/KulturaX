@@ -24,6 +24,11 @@ export interface User {
     is_premium?: boolean;
     created_at?: string;
     updated_at?: string;
+    // New profile fields
+    birth_date?: string;
+    school?: string;
+    department?: string;
+    interests?: string[];
 }
 
 export interface UserProfile extends User {

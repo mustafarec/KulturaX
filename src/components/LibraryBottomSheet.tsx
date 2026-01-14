@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop, BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { BookOpen, Eye, Clock, XCircle, Trash2, Check, Film, Music, Headphones, Calendar } from 'lucide-react-native';
 
@@ -22,6 +23,7 @@ export const LibraryBottomSheet: React.FC<LibraryBottomSheetProps> = ({
     currentStatus,
 }) => {
     const { theme } = useTheme();
+    const insets = useSafeAreaInsets();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
     // Control visibility via ref
@@ -98,11 +100,11 @@ export const LibraryBottomSheet: React.FC<LibraryBottomSheetProps> = ({
         onSelectStatus(status);
     }, [onSelectStatus]);
 
-    const snapPoints = useMemo(() => currentStatus ? ['55%'] : ['50%'], [currentStatus]);
+    const snapPoints = useMemo(() => currentStatus ? ['65%'] : ['60%'], [currentStatus]);
 
     const styles = StyleSheet.create({
         content: {
-            paddingBottom: 40,
+            paddingBottom: Math.max(insets.bottom, 20) + 20,
         },
         headerContainer: {
             flexDirection: 'row',

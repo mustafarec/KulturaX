@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Animated, Platform } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { StarRating } from './StarRating';
@@ -159,51 +160,56 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             animationType="fade"
             onRequestClose={onClose}
         >
-            <View style={styles.overlay}>
-                <Animated.View style={[styles.modal, { transform: [{ translateY: slideAnim }] }]}>
-                    <View style={styles.header}>
-                        <Text style={styles.title}>İncele: {contentTitle}</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text style={styles.closeButton}>✕</Text>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <View style={styles.overlay}>
+                    <Animated.View style={[styles.modal, { transform: [{ translateY: slideAnim }] }]}>
+                        <View style={styles.header}>
+                            <Text style={styles.title}>İncele: {contentTitle}</Text>
+                            <TouchableOpacity onPress={onClose}>
+                                <Text style={styles.closeButton}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.ratingSection}>
+                            <Text style={styles.label}>Puanınız:</Text>
+                            <StarRating
+                                rating={rating}
+                                onRatingChange={setRating}
+                                editable
+                                size={32}
+                            />
+                        </View>
+
+                        <View style={styles.reviewSection}>
+                            <Text style={styles.label}>İncelemeniz (opsiyonel):</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Ne düşündünüz?"
+                                multiline
+                                numberOfLines={4}
+                                value={reviewText}
+                                onChangeText={setReviewText}
+                                placeholderTextColor={theme.colors.textSecondary}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Kaydet</Text>
+                            )}
                         </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.ratingSection}>
-                        <Text style={styles.label}>Puanınız:</Text>
-                        <StarRating
-                            rating={rating}
-                            onRatingChange={setRating}
-                            editable
-                            size={32}
-                        />
-                    </View>
-
-                    <View style={styles.reviewSection}>
-                        <Text style={styles.label}>İncelemeniz (opsiyonel):</Text>
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Ne düşündünüz?"
-                            multiline
-                            numberOfLines={4}
-                            value={reviewText}
-                            onChangeText={setReviewText}
-                            placeholderTextColor={theme.colors.textSecondary}
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.submitButtonText}>Kaydet</Text>
-                        )}
-                    </TouchableOpacity>
-                </Animated.View>
-            </View>
+                    </Animated.View>
+                </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };

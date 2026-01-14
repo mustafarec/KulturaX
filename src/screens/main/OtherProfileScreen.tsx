@@ -423,13 +423,9 @@ export const OtherProfileScreen = () => {
         try {
             const profileData = await userService.getUserProfile(userId, currentUser?.id);
             setProfile(profileData);
-            // Set request status from profile data
-            if (profileData.request_status) {
-                setRequestStatus(profileData.request_status);
-            }
-            if (profileData.is_following) {
-                setIsFollowing(true);
-            }
+            // Always sync follow state from backend
+            setRequestStatus(profileData.request_status || null);
+            setIsFollowing(profileData.is_following || false);
         } catch (profileError) {
             console.error('Error fetching profile:', profileError);
         }
@@ -772,7 +768,9 @@ export const OtherProfileScreen = () => {
 
     const renderTabContent = (currentTab: string) => {
         // Check if account is private and we're not following
-        const isPrivateAndNotFollowing = profile?.is_private && !isFollowing && userId !== currentUser?.id;
+        // Handle is_private as string "0"/"1" from backend
+        const isPrivate = profile?.is_private === true || profile?.is_private === 1 || profile?.is_private === '1';
+        const isPrivateAndNotFollowing = isPrivate && !isFollowing && requestStatus !== 'accepted' && userId !== currentUser?.id;
 
         if (isPrivateAndNotFollowing) {
             return (

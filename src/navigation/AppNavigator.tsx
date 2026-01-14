@@ -28,6 +28,7 @@ import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { VerificationScreen } from '../screens/auth/VerificationScreen';
 import { SavedPostsScreen } from '../screens/main/SavedPostsScreen';
 import { DraftsScreen } from '../screens/main/DraftsScreen';
+import { MyActivitiesScreen } from '../screens/main/MyActivitiesScreen';
 import { useTheme } from '../context/ThemeContext';
 import { navigationRef, onNavigationReady } from '../services/NavigationService';
 import { View, Image } from 'react-native';
@@ -255,6 +256,11 @@ export const AppNavigator = () => {
                             <Stack.Screen
                                 name="Drafts"
                                 component={DraftsScreen}
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="MyActivities"
+                                component={MyActivitiesScreen}
                                 options={{ headerShown: false }}
                             />
                             <Stack.Screen

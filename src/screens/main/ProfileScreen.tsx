@@ -14,6 +14,7 @@ import { postService, userService, libraryService, reviewService, interactionSer
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { usePostInteractions } from '../../hooks/usePostInteractions';
+import { LibraryBottomSheet } from '../../components/LibraryBottomSheet';
 import ImagePicker from 'react-native-image-crop-picker';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
@@ -66,6 +67,10 @@ export const ProfileScreen = () => {
     const [shareOptionsVisible, setShareOptionsVisible] = useState(false);
     const [shareCardVisible, setShareCardVisible] = useState(false);
     const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
+
+    // Library status sheet state
+    const [librarySheetVisible, setLibrarySheetVisible] = useState(false);
+    const [selectedLibraryItem, setSelectedLibraryItem] = useState<any>(null);
 
     // Mock Banner if not present, and Profile Image
     const headerImage = React.useMemo(() =>
@@ -484,63 +489,74 @@ export const ProfileScreen = () => {
 
         if (filtered.length === 0) return <EmptyState icon={Ghost} text="Henüz içerik yok." />;
 
+        const handleOpenStatusSheet = (item: any) => {
+            setSelectedLibraryItem(item);
+            setLibrarySheetVisible(true);
+        };
+
         return (
             <View style={styles.listContainer}>
                 {filtered.map((item) => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={styles.listItem}
-                        onPress={() => handleContentPress(item.content_type, item.content_id)}
-                        activeOpacity={0.7}
-                    >
-                        {/* Start: Content Poster */}
-                        <View style={styles.listPosterContainer}>
-                            {item.image_url ? (
-                                <Image source={{ uri: item.image_url }} style={styles.listPoster} resizeMode="cover" />
-                            ) : (
-                                <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
-                                    {type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
-                                </View>
-                            )}
-                        </View>
-                        {/* End: Content Poster */}
+                    <View key={item.id} style={[styles.listItem, { justifyContent: 'space-between' }]}>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', flex: 1 }}
+                            onPress={() => handleContentPress(item.content_type, item.content_id)}
+                            activeOpacity={0.7}
+                        >
+                            {/* Start: Content Poster */}
+                            <View style={styles.listPosterContainer}>
+                                {item.image_url ? (
+                                    <Image source={{ uri: item.image_url }} style={styles.listPoster} resizeMode="cover" />
+                                ) : (
+                                    <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                                        {type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
+                                    </View>
+                                )}
+                            </View>
+                            {/* End: Content Poster */}
 
-                        {/* Start: Info Column */}
-                        <View style={styles.listInfo}>
-                            <View>
-                                <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                                    {item.content_title || 'Başlık Yok'}
-                                </Text>
-                                {/* Subtitle: Author/Artist/Director - ONLY if available */}
-                                {(item.content_subtitle || item.creator) && (
-                                    <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                                        {item.content_subtitle || item.creator}
+                            {/* Start: Info Column */}
+                            <View style={styles.listInfo}>
+                                <View>
+                                    <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                                        {item.content_title || 'Başlık Yok'}
                                     </Text>
-                                )}
-                            </View>
-
-                            <View style={styles.listMetaRow}>
-                                {item.status && (
-                                    <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                                        <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
-                                            {getStatusLabel(item.status, type)}
+                                    {/* Subtitle: Author/Artist/Director - ONLY if available */}
+                                    {(item.content_subtitle || item.creator) && (
+                                        <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                                            {item.content_subtitle || item.creator}
                                         </Text>
-                                    </View>
-                                )}
-                                {/* Rating if available */}
-                                {item.rating > 0 && (
-                                    <View style={styles.listRating}>
-                                        <Star size={12} color="#F59E0B" fill="#F59E0B" />
-                                        <Text style={styles.listRatingText}>{item.rating}</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                        {/* End: Info Column */}
+                                    )}
+                                </View>
 
-                        {/* Optional: Arrow or Action Icon */}
-                        {/* <ChevronRight size={16} color={theme.colors.border} /> */}
-                    </TouchableOpacity>
+                                <View style={styles.listMetaRow}>
+                                    {item.status && (
+                                        <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                                            <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
+                                                {getStatusLabel(item.status, type)}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {/* Rating if available */}
+                                    {item.rating > 0 && (
+                                        <View style={styles.listRating}>
+                                            <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                                            <Text style={styles.listRatingText}>{item.rating}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                            {/* End: Info Column */}
+                        </TouchableOpacity>
+
+                        {/* 3-dot menu for status update */}
+                        <TouchableOpacity
+                            style={{ padding: 8, justifyContent: 'center' }}
+                            onPress={() => handleOpenStatusSheet(item)}
+                        >
+                            <MoreVertical size={20} color={theme.colors.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
                 ))}
             </View>
         );
@@ -661,12 +677,7 @@ export const ProfileScreen = () => {
                                     </Text>
                                 </View>
                             )}
-                            {/* Only show badge if premium - mocking 'tier' property or remove if unused */}
-                            {user.is_premium && (
-                                <View style={styles.premiumBadge}>
-                                    <Crown size={14} color="#FFF" />
-                                </View>
-                            )}
+                            {/* Premium badge removed */}
                             <TouchableOpacity
                                 style={[styles.avatarEditBtn, { backgroundColor: theme.colors.primary, borderColor: theme.colors.background }]}
                                 onPress={() => handleUpdatePhoto('avatar')}
@@ -696,11 +707,7 @@ export const ProfileScreen = () => {
                     <View style={styles.userInfo}>
                         <View style={styles.nameRow}>
                             <Text style={[styles.name, { color: theme.colors.text }]}>{user.name || user.username}</Text>
-                            {user.is_premium && (
-                                <View style={styles.premiumTag}>
-                                    <Crown size={12} color="#FFF" />
-                                </View>
-                            )}
+                            {/* Premium tag removed */}
                         </View>
                         <Text style={[styles.username, { color: theme.colors.textSecondary }]}>@{user.username}</Text>
 
@@ -728,7 +735,56 @@ export const ProfileScreen = () => {
                                     Katılım: {user.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}
                                 </Text>
                             </View>
+                            {user.birth_date && (
+                                <View style={styles.metaItem}>
+                                    <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
+                                        🎂 {new Date(user.birth_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </Text>
+                                </View>
+                            )}
+                            {(user.school || user.department) && (
+                                <View style={styles.metaItem}>
+                                    <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
+                                        🎓 {[user.school, user.department].filter(Boolean).join(' - ')}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
+                        {/* Interests */}
+                        {(() => {
+                            // Parse interests if it's a string
+                            let interestsArray: string[] = [];
+                            if (user.interests) {
+                                if (typeof user.interests === 'string') {
+                                    try {
+                                        interestsArray = JSON.parse(user.interests);
+                                    } catch (e) {
+                                        interestsArray = [];
+                                    }
+                                } else if (Array.isArray(user.interests)) {
+                                    interestsArray = user.interests;
+                                }
+                            }
+                            return interestsArray.length > 0 ? (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                                    {interestsArray.map((interest: string, index: number) => (
+                                        <View
+                                            key={index}
+                                            style={{
+                                                backgroundColor: theme.colors.primary + '15',
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 6,
+                                                borderRadius: 16
+                                            }}
+                                        >
+                                            <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '500' }}>
+                                                {interest}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : null;
+                        })()}
                     </View>
 
                     {/* Stats Grid */}
@@ -951,6 +1007,52 @@ export const ProfileScreen = () => {
                 originalPostAuthor={selectedPostForShare?.original_post?.user?.full_name || selectedPostForShare?.original_post?.user?.username || ''}
                 originalPostAuthorAvatar={selectedPostForShare?.original_post?.user?.avatar_url}
                 originalQuoteText={selectedPostForShare?.original_post?.quote_text || ''}
+            />
+
+            {/* Library Status Bottom Sheet */}
+            <LibraryBottomSheet
+                visible={librarySheetVisible}
+                onClose={() => {
+                    setLibrarySheetVisible(false);
+                    setSelectedLibraryItem(null);
+                }}
+                contentType={selectedLibraryItem?.content_type || 'book'}
+                currentStatus={selectedLibraryItem?.status || null}
+                onSelectStatus={async (status: string) => {
+                    if (!selectedLibraryItem || !user?.id) return;
+                    try {
+                        await libraryService.updateStatus(
+                            selectedLibraryItem.content_type,
+                            selectedLibraryItem.content_id,
+                            status,
+                            0,
+                            selectedLibraryItem.content_title,
+                            selectedLibraryItem.image_url,
+                            selectedLibraryItem.creator,
+                            undefined,
+                            undefined,
+                            undefined,
+                            user.id
+                        );
+                        // Refresh library items
+                        const updatedLibrary = await libraryService.getUserLibrary(user.id);
+                        setLibraryItems(updatedLibrary || []);
+                        Toast.show({
+                            type: 'success',
+                            text1: 'Güncellendi',
+                            text2: 'Okuma durumu güncellendi.',
+                        });
+                    } catch (error) {
+                        console.error('Error updating library status:', error);
+                        Toast.show({
+                            type: 'error',
+                            text1: 'Hata',
+                            text2: 'Durum güncellenemedi.',
+                        });
+                    }
+                    setLibrarySheetVisible(false);
+                    setSelectedLibraryItem(null);
+                }}
             />
         </View >
     );

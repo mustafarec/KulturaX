@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
 import { postService } from '../services/backendApi';
@@ -167,55 +168,60 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             transparent
             onRequestClose={onClose}
         >
-            <View style={styles.overlay}>
-                <View style={styles.modal}>
-                    <View style={styles.header}>
-                        <Text style={styles.title}>{getTitle()}: {source}</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text style={styles.closeButton}>✕</Text>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <View style={styles.overlay}>
+                    <View style={styles.modal}>
+                        <View style={styles.header}>
+                            <Text style={styles.title}>{getTitle()}: {source}</Text>
+                            <TouchableOpacity onPress={onClose}>
+                                <Text style={styles.closeButton}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.inputSection}>
+                            <Text style={styles.label}>Alıntı:</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder={getPlaceholder()}
+                                multiline
+                                numberOfLines={4}
+                                value={quoteText}
+                                onChangeText={setQuoteText}
+                                placeholderTextColor={theme.colors.textSecondary}
+                                autoFocus
+                            />
+                        </View>
+
+                        <View style={styles.inputSection}>
+                            <Text style={styles.label}>Yorumunuz (İsteğe bağlı):</Text>
+                            <TextInput
+                                style={[styles.textInput, styles.commentInput]}
+                                placeholder="Bu alıntı hakkında ne düşünüyorsunuz?"
+                                multiline
+                                numberOfLines={3}
+                                value={commentText}
+                                onChangeText={setCommentText}
+                                placeholderTextColor={theme.colors.textSecondary}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Paylaş</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
-
-                    <View style={styles.inputSection}>
-                        <Text style={styles.label}>Alıntı:</Text>
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder={getPlaceholder()}
-                            multiline
-                            numberOfLines={4}
-                            value={quoteText}
-                            onChangeText={setQuoteText}
-                            placeholderTextColor={theme.colors.textSecondary}
-                            autoFocus
-                        />
-                    </View>
-
-                    <View style={styles.inputSection}>
-                        <Text style={styles.label}>Yorumunuz (İsteğe bağlı):</Text>
-                        <TextInput
-                            style={[styles.textInput, styles.commentInput]}
-                            placeholder="Bu alıntı hakkında ne düşünüyorsunuz?"
-                            multiline
-                            numberOfLines={3}
-                            value={commentText}
-                            onChangeText={setCommentText}
-                            placeholderTextColor={theme.colors.textSecondary}
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.submitButtonText}>Paylaş</Text>
-                        )}
-                    </TouchableOpacity>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };

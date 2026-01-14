@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { ArrowLeft, Camera } from 'lucide-react-native';
+import { ArrowLeft, Camera, Calendar } from 'lucide-react-native';
 import ImagePicker from 'react-native-image-crop-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { userService } from '../../services/backendApi';
 import { useAuth } from '../../context/AuthContext';
+import { InterestSelector } from '../../components/profile/InterestSelector';
 
 export const EditProfileScreen = () => {
     const navigation = useNavigation();
@@ -123,6 +125,14 @@ export const EditProfileScreen = () => {
     const [website, setWebsite] = useState(user?.website || '');
     const [isLoading, setIsLoading] = useState(false);
 
+    // New profile fields
+    const [birthDate, setBirthDate] = useState(user?.birth_date || '');
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [datePickerDate, setDatePickerDate] = useState(user?.birth_date ? new Date(user.birth_date) : new Date(2000, 0, 1));
+    const [school, setSchool] = useState(user?.school || '');
+    const [department, setDepartment] = useState(user?.department || '');
+    const [interests, setInterests] = useState<string[]>(user?.interests || []);
+
     const [avatarAsset, setAvatarAsset] = useState<any>(null);
     const [headerAsset, setHeaderAsset] = useState<any>(null);
 
@@ -179,6 +189,11 @@ export const EditProfileScreen = () => {
             formData.append('bio', bio);
             formData.append('location', location);
             formData.append('website', website);
+            // New profile fields
+            if (birthDate) formData.append('birth_date', birthDate);
+            formData.append('school', school);
+            formData.append('department', department);
+            formData.append('interests', JSON.stringify(interests));
 
             if (avatarAsset) {
                 formData.append('avatar', {
@@ -323,6 +338,78 @@ export const EditProfileScreen = () => {
                             placeholder="https://..."
                             placeholderTextColor={theme.colors.textSecondary}
                             autoCapitalize="none"
+                        />
+                    </View>
+
+                    {/* New Profile Fields */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Doğum Tarihi</Text>
+                        <TouchableOpacity
+                            style={[styles.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                            onPress={() => setShowDatePicker(true)}
+                        >
+                            <Text style={{ color: birthDate ? theme.colors.text : theme.colors.textSecondary, fontSize: 16 }}>
+                                {birthDate ? new Date(birthDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Seçiniz...'}
+                            </Text>
+                            <Calendar size={20} color={theme.colors.textSecondary} />
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={datePickerDate}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event, selectedDate) => {
+                                    if (Platform.OS === 'android') {
+                                        setShowDatePicker(false);
+                                    }
+                                    if (event.type === 'set' && selectedDate) {
+                                        setDatePickerDate(selectedDate);
+                                        const formatted = selectedDate.toISOString().split('T')[0];
+                                        setBirthDate(formatted);
+                                    }
+                                }}
+                                maximumDate={new Date()}
+                                minimumDate={new Date(1900, 0, 1)}
+                            />
+                        )}
+                        {showDatePicker && Platform.OS === 'ios' && (
+                            <TouchableOpacity
+                                onPress={() => setShowDatePicker(false)}
+                                style={{ alignItems: 'center', padding: 10, backgroundColor: theme.colors.primary, borderRadius: 8, marginTop: 10 }}
+                            >
+                                <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>Tamam</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Okul</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={school}
+                            onChangeText={setSchool}
+                            placeholder="Üniversite veya okul adı"
+                            placeholderTextColor={theme.colors.textSecondary}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Bölüm</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={department}
+                            onChangeText={setDepartment}
+                            placeholder="Bölüm veya alan"
+                            placeholderTextColor={theme.colors.textSecondary}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>İlgi Alanları</Text>
+                        <InterestSelector
+                            selectedInterests={interests}
+                            onInterestsChange={setInterests}
+                            maxSelections={10}
                         />
                     </View>
                 </View>

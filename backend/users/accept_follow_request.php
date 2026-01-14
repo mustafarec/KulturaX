@@ -62,7 +62,7 @@ try {
 
     $title = "Takip İsteği Kabul Edildi";
     $message = "@$myUsername takip isteğini kabul etti.";
-    $notifData = json_encode(array("target_id" => $userId));
+    $notifData = json_encode(array("sender_id" => $userId, "target_id" => $userId));
 
     $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'follow_accepted', :title, :message, :data)";
     $notifStmt = $conn->prepare($notifQuery);

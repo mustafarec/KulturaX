@@ -33,6 +33,38 @@ if (isset($_POST['website'])) {
     $updates[] = "website = :website";
     $params[':website'] = $_POST['website'];
 }
+// New profile fields
+if (isset($_POST['birth_date'])) {
+    $birthDate = $_POST['birth_date'];
+    // Validate date format (YYYY-MM-DD)
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthDate)) {
+        $updates[] = "birth_date = :birth_date";
+        $params[':birth_date'] = $birthDate;
+    }
+}
+if (isset($_POST['school'])) {
+    $updates[] = "school = :school";
+    $params[':school'] = $_POST['school'];
+}
+if (isset($_POST['department'])) {
+    $updates[] = "department = :department";
+    $params[':department'] = $_POST['department'];
+}
+if (isset($_POST['interests'])) {
+    // Interests is a JSON array
+    $interests = $_POST['interests'];
+    if (is_string($interests)) {
+        // Validate it's valid JSON
+        json_decode($interests);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $updates[] = "interests = :interests";
+            $params[':interests'] = $interests;
+        }
+    } elseif (is_array($interests)) {
+        $updates[] = "interests = :interests";
+        $params[':interests'] = json_encode($interests);
+    }
+}
 
 // Handle File Uploads
 $uploadDir = "../uploads/avatars/"; // Reusing avatars dir or create headers dir
