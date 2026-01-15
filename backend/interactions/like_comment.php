@@ -42,8 +42,55 @@ try {
             $stmt->execute();
             $liked = true;
 
-            // Bildirim (Opsiyonel: Yorum sahibine bildirim gönderilebilir)
-            // ...
+            // Bildirim Oluştur
+            try {
+                // Yorum sahibini ve post_id'yi bul
+                $commentDetailsQuery = "SELECT user_id, post_id FROM interactions WHERE id = :comment_id";
+                $detailsStmt = $conn->prepare($commentDetailsQuery);
+                $detailsStmt->bindParam(':comment_id', $data->comment_id);
+                $detailsStmt->execute();
+                $commentDetails = $detailsStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($commentDetails) {
+                    $ownerId = (int)$commentDetails['user_id'];
+                    $postId = (int)$commentDetails['post_id'];
+                    $senderId = (int)$userId;
+
+                    // Kendine bildirim gelmesini engelle
+                    if ($ownerId != $senderId) {
+                        // Gönderen kullanıcı adını al
+                        $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
+                        $senderStmt = $conn->prepare($senderQuery);
+                        $senderStmt->bindParam(':sender_id', $senderId);
+                        $senderStmt->execute();
+                        $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
+                        $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
+
+                        $title = "Yeni Beğeni";
+                        $message = "@$senderName yorumunu beğendi.";
+                        $notifData = json_encode(array("sender_id" => $senderId, "post_id" => $postId, "comment_id" => $data->comment_id));
+
+                        $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'like', :title, :message, :data)";
+                        $notifStmt = $conn->prepare($notifQuery);
+                        $notifStmt->bindParam(':user_id', $ownerId);
+                        $notifStmt->bindParam(':title', $title);
+                        $notifStmt->bindParam(':message', $message);
+                        $notifStmt->bindParam(':data', $notifData);
+                        
+                        if ($notifStmt->execute()) {
+                            // DB kaydı başarılı, şimdi Push Bildirim gönder
+                            if (file_exists('../notifications/FCM.php')) {
+                                include_once '../notifications/FCM.php';
+                                $fcm = new FCM($conn);
+                                $fcm->sendToUser($ownerId, $title, $message, array("type" => "like", "post_id" => $postId));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                // Bildirim hatası akışı bozmamalı
+                error_log("Notification error in like_comment.php: " . $e->getMessage());
+            }
         }
 
         // Get updated like count

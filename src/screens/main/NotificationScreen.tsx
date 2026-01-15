@@ -141,6 +141,30 @@ export const NotificationScreen = () => {
         }
     };
 
+    const categoryUnreadCounts = React.useMemo(() => {
+        const counts: Record<string, number> = {
+            'Tümü': 0,
+            'Beğeniler': 0,
+            'Yorumlar': 0,
+            'Bahsetmeler': 0,
+            'Takip': 0,
+            'İstekler': 0,
+            'Öneriler': 0,
+        };
+
+        notifications.filter(n => !n.is_read).forEach(n => {
+            counts['Tümü']++;
+            if (n.type === 'like') counts['Beğeniler']++;
+            else if (n.type === 'comment' || n.type === 'reply') counts['Yorumlar']++;
+            else if (n.type === 'quote' || n.type === 'repost') counts['Bahsetmeler']++;
+            else if (n.type === 'follow' || n.type === 'follow_accepted') counts['Takip']++;
+            else if (n.type === 'follow_request') counts['İstekler']++;
+            else if (n.type === 'recommendation' || n.type === 'event' || n.type === 'system') counts['Öneriler']++;
+        });
+
+        return counts;
+    }, [notifications]);
+
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         fetchNotifications();
@@ -494,6 +518,29 @@ export const NotificationScreen = () => {
             color: theme.colors.textSecondary,
             textAlign: 'center',
         },
+        chipBadge: {
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginLeft: 6,
+            paddingHorizontal: 4,
+        },
+        activeChipBadge: {
+            backgroundColor: '#fff',
+        },
+        inactiveChipBadge: {
+            backgroundColor: theme.colors.primary,
+        },
+        chipBadgeText: {
+            fontSize: 10,
+            fontWeight: '700',
+            color: '#fff',
+        },
+        activeChipBadgeText: {
+            color: theme.colors.primary,
+        },
     }), [theme]);
 
     const renderRightActions = (progress: any, dragX: any, id: number) => {
@@ -671,22 +718,40 @@ export const NotificationScreen = () => {
                         { label: 'Öneriler', key: 'Öneriler' },
                     ]}
                     keyExtractor={item => item.key}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={[
-                                styles.filterChip,
-                                activeFilter === item.key && styles.activeFilterChip
-                            ]}
-                            onPress={() => setActiveFilter(item.key as any)}
-                        >
-                            <Text style={[
-                                styles.filterText,
-                                activeFilter === item.key && styles.activeFilterText
-                            ]}>
-                                {item.label}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
+                    renderItem={({ item }) => {
+                        const count = categoryUnreadCounts[item.key] || 0;
+                        return (
+                            <TouchableOpacity
+                                style={[
+                                    styles.filterChip,
+                                    activeFilter === item.key && styles.activeFilterChip
+                                ]}
+                                onPress={() => setActiveFilter(item.key as any)}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={[
+                                        styles.filterText,
+                                        activeFilter === item.key && styles.activeFilterText
+                                    ]}>
+                                        {item.label}
+                                    </Text>
+                                    {count > 0 && (
+                                        <View style={[
+                                            styles.chipBadge,
+                                            activeFilter === item.key ? styles.activeChipBadge : styles.inactiveChipBadge
+                                        ]}>
+                                            <Text style={[
+                                                styles.chipBadgeText,
+                                                activeFilter === item.key && styles.activeChipBadgeText
+                                            ]}>
+                                                {count}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    }}
                 />
             </View>
 
