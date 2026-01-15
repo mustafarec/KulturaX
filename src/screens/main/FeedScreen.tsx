@@ -241,12 +241,16 @@ export const FeedScreen = () => {
         const postCard = (
             <PostCard
                 post={item}
-                onPress={() => { /* Detail Navigation or expand */ }}
-                onComment={() => (navigation as any).navigate('PostDetail', { postId: (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id, autoFocusComment: false })}
+                onPress={() => (navigation as any).navigate('PostDetail', {
+                    postId: (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id,
+                    autoFocusComment: false
+                })}
+                onComment={() => (navigation as any).navigate('PostDetail', {
+                    postId: (isRepost && !isQuoteRepost && item.original_post) ? item.original_post.id : item.id,
+                    autoFocusComment: true
+                })}
                 onOptions={(pos) => handleOptionsPress(item, pos)}
                 onUserPress={(userId) => handleUserPress(userId || item.user.id)}
-                onReposterPress={() => handleUserPress(item.user.id)}
-                currentUserId={user?.id}
                 onContentPress={handleContentWrap}
                 isSaved={!!item.is_saved}
                 onShare={() => handleSharePress(item)}

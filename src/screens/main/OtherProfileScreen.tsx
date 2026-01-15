@@ -802,7 +802,7 @@ export const OtherProfileScreen = () => {
                         <PostCard
                             key={post.id}
                             post={post}
-                            onPress={() => { }}
+                            onPress={() => (navigation as any).navigate('PostDetail', { postId: post.id })}
                             onUserPress={(userId) => {
                                 const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
                                 const finalUserId = userId || targetUserId;
@@ -850,7 +850,20 @@ export const OtherProfileScreen = () => {
                         <PostCard
                             key={post.id}
                             post={post}
-                            onPress={() => { }}
+                            onPress={() => {
+                                const targetId = post.reply_to_post_id;
+                                if (targetId) {
+                                    if (post.original_post?.user) {
+                                        (navigation as any).navigate('PostDetail', { postId: targetId });
+                                    } else {
+                                        Toast.show({
+                                            type: 'info',
+                                            text1: 'Bilgi',
+                                            text2: 'Bu gönderi silindiği için detayına gidilemiyor.',
+                                        });
+                                    }
+                                }
+                            }}
                             onUserPress={(userId) => {
                                 const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
                                 const finalUserId = userId || targetUserId;
@@ -893,7 +906,7 @@ export const OtherProfileScreen = () => {
                         <PostCard
                             key={post.id}
                             post={post}
-                            onPress={() => { }}
+                            onPress={() => (navigation as any).navigate('PostDetail', { postId: post.id })}
                             onUserPress={(userId) => {
                                 const targetUserId = post.original_post ? post.original_post.user.id : post.user.id;
                                 const finalUserId = userId || targetUserId;

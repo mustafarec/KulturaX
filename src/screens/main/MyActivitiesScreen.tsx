@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, RefreshControl, ActivityIndicator, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
@@ -229,24 +229,22 @@ export const MyActivitiesScreen = () => {
             color: theme.colors.text,
         },
         tabContainer: {
-            flexDirection: 'row',
             paddingHorizontal: 16,
             paddingVertical: 12,
             backgroundColor: theme.colors.surface,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
-            gap: 8,
         },
         tab: {
-            flex: 1,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             paddingVertical: 10,
-            paddingHorizontal: 12,
+            paddingHorizontal: 16,
             borderRadius: 12,
             backgroundColor: theme.colors.background,
             gap: 6,
+            marginRight: 8,
         },
         tabActive: {
             backgroundColor: theme.colors.primary + '20',
@@ -260,18 +258,17 @@ export const MyActivitiesScreen = () => {
             color: theme.colors.primary,
         },
         filterContainer: {
-            flexDirection: 'row',
-            paddingHorizontal: 16,
             paddingVertical: 10,
-            gap: 8,
+            paddingHorizontal: 16,
         },
         filterChip: {
             paddingVertical: 6,
-            paddingHorizontal: 12,
+            paddingHorizontal: 16,
             borderRadius: 16,
             backgroundColor: theme.colors.surface,
             borderWidth: 1,
             borderColor: theme.colors.border,
+            marginRight: 8,
         },
         filterChipActive: {
             backgroundColor: theme.colors.primary + '15',
@@ -381,33 +378,45 @@ export const MyActivitiesScreen = () => {
 
             {/* Tabs */}
             <View style={styles.tabContainer}>
-                {TABS.map((tab) => (
-                    <TouchableOpacity
-                        key={tab.key}
-                        style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-                        onPress={() => setActiveTab(tab.key)}
-                    >
-                        <Text style={{ fontSize: 16 }}>{tab.emoji}</Text>
-                        <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-                            {tab.label}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 0 }}
+                >
+                    {TABS.map((tab) => (
+                        <TouchableOpacity
+                            key={tab.key}
+                            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+                            onPress={() => setActiveTab(tab.key)}
+                        >
+                            <Text style={{ fontSize: 16 }}>{tab.emoji}</Text>
+                            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+                                {tab.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {/* Status Filters */}
             <View style={styles.filterContainer}>
-                {STATUS_FILTERS.map((filter) => (
-                    <TouchableOpacity
-                        key={filter.key}
-                        style={[styles.filterChip, statusFilter === filter.key && styles.filterChipActive]}
-                        onPress={() => setStatusFilter(filter.key)}
-                    >
-                        <Text style={[styles.filterChipText, statusFilter === filter.key && styles.filterChipTextActive]}>
-                            {filter.label}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 0 }}
+                >
+                    {STATUS_FILTERS.map((filter) => (
+                        <TouchableOpacity
+                            key={filter.key}
+                            style={[styles.filterChip, statusFilter === filter.key && styles.filterChipActive]}
+                            onPress={() => setStatusFilter(filter.key)}
+                        >
+                            <Text style={[styles.filterChipText, statusFilter === filter.key && styles.filterChipTextActive]}>
+                                {filter.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {/* Content List */}

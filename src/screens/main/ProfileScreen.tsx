@@ -357,7 +357,20 @@ export const ProfileScreen = () => {
                     <PostCard
                         key={post.id}
                         post={post}
-                        onPress={() => { }}
+                        onPress={() => {
+                            const targetId = post.reply_to_post_id;
+                            if (targetId) {
+                                if (post.original_post?.user) {
+                                    (navigation as any).navigate('PostDetail', { postId: targetId });
+                                } else {
+                                    Toast.show({
+                                        type: 'info',
+                                        text1: 'Bilgi',
+                                        text2: 'Bu gönderi silindiği için detayına gidilemiyor.',
+                                    });
+                                }
+                            }
+                        }}
                         currentUserId={user?.id}
                         onUserPress={() => { }}
                         onContentPress={handleContentPress}
@@ -388,7 +401,7 @@ export const ProfileScreen = () => {
                 <PostCard
                     key={post.id}
                     post={post}
-                    onPress={() => { }}
+                    onPress={() => (navigation as any).navigate('PostDetail', { postId: post.id })}
                     currentUserId={user?.id}
                     onUserPress={() => { }}
                     onContentPress={handleContentPress}
