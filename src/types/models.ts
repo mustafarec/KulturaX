@@ -72,6 +72,10 @@ export interface Post {
     original_post_id?: number;
     original_post?: Post;
 
+    // Reply
+    reply_to_post_id?: number;
+    type?: string;
+
     // Topic
     topic_id?: number;
     topic_name?: string;

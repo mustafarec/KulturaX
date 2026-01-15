@@ -241,6 +241,29 @@ const PostCardComponent: React.FC<PostCardProps> = ({
 
             </View>
 
+            {/* Reply Context */}
+            {post.reply_to_post_id && (
+                <View style={{ marginBottom: 4, marginTop: -4 }}>
+                    {post.original_post?.user ? (
+                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary }}>
+                            Yanıtlanan: <Text
+                                style={{ color: theme.colors.primary, fontWeight: '600' }}
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    if (post.original_post?.user?.id) handleUser(post.original_post.user.id);
+                                }}
+                            >
+                                @{post.original_post.user.username}
+                            </Text>
+                        </Text>
+                    ) : (
+                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontStyle: 'italic' }}>
+                            Silinmiş bir gönderiye yanıt olarak
+                        </Text>
+                    )}
+                </View>
+            )}
+
             {/* Content Text */}
             {displayComment ? (
                 <TouchableOpacity onPress={onPress}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, Platform, UIManager, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, Platform, UIManager, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../context/AuthContext';
@@ -9,13 +9,13 @@ import { Avatar } from '../../components/ui/Avatar';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import { Skeleton, SkeletonCircle } from '../../components/Skeleton';
 import LinearGradient from 'react-native-linear-gradient';
-import { Share2, MoreVertical, Film, BookOpen, Heart, MessageCircle, Bookmark, Settings, Repeat, Music, Ghost, Camera, Crown, MapPin, Link, Calendar, Users, UserPlus, MessageSquare, Package, Star } from 'lucide-react-native';
+import { Share2, MoreVertical, Film, BookOpen, Heart, MessageCircle, Bookmark, Settings, Repeat, Music, Ghost, Crown, MapPin, Link, Calendar, Users, UserPlus, MessageSquare, Package, Star } from 'lucide-react-native';
 import { postService, userService, libraryService, reviewService, interactionService } from '../../services/backendApi';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { usePostInteractions } from '../../hooks/usePostInteractions';
 import { LibraryBottomSheet } from '../../components/LibraryBottomSheet';
-import ImagePicker from 'react-native-image-crop-picker';
+
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
 import { ShareCardModal } from '../../components/ShareCardModal';
@@ -62,7 +62,7 @@ export const ProfileScreen = () => {
     const [selectedPostForOptions, setSelectedPostForOptions] = useState<any>(null);
     const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
+
     const [profileMenuVisible, setProfileMenuVisible] = useState(false);
     const [shareOptionsVisible, setShareOptionsVisible] = useState(false);
     const [shareCardVisible, setShareCardVisible] = useState(false);
@@ -300,59 +300,6 @@ export const ProfileScreen = () => {
 
     // Repost logic handled by PostCard internal hook
 
-    const handleUpdatePhoto = async (type: 'avatar' | 'header') => {
-        if (!user) return;
-        const isAvatar = type === 'avatar';
-        try {
-            const image = await ImagePicker.openPicker({
-                width: isAvatar ? 400 : 800,
-                height: isAvatar ? 400 : 266, // Avatar 1:1, Header ~3:1
-                cropping: true,
-                mediaType: 'photo',
-                cropperCircleOverlay: isAvatar,
-                forceJpg: true,
-            });
-
-            if (image) {
-                setIsUploading(true);
-                const formData = new FormData();
-
-                if (isAvatar) {
-                    formData.append('avatar', {
-                        uri: image.path,
-                        type: image.mime,
-                        name: image.filename || `avatar_${Date.now()}.jpg`,
-                    } as any);
-
-                    // Note: uploadAvatar endpoint exists in backendApi.ts lines 535-546
-                    const response = await userService.uploadAvatar(user.id, formData);
-                    if (response.user) {
-                        await updateUser(response.user);
-                        Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Profil fotoğrafı güncellendi.' });
-                    }
-                } else {
-                    formData.append('header_image', {
-                        uri: image.path,
-                        type: image.mime,
-                        name: image.filename || `header_${Date.now()}.jpg`,
-                    } as any);
-
-                    const response = await userService.updateProfile(user.id, formData);
-                    if (response.user) {
-                        await updateUser(response.user);
-                        Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Kapak fotoğrafı güncellendi.' });
-                    }
-                }
-            }
-        } catch (error: any) {
-            if (error.code !== 'E_PICKER_CANCELLED') {
-                console.error('Image upload error:', error);
-                Toast.show({ type: 'error', text1: 'Hata', text2: 'Fotoğraf yüklenemedi.' });
-            }
-        } finally {
-            setIsUploading(false);
-        }
-    };
 
     const handleShareProfile = () => {
         setSelectedPostForShare(null); // Clear any selected post
@@ -652,13 +599,6 @@ export const ProfileScreen = () => {
                         colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)']}
                         style={styles.bannerGradient}
                     />
-                    <TouchableOpacity
-                        style={[styles.bannerEditBtn, { backgroundColor: theme.colors.surface }]}
-                        onPress={() => handleUpdatePhoto('header')}
-                        disabled={isUploading}
-                    >
-                        {isUploading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : <Camera size={16} color={theme.colors.primary} />}
-                    </TouchableOpacity>
                 </View>
 
 
@@ -678,13 +618,6 @@ export const ProfileScreen = () => {
                                 </View>
                             )}
                             {/* Premium badge removed */}
-                            <TouchableOpacity
-                                style={[styles.avatarEditBtn, { backgroundColor: theme.colors.primary, borderColor: theme.colors.background }]}
-                                onPress={() => handleUpdatePhoto('avatar')}
-                                disabled={isUploading}
-                            >
-                                <Camera size={14} color="#FFF" />
-                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.headerActions}>
@@ -1075,14 +1008,6 @@ const styles = StyleSheet.create({
     bannerGradient: {
         ...StyleSheet.absoluteFillObject,
     },
-    bannerEditBtn: {
-        position: 'absolute',
-        bottom: 12,
-        right: 12,
-        padding: 8,
-        borderRadius: 20,
-        elevation: 2,
-    },
     profileHeaderContent: {
         marginTop: -64,
         paddingHorizontal: 16,
@@ -1113,14 +1038,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#10B981', // Emerald
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
-    },
-    avatarEditBtn: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        padding: 8,
-        borderRadius: 20,
         borderWidth: 2,
     },
     headerActions: {
