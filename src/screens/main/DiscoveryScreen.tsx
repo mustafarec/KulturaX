@@ -574,12 +574,42 @@ export const DiscoveryScreen = () => {
 
 
 
-    const getTopicGradient = (index: number) => {
+    const getTopicGradient = (name: string, index: number) => {
+        const lowerName = name.toLowerCase();
+
+        // Music
+        if (lowerName.includes('müzik') || lowerName.includes('şarkı')) return ['#7C3AED', '#6D28D9']; // Purple
+        if (lowerName.includes('konser') || lowerName.includes('sanatçı')) return ['#8B5CF6', '#7C3AED']; // Light Purple
+
+        // Movies
+        if (lowerName.includes('film') || lowerName.includes('sinema')) return ['#DC2626', '#B91C1C']; // Red
+        if (lowerName.includes('dizi') || lowerName.includes('oyuncu')) return ['#EF4444', '#DC2626']; // Light Red
+
+        // Books
+        if (lowerName.includes('kitap') || lowerName.includes('roman')) return ['#059669', '#047857']; // Emerald
+        if (lowerName.includes('edebiyat') || lowerName.includes('şiir')) return ['#10B981', '#059669']; // Green
+
+        // Arts
+        if (lowerName.includes('sanat') || lowerName.includes('sergi')) return ['#EA580C', '#C2410C']; // Orange
+        if (lowerName.includes('tiyatro') || lowerName.includes('sahne')) return ['#B91C1C', '#991B1B']; // Deep Red
+
+        // Tech
+        if (lowerName.includes('teknoloji') || lowerName.includes('yazılım')) return ['#2563EB', '#1D4ED8']; // Blue
+        if (lowerName.includes('bilim') || lowerName.includes('uzay')) return ['#3B82F6', '#2563EB']; // Light Blue
+
+        // Lifestyle
+        if (lowerName.includes('gezi') || lowerName.includes('seyahat')) return ['#0EA5E9', '#0284C7']; // Sky
+        if (lowerName.includes('spor')) return ['#10B981', '#059669']; // Green
+        if (lowerName.includes('tarih')) return ['#92400E', '#78350F']; // Brown
+        if (lowerName.includes('mizah') || lowerName.includes('komik')) return ['#FCD34D', '#F59E0B']; // Yellow/Amber
+        if (lowerName.includes('kişisel gelişim')) return ['#F59E0B', '#D97706']; // Amber
+        if (lowerName.includes('alıntı') || lowerName.includes('söz')) return ['#EC4899', '#DB2777']; // Pink/Rose
+
         const gradients = [
-            ['#3D2817', '#8B7355'], // Primary -> Secondary
-            ['#8B7355', '#D4C5B0'], // Secondary -> Accent
-            ['#D4C5B0', '#3D2817'], // Accent -> Primary
-            ['#3D2817', '#D4C5B0'], // Primary -> Accent
+            ['#6366F1', '#4F46E5'], // Indigo
+            ['#EC4899', '#DB2777'], // Pink
+            ['#8B5CF6', '#7C3AED'], // Violet
+            ['#14B8A6', '#0D9488'], // Teal
         ];
         return gradients[index % gradients.length];
     };
@@ -600,13 +630,15 @@ export const DiscoveryScreen = () => {
                         activeOpacity={0.9}
                     >
                         <LinearGradient
-                            colors={getTopicGradient(index)}
+                            colors={getTopicGradient(topic.name, index)}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.topicGradientCard}
                         >
                             <View style={styles.topicContent}>
-                                <Text style={styles.topicNameLight} numberOfLines={1} ellipsizeMode="tail">{topic.name}</Text>
+                                <Text style={styles.topicNameLight} numberOfLines={1} ellipsizeMode="tail">
+                                    {topic.name.replace(/^#/, '')}
+                                </Text>
                                 <Text style={styles.topicStatsLight}>{topic.post_count} gönderi</Text>
                             </View>
                         </LinearGradient>

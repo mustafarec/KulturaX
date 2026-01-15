@@ -234,7 +234,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                                         disabled={!onTopicPress || !(post.topic_id || (post.original_post && post.original_post.topic_id))}
                                     >
                                         <Badge variant="secondary">
-                                            {post.topic_name || (post.original_post && post.original_post.topic_name)}
+                                            {(post.topic_name || (post.original_post && post.original_post.topic_name) || '').replace(/^#/, '')}
                                         </Badge>
                                     </TouchableOpacity>
                                 </>

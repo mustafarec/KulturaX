@@ -8,7 +8,11 @@ import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { SharePostModal } from '../../components/SharePostModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import Toast from 'react-native-toast-message';
-import { ArrowLeft, Box, Music, Film, Book, Palette, Globe, Cpu, Gamepad2, Hash } from 'lucide-react-native';
+import {
+    ArrowLeft, Box, Music, Film, Book, Palette, Globe, Cpu, Gamepad2, Hash,
+    Clapperboard, BookOpen, Theater, Feather, Atom, Compass, Trophy, Camera,
+    Brain, Library, Mic2, Heart, Star, Sparkles, PenTool, Laugh, Sun, Quote
+} from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +34,91 @@ export const TopicDetailScreen = () => {
     const [isFollowing, setIsFollowing] = useState(topic?.is_followed || false);
     const [followerCount, setFollowerCount] = useState(parseInt(topic?.follower_count || '0', 10) || 0);
 
+    const topicNameClean = (topic?.name || '').replace(/^#/, '');
+
+    const getTopicTheme = (name: string, icon: string) => {
+        const lowerName = name.toLowerCase();
+
+        // 1. Music Category
+        if (lowerName.includes('müzik') || lowerName.includes('şarkı') || icon === 'musical-notes') {
+            return { color: '#7C3AED', icon: Music, bg: '#F5F3FF' };
+        }
+        if (lowerName.includes('konser') || lowerName.includes('sanatçı') || lowerName.includes('şarkıcı')) {
+            return { color: '#8B5CF6', icon: Mic2, bg: '#F5F3FF' };
+        }
+
+        // 2. Movie/Screen Category
+        if (lowerName.includes('film') || lowerName.includes('sinema') || icon === 'film') {
+            return { color: '#DC2626', icon: Clapperboard, bg: '#FEF2F2' };
+        }
+        if (lowerName.includes('dizi') || lowerName.includes('netflix') || lowerName.includes('oyuncu')) {
+            return { color: '#EF4444', icon: Film, bg: '#FEF2F2' };
+        }
+
+        // 3. Literature Category
+        if (lowerName.includes('kitap') || lowerName.includes('roman') || lowerName.includes('öykü') || icon === 'book') {
+            return { color: '#059669', icon: BookOpen, bg: '#F0FDF4' };
+        }
+        if (lowerName.includes('şiir') || lowerName.includes('şair')) {
+            return { color: '#10B981', icon: Feather, bg: '#ECFDF5' };
+        }
+        if (lowerName.includes('yazar') || lowerName.includes('edebiyat')) {
+            return { color: '#047857', icon: PenTool, bg: '#F0FDF4' };
+        }
+
+        // 4. Arts & Culture
+        if (lowerName.includes('tiyatro') || lowerName.includes('sahne')) {
+            return { color: '#B91C1C', icon: Theater, bg: '#FEF2F2' };
+        }
+        if (lowerName.includes('sanat') || lowerName.includes('sergi') || icon === 'easel') {
+            return { color: '#EA580C', icon: Palette, bg: '#FFF7ED' };
+        }
+        if (lowerName.includes('tarih') || lowerName.includes('müze') || lowerName.includes('kültür')) {
+            return { color: '#92400E', icon: Library, bg: '#FFFBEB' };
+        }
+
+        // 5. Science & Tech
+        if (lowerName.includes('teknoloji') || lowerName.includes('yazılım') || icon === 'hardware-chip') {
+            return { color: '#2563EB', icon: Cpu, bg: '#EFF6FF' };
+        }
+        if (lowerName.includes('bilim') || lowerName.includes('uzay') || lowerName.includes('fizik')) {
+            return { color: '#3B82F6', icon: Atom, bg: '#EFF6FF' };
+        }
+
+        // 6. Lifestyle & Society
+        if (lowerName.includes('gezi') || lowerName.includes('dünya') || lowerName.includes('seyahat') || icon === 'earth') {
+            return { color: '#0EA5E9', icon: Compass, bg: '#F0F9FF' };
+        }
+        if (lowerName.includes('psikoloji') || lowerName.includes('felsefe') || lowerName.includes('düşünce')) {
+            return { color: '#6366F1', icon: Brain, bg: '#EEF2FF' };
+        }
+        if (lowerName.includes('kişisel gelişim') || lowerName.includes('motivasyon') || lowerName.includes('başarı')) {
+            return { color: '#F59E0B', icon: Sun, bg: '#FFFBEB' };
+        }
+        if (lowerName.includes('mizah') || lowerName.includes('komik') || lowerName.includes('eğlence') || lowerName.includes('karikatür')) {
+            return { color: '#FCD34D', icon: Laugh, bg: '#FFFBEB' };
+        }
+        if (lowerName.includes('spor') || lowerName.includes('futbol') || lowerName.includes('sağlık')) {
+            return { color: '#10B981', icon: Trophy, bg: '#F0FDF4' };
+        }
+        if (lowerName.includes('fotoğraf') || lowerName.includes('kamera')) {
+            return { color: '#4B5563', icon: Camera, bg: '#F9FAFB' };
+        }
+        if (lowerName.includes('alıntı') || lowerName.includes('söz') || lowerName.includes('vecize')) {
+            return { color: '#EC4899', icon: Quote, bg: '#FDF2F8' };
+        }
+
+        // Fallbacks
+        if (lowerName.includes('popüler') || lowerName.includes('trend')) {
+            return { color: '#F43F5E', icon: Sparkles, bg: '#FFF1F2' };
+        }
+
+        return { color: theme.colors.primary, icon: Sparkles, bg: '#FDFCFB' };
+    };
+
+    const topicTheme = getTopicTheme(topicNameClean, topic?.icon);
+    const TopicIcon = topicTheme.icon;
+
     // Interaction States
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
@@ -38,22 +127,6 @@ export const TopicDetailScreen = () => {
 
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const [selectedPostForShare, setSelectedPostForShare] = useState<any>(null);
-
-    const getTopicIcon = (iconName: string) => {
-        switch (iconName) {
-            case 'musical-notes': return Music;
-            case 'film': return Film;
-            case 'book': return Book;
-            case 'easel': return Palette;
-            case 'earth': return Globe;
-            case 'hardware-chip': return Cpu;
-            case 'game-controller': return Gamepad2;
-            case 'cube-outline': return Box;
-            default: return Hash;
-        }
-    };
-
-    const TopicIcon = getTopicIcon(topic?.icon);
 
     // Interaction logic moved to PostCard internal hook
 
@@ -155,10 +228,12 @@ export const TopicDetailScreen = () => {
             width: 80,
             height: 80,
             borderRadius: 40,
-            backgroundColor: theme.colors.secondary + '20', // 20% opacity
+            backgroundColor: topicTheme.bg,
             justifyContent: 'center',
             alignItems: 'center',
             marginBottom: 16,
+            borderWidth: 1,
+            borderColor: topicTheme.color + '20',
         },
         title: {
             fontSize: 24,
@@ -184,12 +259,12 @@ export const TopicDetailScreen = () => {
             fontSize: 13,
         },
         followButton: {
-            backgroundColor: isFollowing ? theme.colors.surface : theme.colors.primary,
+            backgroundColor: isFollowing ? theme.colors.surface : topicTheme.color,
             paddingHorizontal: 32,
             paddingVertical: 10,
             borderRadius: 20,
-            borderWidth: isFollowing ? 1 : 0,
-            borderColor: theme.colors.border,
+            borderWidth: 1,
+            borderColor: isFollowing ? theme.colors.border : topicTheme.color,
         },
         followButtonText: {
             color: isFollowing ? theme.colors.text : '#fff',
@@ -223,9 +298,9 @@ export const TopicDetailScreen = () => {
                 ListHeaderComponent={
                     <View style={styles.header}>
                         <View style={styles.iconContainer}>
-                            <TopicIcon size={40} color={theme.colors.primary} />
+                            <TopicIcon size={40} color={topicTheme.color} />
                         </View>
-                        <Text style={styles.title}>{topic.name}</Text>
+                        <Text style={styles.title}>{topicNameClean}</Text>
                         {topic.description && <Text style={styles.description}>{topic.description}</Text>}
 
                         <View style={styles.stats}>
