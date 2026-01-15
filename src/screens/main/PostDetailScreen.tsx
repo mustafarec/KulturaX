@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { postService, interactionService, clickTrackingService } from '../../services/backendApi';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { PostCard } from '../../components/PostCard';
-import { SkeletonPost } from '../../components/ui/SkeletonPost';
+import { PostDetailSkeleton } from '../../components/Skeleton';
 import { ArrowLeft, Send, Heart, MessageCircle } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
@@ -589,8 +589,8 @@ export const PostDetailScreen = () => {
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Gönderi</Text>
                 </View>
-                <View style={{ marginTop: 12 }}>
-                    <SkeletonPost />
+                <View style={{ flex: 1, marginTop: 12 }}>
+                    <PostDetailSkeleton />
                 </View>
             </SafeAreaView>
         );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, StatusBar, Image, Linking, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
@@ -12,13 +12,18 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import LinearGradient from 'react-native-linear-gradient';
+import { RefreshCcw } from 'lucide-react-native';
+import { checkForUpdates, applyOTAUpdate, openStore } from '../../services/UpdateService';
+import { version as appVersion } from '../../../package.json';
+import Toast from 'react-native-toast-message';
 
 export const AboutScreen = () => {
     const { theme } = useTheme();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
+    const [checkingUpdate, setCheckingUpdate] = React.useState(false);
 
-    const APP_VERSION = '1.0.0';
+    const APP_VERSION = appVersion;
     const BUILD_NUMBER = '1';
 
     const styles = StyleSheet.create({
@@ -135,15 +140,69 @@ export const AboutScreen = () => {
         },
     });
 
-    const LinkItem = ({ icon: Icon, label, url, isLast = false }: { icon: any, label: string, url: string, isLast?: boolean }) => (
+    const LinkItem = ({ icon: Icon, label, url, isLast = false, onPress, loading = false }: { icon: any, label: string, url?: string, isLast?: boolean, onPress?: () => void, loading?: boolean }) => (
         <TouchableOpacity
             style={[styles.linkItem, isLast && styles.linkItemLast]}
-            onPress={() => Linking.openURL(url)}
+            onPress={onPress || (() => url && Linking.openURL(url))}
+            disabled={loading}
         >
             <Icon size={20} color={theme.colors.primary} style={styles.linkIcon} />
             <Text style={styles.linkText}>{label}</Text>
+            {loading && <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginLeft: 'auto' }} />}
         </TouchableOpacity>
     );
+
+    const handleCheckUpdate = async () => {
+        setCheckingUpdate(true);
+        try {
+            const result = await checkForUpdates();
+
+            if (result.hasOTAUpdate) {
+                Alert.alert(
+                    'Güncelleme Mevcut',
+                    'Uygulamanın yeni bir sürümü indirilebilir. Şimdi uygulansın mı?',
+                    [
+                        { text: 'Daha Sonra', style: 'cancel' },
+                        {
+                            text: 'Güncelle',
+                            onPress: async () => {
+                                try {
+                                    Toast.show({ type: 'info', text1: 'Güncelleniyor', text2: 'Uygulama yeniden başlatılacak...' });
+                                    await applyOTAUpdate();
+                                } catch (e) {
+                                    Toast.show({ type: 'error', text1: 'Hata', text2: 'Güncelleme uygulanamadı.' });
+                                }
+                            }
+                        }
+                    ]
+                );
+            } else if (result.hasNativeUpdate) {
+                Alert.alert(
+                    'Yeni Versiyon',
+                    `Yeni sürüm (${result.latestVersion}) mağazada mevcut. Güncellemek ister misiniz?`,
+                    [
+                        { text: 'İptal', style: 'cancel' },
+                        { text: 'Mağazaya Git', onPress: () => openStore(result.updateUrl) }
+                    ]
+                );
+            } else {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Güncel',
+                    text2: 'Uygulamanız en son sürümde.',
+                    visibilityTime: 2000,
+                });
+            }
+        } catch (error) {
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'Güncelleme kontrolü yapılamadı.',
+            });
+        } finally {
+            setCheckingUpdate(false);
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -179,6 +238,12 @@ export const AboutScreen = () => {
                     </Text>
 
                     <View style={styles.linksContainer}>
+                        <LinkItem
+                            icon={RefreshCcw}
+                            label="Güncellemeleri Denetle"
+                            onPress={handleCheckUpdate}
+                            loading={checkingUpdate}
+                        />
                         <LinkItem
                             icon={Globe}
                             label="Web Sitemizi Ziyaret Edin"

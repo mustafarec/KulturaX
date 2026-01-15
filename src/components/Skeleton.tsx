@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, ViewStyle } from 'react-native';
+import { View, Animated, StyleSheet, ViewStyle, ScrollView } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
 interface SkeletonProps {
@@ -151,6 +151,53 @@ export const MessageSkeleton: React.FC = () => {
     );
 };
 
+// Comment skeleton
+export const CommentSkeleton: React.FC = () => {
+    const { theme } = useTheme();
+    return (
+        <View style={[styles.commentItem, { borderBottomColor: theme.colors.border }]}>
+            <SkeletonCircle size={40} />
+            <View style={styles.commentContent}>
+                <View style={styles.row}>
+                    <Skeleton width={100} height={14} />
+                    <Skeleton width={60} height={12} style={{ marginLeft: 8 }} />
+                </View>
+                <SkeletonText lines={2} style={{ marginTop: 8 }} />
+            </View>
+        </View>
+    );
+};
+
+// Post Detail skeleton
+export const PostDetailSkeleton: React.FC = () => {
+    const { theme } = useTheme();
+    return (
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            <View style={{ padding: 16 }}>
+                {/* Fixed Post Skeleton (No image placeholder to be faster/sleeker) */}
+                <View style={styles.cardHeader}>
+                    <SkeletonCircle size={48} />
+                    <View style={styles.cardHeaderText}>
+                        <Skeleton width={140} height={16} />
+                        <Skeleton width={90} height={12} style={{ marginTop: 6 }} />
+                    </View>
+                </View>
+                <SkeletonText lines={4} style={{ marginTop: 20 }} />
+                <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+
+                {/* Comments Header */}
+                <Skeleton width={120} height={20} style={{ marginBottom: 16 }} />
+
+                {/* Comment List */}
+                <CommentSkeleton />
+                <CommentSkeleton />
+                <CommentSkeleton />
+                <CommentSkeleton />
+            </View>
+        </ScrollView>
+    );
+};
+
 const styles = StyleSheet.create({
     container: {
         padding: 16,
@@ -190,5 +237,18 @@ const styles = StyleSheet.create({
     messageContent: {
         marginLeft: 12,
         flex: 1,
+    },
+    commentItem: {
+        flexDirection: 'row',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+    },
+    commentContent: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
 });
