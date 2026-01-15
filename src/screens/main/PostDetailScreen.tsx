@@ -20,7 +20,7 @@ import { NativeAdComment } from '../../components/ads';
 export const PostDetailScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
-    const { postId, autoFocusComment } = route.params as { postId: number; autoFocusComment?: boolean };
+    const { postId, autoFocusComment, commentId } = route.params as { postId: number; autoFocusComment?: boolean; commentId?: number };
     const { theme } = useTheme();
     const { user: currentUser } = useAuth();
     const insets = useSafeAreaInsets();
@@ -132,11 +132,12 @@ export const PostDetailScreen = () => {
             if (foundPost) {
                 setPost(foundPost);
             } else {
-                Toast.show({ type: 'error', text1: 'Hata', text2: 'Gönderi bulunamadı veya silinmiş.' });
+                // If not found, it might be deleted. We don't error out yet 
+                // because we want to show the comments thread.
+                setPost(null);
             }
         } catch (error) {
             console.error('Error fetching post:', error);
-            Toast.show({ type: 'error', text1: 'Hata', text2: 'Gönderi yüklenirken bir hata oluştu.' });
         } finally {
             setLoading(false);
         }
@@ -226,27 +227,19 @@ export const PostDetailScreen = () => {
         (navigation as any).navigate('OtherProfile', { userId: userId });
     };
 
-    // Comment Organization Logic
-    const getDescendants = (parentId: number, allComments: any[]): any[] => {
-        const directChildren = allComments.filter(c => c.parent_id === parentId);
-        let results: any[] = [];
-        directChildren.forEach(child => {
-            results.push(child);
-            results = [...results, ...getDescendants(child.id, allComments)];
-        });
-        return results;
-    };
-
     const organizedComments = useMemo(() => {
-        const mainComments = comments.filter(c => !c.parent_id);
-        let result: any[] = [];
-        mainComments.forEach(main => {
-            result.push(main);
-            const descendants = getDescendants(main.id, comments);
-            result = [...result, ...descendants];
-        });
-        return result;
-    }, [comments]);
+        // If focusing on a sub-thread, only show direct replies to the root comment
+        if (commentId) {
+            return comments.filter(c => c.parent_id === commentId);
+        }
+        // Otherwise, only show top-level comments
+        return comments.filter(c => !c.parent_id);
+    }, [comments, commentId]);
+
+    const rootComment = useMemo(() => {
+        if (!commentId) return null;
+        return comments.find(c => c.id === commentId);
+    }, [comments, commentId]);
 
     const styles = useMemo(() => StyleSheet.create({
         container: {
@@ -497,9 +490,10 @@ export const PostDetailScreen = () => {
     }), [theme, isKeyboardVisible, insets.bottom]);
 
     const renderCommentItem = (item: any) => {
-        const isReply = !!item.parent_id;
+        const childCount = comments.filter(c => c.parent_id === item.id).length;
+
         return (
-            <View key={item.id} style={[styles.commentItem, isReply && styles.replyItem]}>
+            <View key={item.id} style={styles.commentItem}>
                 <TouchableOpacity onPress={() => goToProfile(item.user_id)}>
                     <View style={styles.avatarPlaceholder}>
                         {item.avatar_url ? (
@@ -554,6 +548,33 @@ export const PostDetailScreen = () => {
                             <Text style={[styles.actionText, { marginLeft: 6 }]}>Cevapla</Text>
                         </TouchableOpacity>
                     </View>
+
+                    {/* Show Replies Button */}
+                    {!commentId && childCount > 0 && (
+                        <TouchableOpacity
+                            style={{
+                                marginTop: 12,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingVertical: 4
+                            }}
+                            onPress={() => (navigation as any).push('PostDetail', { postId, commentId: item.id })}
+                        >
+                            <View style={{
+                                width: 20,
+                                height: 1,
+                                backgroundColor: theme.colors.border,
+                                marginRight: 8
+                            }} />
+                            <Text style={{
+                                color: theme.colors.primary,
+                                fontSize: 13,
+                                fontWeight: '600'
+                            }}>
+                                {childCount} yanıtı gör
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         );
@@ -575,21 +596,6 @@ export const PostDetailScreen = () => {
         );
     }
 
-    if (!post) {
-        return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'left', 'right']}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ArrowLeft size={24} color={theme.colors.text} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Gönderi</Text>
-                </View>
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>Gönderi bulunamadı veya silinmiş.</Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'left', 'right']}>
@@ -610,33 +616,96 @@ export const PostDetailScreen = () => {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={{ marginTop: 12 }}>
-                        <PostCard
-                            post={post}
-                            onPress={() => { }}
-                            onUserPress={(userId) => {
-                                // Gelen userId'yi kullan (PostCard doğru ID'yi gönderir)
-                                if (userId && userId !== currentUser?.id) {
-                                    (navigation as any).navigate('OtherProfile', { userId: userId });
-                                }
-                            }}
-                            onReposterPress={() => {
-                                // Repost eden kişinin profiline git
-                                const reposterId = post.user.id;
-                                if (reposterId && reposterId !== currentUser?.id) {
-                                    (navigation as any).navigate('OtherProfile', { userId: reposterId });
-                                }
-                            }}
-                            onContentPress={handleContentPress}
-                            onComment={() => inputRef.current?.focus()}
-                            onOptions={(currentUser && (post.user.id === currentUser.id || post.user.username === currentUser.username)) ? handleOptionsPress : undefined}
-                            onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
-                            onUpdatePost={(updater) => setPost((prev: any) => prev ? updater(prev) : null)}
-                        />
-                    </View>
+                    {/* Placeholder for Deleted Root Post */}
+                    {!loading && !post && (
+                        <View style={{
+                            marginHorizontal: 16,
+                            marginTop: 12,
+                            padding: 16,
+                            backgroundColor: theme.colors.surface,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderStyle: 'dashed',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            opacity: 0.8
+                        }}>
+                            <Trash size={18} color={theme.colors.textSecondary} style={{ marginRight: 10 }} />
+                            <Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>Bu gönderi silindi.</Text>
+                        </View>
+                    )}
+
+                    {/* Main Post UI */}
+                    {post && !commentId && (
+                        <View style={{ marginTop: 12 }}>
+                            <PostCard
+                                post={post}
+                                onPress={() => { }}
+                                onUserPress={(userId) => {
+                                    // Gelen userId'yi kullan (PostCard doğru ID'yi gönderir)
+                                    if (userId && userId !== currentUser?.id) {
+                                        (navigation as any).navigate('OtherProfile', { userId: userId });
+                                    }
+                                }}
+                                onReposterPress={() => {
+                                    // Repost eden kişinin profiline git
+                                    const reposterId = post.user.id;
+                                    if (reposterId && reposterId !== currentUser?.id) {
+                                        (navigation as any).navigate('OtherProfile', { userId: reposterId });
+                                    }
+                                }}
+                                onContentPress={handleContentPress}
+                                onComment={() => inputRef.current?.focus()}
+                                onOptions={(currentUser && (post.user.id === currentUser.id || post.user.username === currentUser.username)) ? handleOptionsPress : undefined}
+                                onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+                                onUpdatePost={(updater) => setPost((prev: any) => prev ? updater(prev) : null)}
+                            />
+                        </View>
+                    )}
+
+                    {/* Sub-Thread Header (Focused Comment) */}
+                    {commentId && rootComment && (
+                        <View style={{ marginTop: 12 }}>
+                            <TouchableOpacity
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingHorizontal: 16,
+                                    marginBottom: 8
+                                }}
+                                onPress={() => navigation.goBack()}
+                            >
+                                <ArrowLeft size={16} color={theme.colors.primary} />
+                                <Text style={{ color: theme.colors.primary, marginLeft: 8, fontSize: 14 }}>Ana gönderiye dön</Text>
+                            </TouchableOpacity>
+                            <View style={[styles.commentItem, { backgroundColor: theme.colors.surface, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }]}>
+                                <TouchableOpacity onPress={() => goToProfile(rootComment.user_id)}>
+                                    <View style={styles.avatarPlaceholder}>
+                                        {rootComment.avatar_url ? (
+                                            <Image source={{ uri: rootComment.avatar_url }} style={styles.avatar} />
+                                        ) : (
+                                            <Text style={styles.avatarText}>{rootComment.username.charAt(0).toUpperCase()}</Text>
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                                <View style={styles.commentContent}>
+                                    <View style={styles.commentHeader}>
+                                        <View>
+                                            <Text style={styles.displayName}>{rootComment.name ? `${rootComment.name} ${rootComment.surname || ''}` : rootComment.username}</Text>
+                                            <Text style={styles.usernameHandle}>@{rootComment.username}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={[styles.text, { fontSize: 16, marginTop: 8 }]}>{rootComment.content}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
 
                     <View style={styles.commentsSection}>
-                        <Text style={styles.commentsTitle}>Yorumlar ({comments.length})</Text>
+                        <Text style={styles.commentsTitle}>
+                            {commentId ? 'Yanıta Gelen Cevaplar' : `Yorumlar (${comments.length})`}
+                        </Text>
                         {isCommentsLoading ? (
                             <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginTop: 20 }} />
                         ) : (

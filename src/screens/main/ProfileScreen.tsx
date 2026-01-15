@@ -360,15 +360,7 @@ export const ProfileScreen = () => {
                         onPress={() => {
                             const targetId = post.reply_to_post_id;
                             if (targetId) {
-                                if (post.original_post?.user) {
-                                    (navigation as any).navigate('PostDetail', { postId: targetId });
-                                } else {
-                                    Toast.show({
-                                        type: 'info',
-                                        text1: 'Bilgi',
-                                        text2: 'Bu gönderi silindiği için detayına gidilemiyor.',
-                                    });
-                                }
+                                (navigation as any).navigate('PostDetail', { postId: targetId });
                             }
                         }}
                         currentUserId={user?.id}
