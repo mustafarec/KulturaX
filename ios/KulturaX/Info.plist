@@ -61,6 +61,12 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Profil fotoğrafı ve gönderi için fotoğraf çekmek amacıyla kameranıza erişim izni gereklidir.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Video kaydı yapmak için mikrofonunuza erişim izni gereklidir.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

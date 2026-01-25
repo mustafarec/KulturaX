@@ -11,7 +11,12 @@
     "ios": {
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
-      "bundleIdentifier": "com.kitapmuzikfilm"
+      "bundleIdentifier": "com.kitapmuzikfilm",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Profil fotoğrafı ve gönderi için fotoğraf çekmek amacıyla kameranıza erişim izni gereklidir.",
+        "NSMicrophoneUsageDescription": "Video kaydı yapmak için mikrofonunuza erişim izni gereklidir.",
+        "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir."
+      }
     },
     "android": {
       "package": "com.anonymous.kitapmuzikfilm",
