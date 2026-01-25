@@ -1,44 +1,68 @@
 {
-  "name": "kitapmuzikfilm",
-  "displayName": "KültüraX",
   "expo": {
     "name": "KültüraX",
     "slug": "kitapmuzikfilm",
     "scheme": "kitapmuzikfilm",
     "runtimeVersion": "1.0.0",
-    "updates": {
-      "enabled": true,
-      "fallbackToCacheTimeout": 30000,
-      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b",
-      "requestHeaders": {
-        "expo-channel-name": "production"
-      }
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kitapmuzikfilm"
     },
     "android": {
-      "softwareKeyboardLayoutMode": "resize",
-      "package": "com.anonymous.kitapmuzikfilm"
+      "package": "com.anonymous.kitapmuzikfilm",
+      "softwareKeyboardLayoutMode": "resize"
     },
+    "web": {},
     "extra": {
       "eas": {
         "projectId": "737ac828-d618-4700-a799-c0d71b68ba6b"
       }
     },
-    "ios": {},
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-5897178396326522~6231785630",
           "iosAppId": "ca-app-pub-5897178396326522~2550479358"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          },
+          "ios": {
+            "deploymentTarget": "15.1",
+            "extraPods": [
+              {
+                "name": "FirebaseCoreInternal",
+                "modular_headers": true
+              },
+              {
+                "name": "GoogleUtilities",
+                "modular_headers": true
+              },
+              {
+                "name": "FirebaseCore",
+                "modular_headers": true
+              }
+            ]
+          }
+        }
       ]
-    ]
-  },
-  "android": {
-    "package": "com.anonymous.kitapmuzikfilm"
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-5897178396326522~6231785630",
-    "ios_app_id": "ca-app-pub-5897178396326522~2550479358"
+    ],
+    "experiments": {
+      "autolinkingModuleResolution": true
+    }
   }
 }

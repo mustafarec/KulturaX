@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1210"
+   LastUpgradeVersion = "1130"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "kitapmuzikfilm.app"
-               BlueprintName = "kitapmuzikfilm"
-               ReferencedContainer = "container:kitapmuzikfilm.xcodeproj">
+               BuildableName = "KltraX.app"
+               BlueprintName = "KltraX"
+               ReferencedContainer = "container:KltraX.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "kitapmuzikfilmTests.xctest"
-               BlueprintName = "kitapmuzikfilmTests"
-               ReferencedContainer = "container:kitapmuzikfilm.xcodeproj">
+               BuildableName = "KltraXTests.xctest"
+               BlueprintName = "KltraXTests"
+               ReferencedContainer = "container:KltraX.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "kitapmuzikfilm.app"
-            BlueprintName = "kitapmuzikfilm"
-            ReferencedContainer = "container:kitapmuzikfilm.xcodeproj">
+            BuildableName = "KltraX.app"
+            BlueprintName = "KltraX"
+            ReferencedContainer = "container:KltraX.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "kitapmuzikfilm.app"
-            BlueprintName = "kitapmuzikfilm"
-            ReferencedContainer = "container:kitapmuzikfilm.xcodeproj">
+            BuildableName = "KltraX.app"
+            BlueprintName = "KltraX"
+            ReferencedContainer = "container:KltraX.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
