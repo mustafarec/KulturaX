@@ -155,7 +155,7 @@ export const usePostInteractions = ({ onUpdatePost }: UsePostInteractionsProps) 
         if (onUpdatePost) onUpdatePost((post: any) => updateRepostState(post, newIsReposted));
 
         try {
-            const response = await postService.create(user.id, '', 'Yeniden paylaşım', 'Paylaşım', targetUser.username, targetPostId);
+            const response = await postService.create(user.id, '', 'Yeniden paylaşım', 'Paylaşım', targetUser.username, undefined, targetPostId);
 
             // Check backend response to confirm the action
             if (response.unreposted) {

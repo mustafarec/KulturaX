@@ -132,13 +132,14 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
             await postService.create(
                 userId,
                 quoteText,
-                commentText, // Pass the comment
+                commentText,
                 source,
                 author,
+                undefined, // title (new!)
                 undefined, // originalPostId
-                initialContentType, // contentType
-                initialContentId ? String(initialContentId) : undefined, // contentId
-                bookCover // imageUrl
+                initialContentType,
+                initialContentId ? String(initialContentId) : undefined,
+                bookCover
             );
 
             Toast.show({

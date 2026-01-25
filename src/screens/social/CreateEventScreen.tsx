@@ -103,7 +103,8 @@ export const CreateEventScreen = () => {
                 notes,
                 title,
                 location,
-                undefined,
+                undefined, // title (new!)
+                undefined, // originalPostId
                 'event',
                 contentId,
                 imageUrl,

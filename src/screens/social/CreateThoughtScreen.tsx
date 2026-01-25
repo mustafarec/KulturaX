@@ -83,7 +83,8 @@ export const CreateThoughtScreen = () => {
                 text, // comment
                 'Düşünce', // source
                 '', // author
-                undefined,
+                undefined, // title (new!)
+                undefined, // originalPostId
                 'thought',
                 undefined,
                 undefined,

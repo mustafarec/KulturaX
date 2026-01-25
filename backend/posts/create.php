@@ -16,6 +16,7 @@ $data = json_decode(file_get_contents("php://input"));
 // Extract fields early for validation
 $quote_text = isset($data->quote) ? $data->quote : null;
 $comment_text = isset($data->comment) ? $data->comment : null;
+$title = isset($data->title) ? $data->title : null;
 $contentRaw = isset($data->content) ? $data->content : '';
 
 // If content is empty but we have quote or comment, use them as content for legacy/validation purposes
@@ -28,6 +29,15 @@ if (empty($contentRaw) || !isset($data->source)) {
     http_response_code(400);
     echo json_encode(array("message" => "Eksik veri."));
     exit;
+}
+
+// Title validasyonu (Opsiyonel ve 60 karakter sınırı)
+if (!empty($title)) {
+    if (!Validator::validateString($title, 1, 60)) {
+        http_response_code(400);
+        echo json_encode(array("message" => "Başlık 1-60 karakter arasında olmalıdır."));
+        exit;
+    }
 }
 
 // Content validasyonu
@@ -59,9 +69,9 @@ try {
 
     $source = Validator::sanitizeInput($data->source);
     $author = isset($data->author) ? Validator::sanitizeInput($data->author) : '';
+    $title = $title ? Validator::sanitizeInput($title) : null;
     $original_post_id = isset($data->original_post_id) ? (int) $data->original_post_id : null;
     $content_type = (isset($data->content_type) && !empty($data->content_type)) ? Validator::sanitizeInput($data->content_type) : 'general';
-    $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
     $content_id = isset($data->content_id) ? Validator::sanitizeInput($data->content_id) : null;
     $image_url = isset($data->image_url) ? filter_var($data->image_url, FILTER_SANITIZE_URL) : null;
     $topic_id = isset($data->topic_id) ? (int) $data->topic_id : null;
@@ -110,13 +120,14 @@ try {
         }
     }
 
-    $query = "INSERT INTO posts (user_id, content, quote_text, comment_text, source, author, original_post_id, content_type, content_id, image_url, topic_id) VALUES (:user_id, :content, :quote_text, :comment_text, :source, :author, :original_post_id, :content_type, :content_id, :image_url, :topic_id)";
+    $query = "INSERT INTO posts (user_id, content, quote_text, comment_text, title, source, author, original_post_id, content_type, content_id, image_url, topic_id) VALUES (:user_id, :content, :quote_text, :comment_text, :title, :source, :author, :original_post_id, :content_type, :content_id, :image_url, :topic_id)";
     $stmt = $conn->prepare($query);
 
     $stmt->bindParam(':user_id', $userId);
     $stmt->bindParam(':content', $content);
     $stmt->bindParam(':quote_text', $quote_text);
     $stmt->bindParam(':comment_text', $comment_text);
+    $stmt->bindParam(':title', $title);
     $stmt->bindParam(':source', $source);
     $stmt->bindParam(':author', $author);
     $stmt->bindParam(':original_post_id', $original_post_id);

@@ -1,4 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
 import { notificationService } from '../services/backendApi';
 
@@ -18,45 +20,64 @@ const NotificationContext = createContext<NotificationContextType>({
     setUnreadCount: () => { },
 });
 
+/**
+ * Sync iOS app badge with count
+ */
+const syncBadgeCount = async (count: number) => {
+    if (Platform.OS === 'ios') {
+        try {
+            await Notifications.setBadgeCountAsync(count);
+        } catch (error) {
+            console.error('Failed to set badge count:', error);
+        }
+    }
+};
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadCount, setUnreadCountState] = useState(0);
     const { user } = useAuth();
+
+    // Wrapper to sync badge when count changes
+    const setUnreadCount = useCallback((count: number) => {
+        setUnreadCountState(count);
+        syncBadgeCount(count);
+    }, []);
 
     const fetchUnreadCount = useCallback(async () => {
         if (user) {
             try {
                 const data = await notificationService.getUnreadCount(user.id);
-                setUnreadCount(data.count);
+                const count = data.count || 0;
+                setUnreadCountState(count);
+                syncBadgeCount(count);
             } catch (error) {
                 console.error('Failed to fetch unread notifications count', error);
             }
         } else {
-            setUnreadCount(0);
+            setUnreadCountState(0);
+            syncBadgeCount(0);
         }
     }, [user]);
 
     const markAsRead = useCallback(() => {
-        // Optimistically clear the count. 
-        // Actual marking as read on server should happen when viewing the list.
-        // But for the badge, we might want to keep it until the user actually sees them.
-        // For now, let's assume visiting the screen triggers a fetch or we manually clear it.
-        // If we want to clear it only when "seen", we might not need this method exposed 
-        // if the screen handles the "mark read" API call and then we refetch.
-        // But let's keep it for flexibility.
-        setUnreadCount(0);
+        setUnreadCountState(0);
+        syncBadgeCount(0);
     }, []);
 
-    // Initial fetch and polling
+    // Initial fetch and polling (every 60 seconds - optimized from 30s)
     useEffect(() => {
         fetchUnreadCount();
 
-        // Poll every 30 seconds
-        const interval = setInterval(fetchUnreadCount, 30000);
+        const interval = setInterval(fetchUnreadCount, 60000);
         return () => clearInterval(interval);
     }, [fetchUnreadCount]);
 
     const decrementUnreadCount = useCallback(() => {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadCountState(prev => {
+            const newCount = Math.max(0, prev - 1);
+            syncBadgeCount(newCount);
+            return newCount;
+        });
     }, []);
 
     return (

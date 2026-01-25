@@ -159,6 +159,29 @@ export const TopicDetailScreen = () => {
         }
     };
 
+    const handleToggleSave = async () => {
+        const item = selectedPostForOptions;
+        if (!item || !user) return;
+
+        // Optimistic update
+        const isSaved = !!item.is_saved;
+        const updater = (p: any) => p.id === item.id ? { ...p, is_saved: !isSaved } : p;
+        setPosts(prev => prev.map(updater));
+
+        try {
+            await interactionService.toggleBookmark(user.id, item.id);
+            Toast.show({
+                type: 'success',
+                text1: !isSaved ? 'Kaydedildi' : 'Çıkarıldı',
+                text2: !isSaved ? 'Gönderi yer işaretlerine eklendi.' : 'Gönderi yer işaretlerinden çıkarıldı.'
+            });
+        } catch (error) {
+            // Revert
+            setPosts(prev => prev.map(updater));
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem başarısız.' });
+        }
+    };
+
     const handleShare = (item: any) => {
         setSelectedPostForShare(item);
         setShareModalVisible(true);
@@ -342,6 +365,8 @@ export const TopicDetailScreen = () => {
                 visible={optionsModalVisible}
                 onClose={() => setOptionsModalVisible(false)}
                 onDelete={handleDelete}
+                onToggleSave={handleToggleSave}
+                isSaved={selectedPostForOptions?.is_saved}
                 isOwner={selectedPostForOptions?.user?.id === user?.id}
                 targetPosition={menuPosition}
             />

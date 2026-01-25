@@ -11,33 +11,33 @@ try {
     if ($method === 'POST') {
         // Auth kontrolü
         $userId = requireAuth();
-        
+
         // Rate limiting - 30 yorum/saat
         checkRateLimit($conn, $userId, 'add_comment', 30, 3600);
-        
+
         $data = json_decode(file_get_contents("php://input"));
 
         // Girdi validasyonu
-        if(!isset($data->post_id) || !isset($data->content)){
+        if (!isset($data->post_id) || !isset($data->content)) {
             http_response_code(400);
             echo json_encode(array("message" => "Eksik veri."));
             exit;
         }
-        
+
         // Post ID validasyonu
         if (!Validator::validateInteger($data->post_id, 1)) {
             http_response_code(400);
             echo json_encode(array("message" => "Geçersiz gönderi ID."));
             exit;
         }
-        
+
         // Content validasyonu
         if (!Validator::validateString($data->content, 1, 500)) {
             http_response_code(400);
             echo json_encode(array("message" => "Yorum 1-500 karakter arasında olmalıdır."));
             exit;
         }
-        
+
         // Spam kontrolü
         if (Validator::detectSpam($data->content)) {
             http_response_code(400);
@@ -49,7 +49,7 @@ try {
 
         $query = "INSERT INTO interactions (user_id, post_id, type, content, parent_id) VALUES (:user_id, :post_id, 'comment', :content, :parent_id)";
         $stmt = $conn->prepare($query);
-        
+
         $content = Validator::sanitizeInput($data->content);
 
         $stmt->bindParam(':user_id', $userId);
@@ -57,7 +57,7 @@ try {
         $stmt->bindParam(':content', $content);
         $stmt->bindParam(':parent_id', $parentId);
 
-        if($stmt->execute()){
+        if ($stmt->execute()) {
             http_response_code(201);
             echo json_encode(array("message" => "Yorum eklendi."));
 
@@ -80,14 +80,14 @@ try {
                         $title = "Yeni Cevap";
                         $message = "Bir kullanıcı yorumuna cevap verdi.";
                         $notifData = json_encode(array("sender_id" => $userId, "post_id" => $data->post_id, "comment_id" => $parentId));
-                        
+
                         $notifQuery = "INSERT INTO notifications (user_id, type, title, message, data) VALUES (:user_id, 'reply', :title, :message, :data)";
                         $notifStmt = $conn->prepare($notifQuery);
                         $notifStmt->bindParam(':user_id', $parentComment['user_id']);
                         $notifStmt->bindParam(':title', $title);
                         $notifStmt->bindParam(':message', $message);
                         $notifStmt->bindParam(':data', $notifData);
-                        
+
                         if ($notifStmt->execute()) {
                             if (isset($fcm)) {
                                 $fcm->sendToUser($parentComment['user_id'], $title, $message, array("type" => "reply", "post_id" => $data->post_id));
@@ -106,9 +106,9 @@ try {
                 $postOwner = $postOwnerStmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($postOwner) {
-                    $ownerId = (int)$postOwner['user_id'];
-                    $senderId = (int)$userId;
-                    
+                    $ownerId = (int) $postOwner['user_id'];
+                    $senderId = (int) $userId;
+
                     // Gönderen kullanıcı adını al
                     $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
                     $senderStmt = $conn->prepare($senderQuery);
@@ -116,7 +116,7 @@ try {
                     $senderStmt->execute();
                     $sender = $senderStmt->fetch(PDO::FETCH_ASSOC);
                     $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
-                    
+
                     debugLog("Owner $ownerId, Sender $senderId", 'comment');
 
                     // Kendine bildirim gelmesini engelle
@@ -131,7 +131,7 @@ try {
                         $notifStmt->bindParam(':title', $title);
                         $notifStmt->bindParam(':message', $message);
                         $notifStmt->bindParam(':data', $notifData);
-                        
+
                         if ($notifStmt->execute()) {
                             if (isset($fcm)) {
                                 $fcm->sendToUser($ownerId, $title, $message, array("type" => "comment", "post_id" => $data->post_id));
@@ -159,6 +159,11 @@ try {
         $post_id = isset($_GET['post_id']) ? $_GET['post_id'] : die();
         $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : 0; // Beğeni durumunu kontrol etmek için
 
+        // Pagination
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 20;
+        $offset = ($page - 1) * $limit;
+
         // Yorumları, beğeni sayılarını ve kullanıcının beğenip beğenmediğini çek
         $query = "SELECT i.*, u.username, u.avatar_url,
                   (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = i.id) as like_count,
@@ -166,15 +171,18 @@ try {
                   FROM interactions i 
                   JOIN users u ON i.user_id = u.id 
                   WHERE i.post_id = :post_id AND i.type = 'comment' 
-                  ORDER BY i.created_at ASC";
+                  ORDER BY i.created_at ASC
+                  LIMIT :limit OFFSET :offset";
 
         $stmt = $conn->prepare($query);
-        $stmt->bindParam(':post_id', $post_id);
-        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         $comments = array();
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             // Alt yorumları (cevapları) ayıklamak frontend'e bırakılabilir veya burada ağaç yapısı kurulabilir.
             // Şimdilik düz liste dönüyoruz, parent_id ile frontend eşleştirecek.
             $row['is_liked'] = $row['is_liked'] > 0;

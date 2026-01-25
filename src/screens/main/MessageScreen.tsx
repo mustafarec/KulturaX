@@ -350,16 +350,16 @@ export const MessageScreen = () => {
         return unsubscribe;
     }, [navigation, user]);
 
-    // Periodic refresh every 5 seconds and typing status check
+    // Periodic refresh every 15 seconds (optimized from 5s) and typing status check
     useEffect(() => {
         if (!user) return;
 
         const refreshInterval = setInterval(() => {
             // Refresh inbox silently
             messageService.getInbox('inbox').then(data => setInboxConversations(Array.isArray(data) ? data : []));
-        }, 5000);
+        }, 15000);
 
-        // Check typing status every 2 seconds
+        // Check typing status every 5 seconds (optimized from 2s)
         const typingInterval = setInterval(async () => {
             const newTypingStatus: Record<number, boolean> = {};
             for (const conv of inboxConversations.slice(0, 5)) { // Only check first 5 to limit API calls
@@ -373,7 +373,7 @@ export const MessageScreen = () => {
                 }
             }
             setTypingUsers(newTypingStatus);
-        }, 2000);
+        }, 5000);
 
         return () => {
             clearInterval(refreshInterval);

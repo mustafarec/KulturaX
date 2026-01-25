@@ -56,7 +56,11 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({
             color: theme.colors.error,
             onPress: () => {
                 onClose();
-                if (onDelete) onDelete();
+                if (onDelete) {
+                    setTimeout(() => {
+                        onDelete();
+                    }, 150);
+                }
             }
         },
         {
@@ -65,7 +69,11 @@ export const PostOptionsModal: React.FC<PostOptionsModalProps> = ({
             color: theme.colors.text,
             onPress: () => {
                 onClose();
-                if (onTogglePin) onTogglePin();
+                if (onTogglePin) {
+                    setTimeout(() => {
+                        onTogglePin();
+                    }, 150);
+                }
             }
         }] : [
             {

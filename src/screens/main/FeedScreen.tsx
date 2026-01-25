@@ -259,7 +259,6 @@ export const FeedScreen = () => {
                 // Hook Actions
                 onLike={() => handleLike(item)}
                 onSave={() => handleToggleSave(item)}
-                onRepost={() => handleDirectRepost(item)}
             />
         );
 

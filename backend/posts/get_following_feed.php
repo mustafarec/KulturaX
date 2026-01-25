@@ -59,20 +59,19 @@ try {
               LEFT JOIN posts op ON p.original_post_id = op.id
               LEFT JOIN users ou ON op.user_id = ou.id
               
-              -- FOLLOW JOIN
-              JOIN follows f ON p.user_id = f.followed_id";
+              -- FOLLOW JOIN (LEFT JOIN to include self-posts)
+              LEFT JOIN follows f ON p.user_id = f.followed_id";
 
     $hasWhere = false;
 
     // Filter logic if needed (optional for following tab but good to have)
     // Safety check for blocked users (Although block removes follow, this is extra safety)
-    $query .= " AND p.user_id NOT IN (
+    $query .= " WHERE (f.follower_id = :user_id OR p.user_id = :user_id)
+                AND p.user_id NOT IN (
                     SELECT blocked_id FROM blocked_users WHERE blocker_id = :user_id
                     UNION
                     SELECT blocker_id FROM blocked_users WHERE blocked_id = :user_id
                 )";
-
-    $query .= " WHERE f.follower_id = :user_id";
     $hasWhere = true;
 
     // Filter logic if needed (optional for following tab but good to have)
@@ -83,6 +82,10 @@ try {
         $query .= " AND (p.content_type = 'movie' OR op.content_type = 'movie')";
     } elseif ($filter == 'music') {
         $query .= " AND (p.content_type = 'music' OR op.content_type = 'music')";
+    } elseif ($filter == 'event') {
+        $query .= " AND (p.content_type = 'event' OR op.content_type = 'event')";
+    } elseif ($filter == 'lyrics') {
+        $query .= " AND (p.content_type = 'lyrics' OR op.content_type = 'lyrics')";
     }
 
     // Exclude reported/not_interested posts
@@ -91,18 +94,32 @@ try {
     $query .= $excludeQuery;
 
     // Search logic
-    $search = isset($_GET['search']) ? $_GET['search'] : '';
+    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     if (!empty($search)) {
-        $searchTerm = "%$search%";
-        $query .= " AND (p.content LIKE :search OR p.quote_text LIKE :search OR p.comment_text LIKE :search OR u.username LIKE :search OR u.full_name LIKE :search OR p.author LIKE :search OR p.source LIKE :search OR op.content LIKE :search OR op.quote_text LIKE :search OR op.comment_text LIKE :search OR op.author LIKE :search OR op.source LIKE :search)";
+        $query .= " AND (
+            MATCH(p.content, p.quote_text, p.comment_text, p.author, p.source) AGAINST(:search IN BOOLEAN MODE)
+            OR MATCH(u.username, u.full_name) AGAINST(:search IN BOOLEAN MODE)
+            OR MATCH(op.content, op.quote_text, op.comment_text, op.author, op.source) AGAINST(:search IN BOOLEAN MODE)
+        )";
     }
 
     $query .= " ORDER BY p.created_at DESC";
 
+    // Pagination
+    $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+    $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 20;
+    $offset = ($page - 1) * $limit;
+
+    $query .= " LIMIT :limit OFFSET :offset";
+
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':user_id', $user_id);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+
     if (!empty($search)) {
-        $stmt->bindParam(':search', $searchTerm);
+        $ftSearch = $search . '*';
+        $stmt->bindParam(':search', $ftSearch);
     }
     $stmt->execute();
 

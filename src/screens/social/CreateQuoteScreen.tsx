@@ -12,8 +12,9 @@ import { postService, libraryService, spotifyService } from '../../services/back
 import { useAuth } from '../../context/AuthContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { tmdbApi } from '../../services/tmdbApi';
-import { X, Tag, XCircle, Search, User, FileText } from 'lucide-react-native';
+import { X, Tag, XCircle, Search, User, FileText, Check, Book, Film, Music } from 'lucide-react-native';
 import { TopicSelectionModal } from '../../components/TopicSelectionModal';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 export const CreateQuoteScreen = () => {
     const route = useRoute<any>();
@@ -27,6 +28,7 @@ export const CreateQuoteScreen = () => {
     const initialId = route.params?.initialId || null;
 
     const [quoteText, setQuoteText] = useState(initialText);
+    const [title, setTitle] = useState('');
     const [comment, setComment] = useState('');
     const [source, setSource] = useState(initialSource);
     const [author, setAuthor] = useState(initialAuthor);
@@ -61,57 +63,74 @@ export const CreateQuoteScreen = () => {
 
         setIsSearching(true);
         try {
-            const [books, movies, people, tracks] = await Promise.all([
+            const results = await Promise.allSettled([
                 googleBooksApi.searchBooks(query),
                 tmdbApi.searchMovies(query),
                 tmdbApi.searchPerson(query),
                 spotifyService.searchTracks(query)
             ]);
 
+            const books = results[0].status === 'fulfilled' ? results[0].value : [];
+            const movies = results[1].status === 'fulfilled' ? results[1].value : [];
+            const people = results[2].status === 'fulfilled' ? results[2].value : [];
+            const tracks = results[3].status === 'fulfilled' ? results[3].value : [];
+
             let allResults: any[] = [];
 
-            if (people && people.length > 0) {
+            if (people && Array.isArray(people) && people.length > 0) {
                 const person = people[0];
-                const credits = await tmdbApi.getPersonCredits(person.id);
-                const personMovies = credits.slice(0, 10).map((movie: any) => ({
-                    id: movie.id.toString(),
-                    title: movie.title,
-                    subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'}) • ${person.name}`,
-                    type: 'movie',
-                    author: person.name,
-                    image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
-                }));
-                allResults = [...allResults, ...personMovies];
+                try {
+                    const credits = await tmdbApi.getPersonCredits(person.id);
+                    if (Array.isArray(credits)) {
+                        const personMovies = credits.slice(0, 10).map((movie: any) => ({
+                            id: movie.id.toString(),
+                            title: movie.title,
+                            subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'}) • ${person.name}`,
+                            type: 'movie',
+                            author: person.name,
+                            image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
+                        }));
+                        allResults = [...allResults, ...personMovies];
+                    }
+                } catch (e) { console.log('Person credits fetch error', e); }
             }
 
-            const formattedMovies = movies.slice(0, 5).map((movie: any) => ({
-                id: movie.id.toString(),
-                title: movie.title,
-                subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'})`,
-                type: 'movie',
-                author: 'Film',
-                image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
-            }));
+            if (Array.isArray(movies)) {
+                const formattedMovies = movies.slice(0, 5).map((movie: any) => ({
+                    id: movie.id.toString(),
+                    title: movie.title,
+                    subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'})`,
+                    type: 'movie',
+                    author: 'Film',
+                    image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
+                }));
+                allResults = [...allResults, ...formattedMovies];
+            }
 
-            const formattedBooks = books.slice(0, 5).map((book: any) => ({
-                id: book.id,
-                title: book.volumeInfo.title,
-                subtitle: book.volumeInfo.authors?.join(', ') || 'Kitap',
-                type: 'book',
-                author: book.volumeInfo.authors?.[0] || '',
-                image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:')
-            }));
+            if (Array.isArray(books)) {
+                const formattedBooks = books.slice(0, 5).map((book: any) => ({
+                    id: book.id,
+                    title: book.volumeInfo.title,
+                    subtitle: book.volumeInfo.authors?.join(', ') || 'Kitap',
+                    type: 'book',
+                    author: book.volumeInfo.authors?.[0] || '',
+                    image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:')
+                }));
+                allResults = [...allResults, ...formattedBooks];
+            }
 
-            const formattedTracks = tracks.map((track: any) => ({
-                id: track.id,
-                title: track.title,
-                subtitle: `Müzik • ${track.artist}`,
-                type: 'music',
-                author: track.artist,
-                image: track.image
-            }));
+            if (Array.isArray(tracks)) {
+                const formattedTracks = tracks.map((track: any) => ({
+                    id: track.id,
+                    title: track.title,
+                    subtitle: `Müzik • ${track.artist}`,
+                    type: 'music',
+                    author: track.artist,
+                    image: track.image
+                }));
+                allResults = [...allResults, ...formattedTracks];
+            }
 
-            allResults = [...allResults, ...formattedMovies, ...formattedBooks, ...formattedTracks];
             const uniqueResults = Array.from(new Map(allResults.map(item => [item.id + item.type, item])).values());
             setSearchResults(uniqueResults);
             setShowResults(true);
@@ -131,7 +150,7 @@ export const CreateQuoteScreen = () => {
         setShowResults(false);
         setStatus(null);
 
-        if (item.type === 'movie' && item.author === 'Film') {
+        if (item.type === 'movie' && (item.author === 'Film' || !item.author)) {
             try {
                 const credits = await tmdbApi.getMovieCredits(item.id);
                 if (credits && credits.crew) {
@@ -158,7 +177,15 @@ export const CreateQuoteScreen = () => {
         try {
             if (user) {
                 if (originalPost) {
-                    await postService.create(user.id, '', comment || '', 'Paylaşım', originalPost.user.username, originalPost.id);
+                    await postService.create(
+                        user.id,
+                        '', // quote
+                        comment || '', // comment
+                        'Paylaşım', // source
+                        originalPost.user.username, // author
+                        undefined, // title
+                        originalPost.id // original_post_id
+                    );
                 } else {
                     const finalSource = mode === 'thought' ? 'Düşünce' : source;
                     const finalAuthor = mode === 'thought' ? user.username : author;
@@ -171,7 +198,8 @@ export const CreateQuoteScreen = () => {
                         commentPayload,
                         finalSource,
                         finalAuthor,
-                        undefined,
+                        title,
+                        undefined, // original_post_id
                         selectedType || initialType || undefined,
                         selectedId || initialId || undefined,
                         selectedImage || initialImage,
@@ -275,26 +303,27 @@ export const CreateQuoteScreen = () => {
             left: 0,
             right: 0,
             backgroundColor: theme.colors.surface,
-            borderRadius: 16,
+            borderRadius: 20,
             borderWidth: 1,
             borderColor: theme.colors.border,
-            maxHeight: 250,
+            maxHeight: 400,
             zIndex: 1000,
-            elevation: 10,
+            ...theme.shadows.soft,
+            overflow: 'hidden',
         },
         dropdownItem: {
             flexDirection: 'row',
             alignItems: 'center',
-            padding: 12,
+            padding: 16,
             borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border + '50',
+            borderBottomColor: theme.colors.border + '30',
         },
         dropdownImage: {
-            width: 40,
-            height: 60,
-            borderRadius: 4,
+            width: 48,
+            height: 72,
+            borderRadius: 8,
             backgroundColor: theme.colors.border,
-            marginRight: 12,
+            marginRight: 16,
         },
         chip: {
             paddingVertical: 8,
@@ -316,6 +345,21 @@ export const CreateQuoteScreen = () => {
         },
         chipTextActive: {
             color: '#fff',
+        },
+        categoryHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            backgroundColor: theme.colors.surface + '80',
+            marginTop: 4,
+        },
+        categoryTitle: {
+            fontSize: 11,
+            fontWeight: '900',
+            color: theme.colors.textSecondary,
+            marginLeft: 8,
+            letterSpacing: 1.2,
         },
     }), [theme, insets.top]);
 
@@ -360,151 +404,188 @@ export const CreateQuoteScreen = () => {
                 </View>
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                bottomOffset={Platform.OS === 'ios' ? 50 : 0}
+            >
+                {/* Preview / Quote Card */}
+                <View style={{ marginBottom: 24, alignItems: 'center' }}>
+                    {originalPost ? (
+                        <Card variant="glass" style={{ padding: 16, width: '100%' }}>
+                            <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
+                                "{originalPost.content}"
+                            </Text>
+                            <Text style={{ marginTop: 8, fontWeight: 'bold', color: theme.colors.text }}>
+                                — {originalPost.user.username}
+                            </Text>
+                        </Card>
+                    ) : (
+                        <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
+                            <QuoteCard
+                                text={quoteText || (mode === 'thought' ? 'Aklından geçenler...' : 'Alıntı metni...')}
+                                source={source || (mode === 'thought' ? 'Düşünce' : 'Kaynak')}
+                                author={author || user?.username}
+                                imageUrl={selectedImage}
+                                variant="default" // Using default visual style
+                            />
+                        </ViewShot>
+                    )}
+                </View>
 
-                    {/* Preview / Quote Card */}
-                    <View style={{ marginBottom: 24, alignItems: 'center' }}>
-                        {originalPost ? (
-                            <Card variant="glass" style={{ padding: 16, width: '100%' }}>
-                                <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
-                                    "{originalPost.content}"
-                                </Text>
-                                <Text style={{ marginTop: 8, fontWeight: 'bold', color: theme.colors.text }}>
-                                    — {originalPost.user.username}
-                                </Text>
-                            </Card>
-                        ) : (
-                            <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
-                                <QuoteCard
-                                    text={quoteText || (mode === 'thought' ? 'Aklından geçenler...' : 'Alıntı metni...')}
-                                    source={source || (mode === 'thought' ? 'Düşünce' : 'Kaynak')}
-                                    author={author || user?.username}
-                                    imageUrl={selectedImage}
-                                    variant="default" // Using default visual style
-                                />
-                            </ViewShot>
-                        )}
+                {/* Title Input */}
+                {!originalPost && (
+                    <View style={[styles.singleInputContainer, { marginBottom: 16 }]}>
+                        <FileText size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                        <TextInput
+                            style={styles.singleInput}
+                            placeholder="Başlık Yazın (Opsiyonel)"
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={title}
+                            onChangeText={setTitle}
+                            maxLength={60}
+                        />
                     </View>
+                )}
 
-                    {/* Main Input */}
-                    {!originalPost && (
+                {/* Main Input */}
+                {!originalPost && (
+                    <View style={styles.textInputContainer}>
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder={mode === 'thought' ? "Ne düşünüyorsun?" : "Alıntıyı buraya yaz..."}
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={quoteText}
+                            onChangeText={setQuoteText}
+                            multiline
+                            autoFocus={mode === 'thought'}
+                        />
+                    </View>
+                )}
+
+                {/* Comment Input */}
+                {(mode === 'quote' || originalPost) && (
+                    <>
+                        <Text style={styles.sectionTitle}>Yorumun</Text>
                         <View style={styles.textInputContainer}>
                             <TextInput
-                                style={styles.textInput}
-                                placeholder={mode === 'thought' ? "Ne düşünüyorsun?" : "Alıntıyı buraya yaz..."}
+                                style={[styles.textInput, { minHeight: 80 }]}
+                                placeholder="Bu konuda eklemek istediklerin..."
                                 placeholderTextColor={theme.colors.textSecondary}
-                                value={quoteText}
-                                onChangeText={setQuoteText}
+                                value={comment}
+                                onChangeText={setComment}
                                 multiline
-                                autoFocus={mode === 'thought'}
                             />
                         </View>
+                    </>
+                )}
+
+                {/* Topic Selector */}
+                <TouchableOpacity
+                    style={[styles.singleInputContainer, { marginTop: 16 }]}
+                    onPress={() => setTopicModalVisible(true)}
+                >
+                    <Tag size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                    <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
+                        {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
+                    </Text>
+                    {selectedTopic && (
+                        <TouchableOpacity onPress={() => setSelectedTopic(null)}>
+                            <XCircle size={20} color={theme.colors.textSecondary} />
+                        </TouchableOpacity>
                     )}
+                </TouchableOpacity>
 
-                    {/* Comment Input */}
-                    {(mode === 'quote' || originalPost) && (
-                        <>
-                            <Text style={styles.sectionTitle}>Yorumun</Text>
-                            <View style={styles.textInputContainer}>
-                                <TextInput
-                                    style={[styles.textInput, { minHeight: 80 }]}
-                                    placeholder="Bu konuda eklemek istediklerin..."
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                    value={comment}
-                                    onChangeText={setComment}
-                                    multiline
-                                />
-                            </View>
-                        </>
-                    )}
+                {/* Metadata Section (Search + Status) */}
+                {!originalPost && mode !== 'thought' && (
+                    <View style={{ marginTop: 24, zIndex: 100 }}>
+                        <Text style={styles.sectionTitle}>Detaylar</Text>
 
-                    {/* Topic Selector */}
-                    <TouchableOpacity
-                        style={[styles.singleInputContainer, { marginTop: 16 }]}
-                        onPress={() => setTopicModalVisible(true)}
-                    >
-                        <Tag size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
-                        <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
-                            {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
-                        </Text>
-                        {selectedTopic && (
-                            <TouchableOpacity onPress={() => setSelectedTopic(null)}>
-                                <XCircle size={20} color={theme.colors.textSecondary} />
-                            </TouchableOpacity>
-                        )}
-                    </TouchableOpacity>
-
-                    {/* Metadata Section (Search + Status) */}
-                    {!originalPost && mode !== 'thought' && (
-                        <View style={{ marginTop: 24, zIndex: 100 }}>
-                            <Text style={styles.sectionTitle}>Detaylar</Text>
-
-                            <View style={{ zIndex: 200 }}>
-                                <View style={styles.singleInputContainer}>
-                                    <Search size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
-                                    <TextInput
-                                        style={styles.singleInput}
-                                        placeholder="Kitap, Film veya Müzik Ara..."
-                                        placeholderTextColor={theme.colors.textSecondary}
-                                        value={source}
-                                        onChangeText={handleSearchSource}
-                                    />
-                                    {isSearching && <ActivityIndicator size="small" color={theme.colors.primary} />}
-                                </View>
-
-                                {showResults && searchResults.length > 0 && (
-                                    <View style={styles.dropdown}>
-                                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 250 }}>
-                                            {searchResults.map((item) => (
-                                                <TouchableOpacity key={item.id + item.type} style={styles.dropdownItem} onPress={() => selectSource(item)}>
-                                                    {item.image ? (
-                                                        <Image source={{ uri: item.image }} style={styles.dropdownImage} resizeMode="cover" />
-                                                    ) : (
-                                                        <View style={[styles.dropdownImage, { alignItems: 'center', justifyContent: 'center' }]}>
-                                                            <FileText size={20} color={theme.colors.textSecondary} />
-                                                        </View>
-                                                    )}
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{ color: theme.colors.text, fontWeight: 'bold' }} numberOfLines={1}>{item.title}</Text>
-                                                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{item.subtitle}</Text>
-                                                    </View>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </ScrollView>
-                                    </View>
-                                )}
-                            </View>
-
+                        <View style={{ zIndex: 200 }}>
                             <View style={styles.singleInputContainer}>
-                                <User size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                                <Search size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
                                 <TextInput
                                     style={styles.singleInput}
-                                    placeholder="Yazar / Yönetmen / Sanatçı"
+                                    placeholder="Kitap, Film veya Müzik Ara..."
                                     placeholderTextColor={theme.colors.textSecondary}
-                                    value={author}
-                                    onChangeText={setAuthor}
+                                    value={source}
+                                    onChangeText={handleSearchSource}
                                 />
+                                {isSearching && <ActivityIndicator size="small" color={theme.colors.primary} />}
                             </View>
 
-                            {selectedType && (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                                    {getStatusOptions().map((opt: any) => (
-                                        <TouchableOpacity
-                                            key={opt.value}
-                                            style={[styles.chip, status === opt.value && styles.chipActive]}
-                                            onPress={() => setStatus(status === opt.value ? null : opt.value)}
-                                        >
-                                            <Text style={[styles.chipText, status === opt.value && styles.chipTextActive]}>{opt.label}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
+                            {showResults && searchResults.length > 0 && (
+                                <View style={styles.dropdown}>
+                                    <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 350 }}>
+                                        {['book', 'movie', 'music'].map((type) => {
+                                            const filtered = searchResults.filter(r => r.type === type);
+                                            if (filtered.length === 0) return null;
+
+                                            return (
+                                                <View key={type}>
+                                                    <View style={styles.categoryHeader}>
+                                                        {type === 'book' && <Book size={14} color={theme.colors.textSecondary} />}
+                                                        {type === 'movie' && <Film size={14} color={theme.colors.textSecondary} />}
+                                                        {type === 'music' && <Music size={14} color={theme.colors.textSecondary} />}
+                                                        <Text style={styles.categoryTitle}>
+                                                            {type === 'book' ? 'KİTAPLAR' : type === 'movie' ? 'FİLMLER / DİZİLER' : 'MÜZİKLER'}
+                                                        </Text>
+                                                    </View>
+                                                    {filtered.map((item) => (
+                                                        <TouchableOpacity key={item.id + item.type} style={styles.dropdownItem} onPress={() => selectSource(item)}>
+                                                            {item.image ? (
+                                                                <Image source={{ uri: item.image }} style={styles.dropdownImage} resizeMode="cover" />
+                                                            ) : (
+                                                                <View style={[styles.dropdownImage, { alignItems: 'center', justifyContent: 'center' }]}>
+                                                                    {item.type === 'book' && <Book size={20} color={theme.colors.textSecondary} />}
+                                                                    {item.type === 'movie' && <Film size={20} color={theme.colors.textSecondary} />}
+                                                                    {item.type === 'music' && <Music size={20} color={theme.colors.textSecondary} />}
+                                                                </View>
+                                                            )}
+                                                            <View style={{ flex: 1 }}>
+                                                                <Text style={{ color: theme.colors.text, fontWeight: 'bold' }} numberOfLines={1}>{item.title}</Text>
+                                                                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{item.subtitle}</Text>
+                                                            </View>
+                                                            {selectedId === item.id && <Check size={18} color={theme.colors.primary} />}
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                </View>
                             )}
                         </View>
-                    )}
 
-                </ScrollView>
-            </KeyboardAvoidingView>
+                        <View style={styles.singleInputContainer}>
+                            <User size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                            <TextInput
+                                style={styles.singleInput}
+                                placeholder="Yazar / Yönetmen / Sanatçı"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                value={author}
+                                onChangeText={setAuthor}
+                            />
+                        </View>
+
+                        {selectedType && (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                                {getStatusOptions().map((opt: any) => (
+                                    <TouchableOpacity
+                                        key={opt.value}
+                                        style={[styles.chip, status === opt.value && styles.chipActive]}
+                                        onPress={() => setStatus(status === opt.value ? null : opt.value)}
+                                    >
+                                        <Text style={[styles.chipText, status === opt.value && styles.chipTextActive]}>{opt.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        )}
+                    </View>
+                )}
+
+            </KeyboardAwareScrollView>
 
             <TopicSelectionModal
                 visible={topicModalVisible}

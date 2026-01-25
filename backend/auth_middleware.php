@@ -16,11 +16,12 @@ require_once __DIR__ . '/TokenCache.php';
 define('TOKEN_LIFETIME', 30 * 24 * 60 * 60); // 30 gün
 define('TOKEN_REFRESH_THRESHOLD', 7 * 24 * 60 * 60); // Son 7 gün içinde yenile
 
-function validateToken() {
+function validateToken()
+{
     // Headers'ı al
     $headers = getallheaders();
     $authHeader = null;
-    
+
     if (isset($headers['Authorization'])) {
         $authHeader = $headers['Authorization'];
     } elseif (isset($headers['authorization'])) {
@@ -39,7 +40,7 @@ function validateToken() {
     } elseif (isset($_POST['token'])) {
         $authHeader = 'Bearer ' . $_POST['token'];
     }
-    
+
     if (!$authHeader) {
         http_response_code(401);
         echo json_encode(array("message" => "Authorization header eksik."));
@@ -55,9 +56,12 @@ function validateToken() {
 
     $token = $matches[1];
 
+    // Token hash'ini hesapla (güvenlik için)
+    $tokenHash = hash('sha256', $token);
+
     // Veritabanından token kontrolü
     global $conn;
-    
+
     // Eğer conn yoksa (config.php include edilmemişse) hata ver
     if (!isset($conn)) {
         http_response_code(500);
@@ -65,17 +69,17 @@ function validateToken() {
         exit;
     }
 
-    // 1. Önce cache'e bak
-    $cached = TokenCache::get($token);
+    // 1. Önce cache'e bak (hash-based key kullan)
+    $cached = TokenCache::get($tokenHash);
     if ($cached !== false) {
         // Cache hit - Token süre dolumu kontrolü
         if (!empty($cached['expires_at'])) {
             $expiresAt = strtotime($cached['expires_at']);
             $now = time();
-            
+
             if ($now > $expiresAt) {
                 // Token süresi dolmuş - cache'i temizle
-                TokenCache::invalidate($token);
+                TokenCache::invalidate($tokenHash);
                 http_response_code(401);
                 echo json_encode(array(
                     "message" => "Token süresi dolmuş. Lütfen tekrar giriş yapın.",
@@ -83,34 +87,36 @@ function validateToken() {
                 ));
                 exit;
             }
-            
+
             // Token yenileme: Son 7 gün kaldıysa süreyi uzat
             $timeRemaining = $expiresAt - $now;
             if ($timeRemaining < TOKEN_REFRESH_THRESHOLD) {
                 refreshTokenExpiry($conn, $cached['user_id']);
                 // Cache'i güncelle
                 $newExpiry = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
-                TokenCache::set($token, $cached['user_id'], $newExpiry);
+                TokenCache::set($tokenHash, $cached['user_id'], $newExpiry);
             }
         }
-        
+
         return $cached['user_id'];
     }
 
     // 2. Cache miss - Veritabanından token kontrolü
-    $query = "SELECT id, token_expires_at FROM users WHERE token = :token";
+    // Dual-mode: Önce hash kontrol et, sonra plaintext (geriye uyumluluk)
+    $query = "SELECT id, token_expires_at FROM users WHERE token_hash = :token_hash OR (token_hash IS NULL AND token = :token)";
     $stmt = $conn->prepare($query);
+    $stmt->bindParam(':token_hash', $tokenHash);
     $stmt->bindParam(':token', $token);
     $stmt->execute();
 
     if ($stmt->rowCount() > 0) {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Token süre dolumu kontrolü
         if (!empty($row['token_expires_at'])) {
             $expiresAt = strtotime($row['token_expires_at']);
             $now = time();
-            
+
             if ($now > $expiresAt) {
                 // Token süresi dolmuş
                 http_response_code(401);
@@ -120,7 +126,7 @@ function validateToken() {
                 ));
                 exit;
             }
-            
+
             // Token yenileme: Son 7 gün kaldıysa süreyi uzat
             $timeRemaining = $expiresAt - $now;
             if ($timeRemaining < TOKEN_REFRESH_THRESHOLD) {
@@ -128,10 +134,10 @@ function validateToken() {
                 $row['token_expires_at'] = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
             }
         }
-        
-        // 3. Sonucu cache'e yaz
-        TokenCache::set($token, $row['id'], $row['token_expires_at']);
-        
+
+        // 3. Sonucu cache'e yaz (hash-based key kullan)
+        TokenCache::set($tokenHash, $row['id'], $row['token_expires_at']);
+
         return $row['id'];
     } else {
         http_response_code(401);
@@ -143,7 +149,8 @@ function validateToken() {
 /**
  * Token süresini uzat
  */
-function refreshTokenExpiry($conn, $userId) {
+function refreshTokenExpiry($conn, $userId)
+{
     try {
         $newExpiry = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
         $query = "UPDATE users SET token_expires_at = :expires_at WHERE id = :user_id";
@@ -157,29 +164,35 @@ function refreshTokenExpiry($conn, $userId) {
     }
 }
 
-function requireAuth() {
+function requireAuth()
+{
     $userId = validateToken();
     return $userId;
 }
 
-function generateToken($userId) {
+function generateToken($userId)
+{
     return bin2hex(random_bytes(32));
 }
 
 /**
  * Token oluştur ve veritabanına kaydet (login.php'de kullanılacak)
  */
-function createTokenWithExpiry($conn, $userId) {
+function createTokenWithExpiry($conn, $userId)
+{
     $token = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $token);
     $expiresAt = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
-    
-    $query = "UPDATE users SET token = :token, token_expires_at = :expires_at WHERE id = :user_id";
+
+    // Token ve hash'ini kaydet (hash validation için, token sadece geriye uyumluluk için)
+    $query = "UPDATE users SET token = :token, token_hash = :token_hash, token_expires_at = :expires_at WHERE id = :user_id";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':token', $token);
+    $stmt->bindParam(':token_hash', $tokenHash);
     $stmt->bindParam(':expires_at', $expiresAt);
     $stmt->bindParam(':user_id', $userId);
     $stmt->execute();
-    
+
     return $token;
 }
 ?>

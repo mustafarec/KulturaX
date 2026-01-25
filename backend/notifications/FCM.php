@@ -39,11 +39,13 @@ class FCM
         }
 
         if (!file_exists($this->serviceAccountPath)) {
+            error_log("CRITICAL [FCM]: Firebase service account file not found at: " . $this->serviceAccountPath);
             return null;
         }
 
         $serviceAccount = json_decode(file_get_contents($this->serviceAccountPath), true);
         if (!$serviceAccount) {
+            error_log("CRITICAL [FCM]: Failed to parse Firebase service account JSON at: " . $this->serviceAccountPath);
             return null;
         }
 
@@ -116,11 +118,13 @@ class FCM
     public function sendToUser($userId, $title, $message, $data = null)
     {
         if (empty($this->projectId)) {
+            error_log("WARNING [FCM]: FIREBASE_PROJECT_ID is empty, push notifications disabled for user: $userId");
             return false;
         }
 
         $accessToken = $this->getAccessToken();
         if (!$accessToken) {
+            error_log("WARNING [FCM]: Failed to get access token, push notification not sent to user: $userId");
             return false;
         }
 

@@ -253,6 +253,31 @@ export const ProfileScreen = () => {
         }
     };
 
+    const handleToggleSave = async () => {
+        const item = selectedPostForOptions;
+        if (!item || !user) return;
+
+        // Optimistic update
+        const isSaved = !!item.is_saved;
+        const updater = (p: any) => p.id === item.id ? { ...p, is_saved: !isSaved } : p;
+        setUserPosts(prev => prev.map(updater));
+        setUserReplies(prev => prev.map(updater));
+
+        try {
+            await interactionService.toggleBookmark(user.id, item.id);
+            Toast.show({
+                type: 'success',
+                text1: !isSaved ? 'Kaydedildi' : 'Çıkarıldı',
+                text2: !isSaved ? 'Gönderi yer işaretlerine eklendi.' : 'Gönderi yer işaretlerinden çıkarıldı.'
+            });
+        } catch (error) {
+            // Revert
+            setUserPosts(prev => prev.map(updater));
+            setUserReplies(prev => prev.map(updater));
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem başarısız.' });
+        }
+    };
+
     const handleTogglePin = async () => {
         const item = selectedPostForOptions;
         if (!item) return;
@@ -879,6 +904,8 @@ export const ProfileScreen = () => {
                 visible={optionsModalVisible}
                 onClose={() => setOptionsModalVisible(false)}
                 onDelete={handleDelete}
+                onToggleSave={handleToggleSave}
+                isSaved={selectedPostForOptions?.is_saved}
                 targetPosition={menuPosition}
                 isOwner={selectedPostForOptions?.user?.id === user?.id}
                 isPinned={selectedPostForOptions?.is_pinned}

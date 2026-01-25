@@ -12,6 +12,7 @@ import Toast from 'react-native-toast-message';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock, Ban, UserMinus, Star, Crown } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { PostOptionsModal } from '../../components/PostOptionsModal';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ContentType } from '../../types/models';
 
@@ -407,6 +408,12 @@ export const OtherProfileScreen = () => {
     const [blockDialogVisible, setBlockDialogVisible] = useState(false);
     const [menuVisible, setMenuVisible] = useState(false);
 
+    // Options Modal State
+    const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+    const [postDeleteDialogVisible, setPostDeleteDialogVisible] = useState(false);
+    const [selectedPostForOptions, setSelectedPostForOptions] = useState<any>(null);
+    const [menuPosition, setMenuPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
 
 
     // Mock Header Image (Random Library/Aesthetic)
@@ -705,6 +712,57 @@ export const OtherProfileScreen = () => {
 
     // Interaction logic moved to PostCard internal hook
 
+    const handleOptionsPress = (item: any, position: { x: number; y: number; width: number; height: number }) => {
+        setSelectedPostForOptions(item);
+        setMenuPosition(position);
+        setOptionsModalVisible(true);
+    };
+
+    const handleDelete = () => {
+        setPostDeleteDialogVisible(true);
+    };
+
+    const confirmDelete = async () => {
+        const item = selectedPostForOptions;
+        if (!item || !currentUser) return;
+        try {
+            await postService.delete(item.id);
+            setUserPosts(prev => prev.filter(p => p.id !== item.id));
+            Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Gönderi silindi.' });
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'Silinemedi.' });
+        } finally {
+            setPostDeleteDialogVisible(false);
+            setOptionsModalVisible(false);
+            setSelectedPostForOptions(null);
+        }
+    };
+
+    const handleToggleSave = async () => {
+        const item = selectedPostForOptions;
+        if (!item || !currentUser) return;
+
+        // Optimistic update
+        const isSaved = !!item.is_saved;
+        const updater = (p: any) => p.id === item.id ? { ...p, is_saved: !isSaved } : p;
+        setUserPosts(prev => prev.map(updater));
+        setUserReplies(prev => prev.map(updater));
+
+        try {
+            await interactionService.toggleBookmark(currentUser.id, item.id);
+            Toast.show({
+                type: 'success',
+                text1: !isSaved ? 'Kaydedildi' : 'Çıkarıldı',
+                text2: !isSaved ? 'Gönderi yer işaretlerine eklendi.' : 'Gönderi yer işaretlerinden çıkarıldı.'
+            });
+        } catch (error) {
+            // Revert
+            setUserPosts(prev => prev.map(updater));
+            setUserReplies(prev => prev.map(updater));
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'İşlem başarısız.' });
+        }
+    };
+
     const handleBlockUser = async () => {
         if (!currentUser) return;
         try {
@@ -822,6 +880,7 @@ export const OtherProfileScreen = () => {
                                 } catch (e) { }
                             }}
                             onUpdatePost={(updater) => setUserPosts(prev => prev.map(updater))}
+                            onOptions={(pos) => handleOptionsPress(post, pos)}
                         />
                     ))
                 ) : (
@@ -881,6 +940,7 @@ export const OtherProfileScreen = () => {
                                 setUserPosts(prev => prev.map(updater));
                                 setUserReplies(prev => prev.map(updater));
                             }}
+                            onOptions={(pos) => handleOptionsPress(post, pos)}
                         />
                     ))
                 ) : (
@@ -910,6 +970,7 @@ export const OtherProfileScreen = () => {
                             onComment={() => (navigation as any).navigate('PostDetail', { postId: post.id, autoFocusComment: true })}
                             onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
                             onUpdatePost={(updater) => setUserPosts(prev => prev.map(updater))}
+                            onOptions={(pos) => handleOptionsPress(post, pos)}
                         />
                     ))
                 ) : (
@@ -1308,6 +1369,36 @@ export const OtherProfileScreen = () => {
             <View style={{ height: 100 }} />
 
             <View style={{ height: 100 }} />
+
+            <PostOptionsModal
+                visible={optionsModalVisible}
+                onClose={() => setOptionsModalVisible(false)}
+                onDelete={handleDelete}
+                onToggleSave={handleToggleSave}
+                isSaved={selectedPostForOptions?.is_saved}
+                targetPosition={menuPosition}
+                isOwner={selectedPostForOptions?.user?.id === currentUser?.id}
+                isPinned={selectedPostForOptions?.is_pinned}
+            />
+
+            <ThemedDialog
+                visible={postDeleteDialogVisible}
+                title="Gönderiyi Sil"
+                message="Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+                actions={[
+                    {
+                        text: 'Vazgeç',
+                        style: 'cancel',
+                        onPress: () => setPostDeleteDialogVisible(false)
+                    },
+                    {
+                        text: 'Sil',
+                        style: 'destructive',
+                        onPress: confirmDelete
+                    }
+                ]}
+                onClose={() => setPostDeleteDialogVisible(false)}
+            />
 
             <ThemedDialog
                 visible={blockDialogVisible}

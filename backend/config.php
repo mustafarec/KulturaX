@@ -116,13 +116,10 @@ if (in_array($origin, $allowed_origins)) {
 } elseif (empty($origin)) {
     // Origin header yok - muhtemelen mobil uygulama veya sunucu-sunucu isteği
     // Mobil uygulamalar için signature kontrolü yap (production'da)
-    // Not: Geçiş sürecinde validation zorunlu değil, sadece log
     if (!validateApiSignature()) {
-        // Geçiş sürecinde sadece uyarı logla, engellemiyoruz
-        // İleride bu satırı uncomment ederek zorunlu yapabilirsiniz:
-        // http_response_code(401);
-        // echo json_encode(["error" => "Invalid API signature"]);
-        // exit();
+        http_response_code(401);
+        echo json_encode(["error" => "Invalid API signature", "code" => "INVALID_SIGNATURE"]);
+        exit();
     }
     header("Access-Control-Allow-Origin: *");
 } else {

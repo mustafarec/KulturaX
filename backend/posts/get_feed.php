@@ -229,10 +229,13 @@ try {
                 (
                     (
                         (CASE 
-                            WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book
-                            WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie
-                            WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music
-                            ELSE 0
+                            WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book + 20
+                            WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie + 20
+                            WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music + 20
+                            WHEN p.content_type = 'event' OR op.content_type = 'event' THEN 35
+                            WHEN p.content_type = 'lyrics' OR op.content_type = 'lyrics' THEN 30
+                            WHEN p.quote_text IS NOT NULL AND p.quote_text != '' THEN 30
+                            ELSE 15
                         END) 
                         /
                         (POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.5))
@@ -246,14 +249,23 @@ try {
                 ) DESC,
                 p.created_at DESC";
 
+    // Pagination
+    $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+    $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 20;
+    $offset = ($page - 1) * $limit;
+
+    $query .= " LIMIT :limit OFFSET :offset";
+
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':user_id', $user_id);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
     $stmt->bindParam(':score_book', $scores['book']);
     $stmt->bindParam(':score_movie', $scores['movie']);
     $stmt->bindParam(':score_music', $scores['music']);
     $stmt->bindParam(':boost_book', $boostBook);
     $stmt->bindParam(':boost_movie', $boostMovie);
     $stmt->bindParam(':boost_music', $boostMusic);
+    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
 
     if (!empty($search)) {
         $ftSearch = $search . '*';
