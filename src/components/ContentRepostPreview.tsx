@@ -69,35 +69,39 @@ export const RepostPreview: React.FC<RepostPreviewProps> = ({ post }) => {
     }), [theme]);
 
     // Content Parsing Logic
+    // FIX: İnceleme ve Alıntı ayrımı iyileştirildi
     let displayComment = '';
     let displayQuote = '';
 
+    // 1. Yeni veri yapısı
     if (post.quote_text != null || post.comment_text != null) {
         displayQuote = post.quote_text || '';
         displayComment = post.comment_text || '';
     } else if (post.content) {
+        // 2. Eski veri yapısı veya fallback
         try {
             if (post.content.startsWith('{')) {
                 const parsed = JSON.parse(post.content);
                 if (parsed.quote !== undefined) {
-                    displayComment = parsed.comment;
-                    displayQuote = parsed.quote;
+                    displayComment = parsed.comment || '';
+                    displayQuote = parsed.quote || '';
                 } else {
-                    displayQuote = post.content;
+                    displayComment = post.content;
                 }
             } else {
-                if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
+                // Düz metin
+                const isMediaPost = post.content_type === 'book' ||
+                    post.content_type === 'movie' ||
+                    post.content_type === 'music';
+
+                if (isMediaPost && !post.title) {
                     displayQuote = post.content;
                 } else {
                     displayComment = post.content;
                 }
             }
         } catch (e) {
-            if (post.content_type === 'book' || post.content_type === 'movie' || post.content_type === 'music' || (post.source && post.source !== 'Paylaşım' && post.source !== 'App' && post.source !== 'Düşünce')) {
-                displayQuote = post.content;
-            } else {
-                displayComment = post.content;
-            }
+            displayComment = post.content;
         }
     }
 

@@ -105,60 +105,51 @@ const PostCardComponent: React.FC<PostCardProps> = ({
     const handleUser = onUserPress || interactions.handleUserPress;
 
     // OPTIMIZED: useMemo to cache JSON parsing result
+    // FIX: İnceleme ve Alıntı ayrımı iyileştirildi
+    // useMemo bağımlılıkları kod inceleme raporuna göre eksiksiz hale getirildi
     const { displayComment, displayQuote } = React.useMemo(() => {
         let comment = '';
         let quote = '';
 
+        // 1. Yeni veri yapısı: quote_text veya comment_text alanı doluysa bunları kullan
         if (displayPost.quote_text != null || displayPost.comment_text != null) {
             quote = displayPost.quote_text || '';
             comment = displayPost.comment_text || '';
         }
 
+        // 2. Eski veri yapısı veya fallback: Sadece content alanı doluysa
         if (!quote && !comment && displayPost.content) {
             try {
                 if (displayPost.content.startsWith('{')) {
+                    // JSON formatında içerik
                     const parsed = JSON.parse(displayPost.content);
                     if (parsed.quote !== undefined) {
-                        comment = parsed.comment;
-                        quote = parsed.quote;
+                        comment = parsed.comment || '';
+                        quote = parsed.quote || '';
                     } else {
-                        quote = displayPost.content;
+                        comment = displayPost.content;
                     }
                 } else {
-                    const isContentType = displayPost.content_type === 'book' ||
+                    // Düz metin ayrıştırma mantığı
+                    const isMediaPost = displayPost.content_type === 'book' ||
                         displayPost.content_type === 'movie' ||
                         displayPost.content_type === 'music';
-                    const hasSource = displayPost.source &&
-                        displayPost.source !== 'Paylaşım' &&
-                        displayPost.source !== 'App' &&
-                        displayPost.source !== 'Düşünce';
 
-                    if (isContentType || hasSource) {
+                    // Eğer başlığı varsa (Örn: "İnceleme: ...") bu bir incelemedir -> Yorum olarak göster
+                    // Eğer başlığı yoksa ama medya postuysa bu bir alıntıdır -> Alıntı olarak göster
+                    if (isMediaPost && !displayPost.title) {
                         quote = displayPost.content;
                     } else {
                         comment = displayPost.content;
                     }
                 }
             } catch (e) {
-                // Fallback logic
-                const isContentType = displayPost.content_type === 'book' ||
-                    displayPost.content_type === 'movie' ||
-                    displayPost.content_type === 'music';
-                const hasSource = displayPost.source &&
-                    displayPost.source !== 'Paylaşım' &&
-                    displayPost.source !== 'App' &&
-                    displayPost.source !== 'Düşünce';
-
-                if (isContentType || hasSource) {
-                    quote = displayPost.content;
-                } else {
-                    comment = displayPost.content;
-                }
+                comment = displayPost.content;
             }
         }
 
         return { displayComment: comment, displayQuote: quote };
-    }, [displayPost.content, displayPost.quote_text, displayPost.comment_text, displayPost.content_type, displayPost.source]);
+    }, [displayPost.content, displayPost.quote_text, displayPost.comment_text, displayPost.content_type, displayPost.title]);
 
     let displayUser = post.user;
     if (isRepost && !isQuoteRepost) {

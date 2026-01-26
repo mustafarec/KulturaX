@@ -52,6 +52,7 @@ export interface Post {
     content_id?: string;
     quote_text?: string;
     comment_text?: string;
+    title?: string;
     source?: string;
     author?: string;
     image_url?: string;
