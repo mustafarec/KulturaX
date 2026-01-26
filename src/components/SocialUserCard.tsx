@@ -351,7 +351,7 @@ export const SocialUserCard: React.FC<SocialUserCardProps> = ({ user, onPress, o
                                     ? 'Takip Ediliyor'
                                     : requestStatus === 'pending'
                                         ? 'İstek Gönderildi'
-                                        : user.is_private
+                                        : Boolean(user.is_private)
                                             ? 'İstek Gönder'
                                             : 'Takip Et'}
                             </Text>

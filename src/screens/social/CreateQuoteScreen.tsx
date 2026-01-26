@@ -628,6 +628,12 @@ export const CreateQuoteScreen = () => {
                                                             <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Şu an okuyor</Text>
                                                         </View>
                                                     )}
+                                                    {selectedType === 'movie' && (
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                            <Film size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                                            <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>İzliyor</Text>
+                                                        </View>
+                                                    )}
                                                     {selectedType === 'music' && (
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                                                             <Music size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />

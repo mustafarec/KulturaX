@@ -4,7 +4,7 @@ import { DefaultImages, getDefaultAvatar } from '../utils/DefaultImages';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Share } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
-import { Repeat, MoreVertical, Heart, MessageCircle, Share2 as ShareIcon, Bookmark, Quote, BookOpen } from 'lucide-react-native';
+import { Repeat, MoreVertical, Heart, MessageCircle, Share2 as ShareIcon, Bookmark, Quote, BookOpen, Star, Film, Music } from 'lucide-react-native';
 import { Avatar } from './ui/Avatar';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
@@ -106,6 +106,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
     const handleUser = onUserPress || interactions.handleUserPress;
 
     // OPTIMIZED: useMemo to cache JSON parsing result
+    // OPTIMIZED: useMemo to cache JSON parsing result
     const { displayComment, displayQuote } = React.useMemo(() => {
         let comment = '';
         let quote = '';
@@ -126,35 +127,12 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                         comment = displayPost.content;
                     }
                 } else {
-                    const isContentType = displayPost.content_type === 'book' ||
-                        displayPost.content_type === 'movie' ||
-                        displayPost.content_type === 'music';
-                    const hasSource = displayPost.source &&
-                        displayPost.source !== 'Paylaşım' &&
-                        displayPost.source !== 'App' &&
-                        displayPost.source !== 'Düşünce';
-
-                    if (isContentType || hasSource) {
-                        quote = displayPost.content;
-                    } else {
-                        comment = displayPost.content;
-                    }
-                }
-            } catch (e) {
-                // Fallback logic
-                const isContentType = displayPost.content_type === 'book' ||
-                    displayPost.content_type === 'movie' ||
-                    displayPost.content_type === 'music';
-                const hasSource = displayPost.source &&
-                    displayPost.source !== 'Paylaşım' &&
-                    displayPost.source !== 'App' &&
-                    displayPost.source !== 'Düşünce';
-
-                if (isContentType || hasSource) {
-                    quote = displayPost.content;
-                } else {
+                    // FIXED: Do NOT automatically treat content as quote just because specific content types exist.
+                    // Reviews (book/movie/music) should have their content treated as comment unless explicitly a quote.
                     comment = displayPost.content;
                 }
+            } catch (e) {
+                comment = displayPost.content;
             }
         }
 
@@ -275,15 +253,34 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                     </Text>
                 ) : null}
 
+                {/* Rating Display (Stars) */}
+                {displayPost.rating ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                                key={star}
+                                size={16}
+                                color={star <= (displayPost.rating || 0) ? "#FFD700" : theme.colors.border}
+                                fill={star <= (displayPost.rating || 0) ? "#FFD700" : "transparent"}
+                                style={{ marginRight: 2 }}
+                            />
+                        ))}
+                        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6, fontWeight: '600' }}>
+                            {displayPost.rating}/5
+                        </Text>
+                    </View>
+                ) : null}
+
                 {/* Content Text */}
                 {displayComment ? (
                     <Text style={styles.content}>{displayComment}</Text>
                 ) : null}
 
                 {/* Book Info Card (Always shown if it's a book/movie post) */}
-                {(displayPost.content_type === 'book' || displayPost.content_type === 'movie') && (
+                {/* Book/Movie/Music Info Card */}
+                {['book', 'movie', 'music'].includes(displayPost.content_type || '') && (
                     <View style={{ marginBottom: theme.spacing.m }}>
-                        {/* Book Details */}
+                        {/* Content Details */}
                         <TouchableOpacity
                             style={styles.bookCard}
                             onPress={() => handleContent(displayPost.content_type!, displayPost.content_id!)}
@@ -297,8 +294,24 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                                 <Text style={styles.bookTitle}>{displayPost.source || 'Başlık Yok'}</Text>
                                 <Text style={styles.bookAuthor}>{displayPost.author || 'Bilinmeyen'}</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                    <BookOpen size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
-                                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Şu an okuyor</Text>
+                                    {displayPost.content_type === 'book' ? (
+                                        <BookOpen size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                    ) : displayPost.content_type === 'movie' ? (
+                                        <Film size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                    ) : (
+                                        <Music size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                    )}
+                                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                                        {(() => {
+                                            const type = displayPost.content_type;
+                                            const hasRating = !!displayPost.rating;
+
+                                            if (type === 'book') return hasRating ? 'Okudu' : 'Şu an okuyor';
+                                            if (type === 'movie') return hasRating ? 'İzledi' : 'Şu an izliyor';
+                                            if (type === 'music') return hasRating ? 'Dinledi' : 'Şu an dinliyor';
+                                            return 'İnceliyor';
+                                        })()}
+                                    </Text>
                                 </View>
                             </View>
                         </TouchableOpacity>

@@ -112,7 +112,8 @@ export const reviewService = {
         reviewText: string,
         contentTitle?: string,
         imageUrl?: string,
-        title?: string
+        title?: string,
+        author?: string
     ) => {
         try {
             const response = await apiClient.post('/interactions/add_review.php', {
@@ -123,7 +124,8 @@ export const reviewService = {
                 review_text: reviewText,
                 content_title: contentTitle,
                 image_url: imageUrl,
-                title
+                title,
+                author
             });
             return response.data;
         } catch (error: any) {

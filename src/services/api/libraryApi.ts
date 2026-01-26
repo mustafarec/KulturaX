@@ -86,6 +86,15 @@ export const libraryService = {
         } catch (error: any) {
             handleApiError(error);
         }
+    },
+
+    getStats: async (userId: number) => {
+        try {
+            const response = await apiClient.get(`/library/get_stats.php?user_id=${userId}`);
+            return response.data;
+        } catch (error: any) {
+            handleApiError(error);
+        }
     }
 };
 

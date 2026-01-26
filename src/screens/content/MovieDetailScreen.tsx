@@ -599,6 +599,7 @@ export const MovieDetailScreen = () => {
                 imageUrl={posterUrl}
                 userId={user?.id || 0}
                 onReviewAdded={fetchData}
+                author={director}
             />
 
             <QuoteModal

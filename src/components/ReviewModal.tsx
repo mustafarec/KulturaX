@@ -15,6 +15,7 @@ interface ReviewModalProps {
     imageUrl?: string;
     userId: number;
     onReviewAdded?: () => void;
+    author?: string;
 }
 
 export const ReviewModal: React.FC<ReviewModalProps> = ({
@@ -25,17 +26,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     contentTitle,
     imageUrl,
     userId,
-    onReviewAdded
+    onReviewAdded,
+    author
 }) => {
     // Debugging passed props
     React.useEffect(() => {
         if (visible) {
-            console.log('ReviewModal Visible. Validating Props:', { contentTitle, imageUrl });
+            console.log('ReviewModal Visible. Validating Props:', { contentTitle, imageUrl, author });
         }
-    }, [visible, contentTitle, imageUrl]);
+    }, [visible, contentTitle, imageUrl, author]);
     const { theme } = useTheme();
     const [rating, setRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
+    const [postTitle, setPostTitle] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const slideAnim = useRef(new Animated.Value(400)).current;
 
@@ -131,7 +134,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
         setIsSubmitting(true);
         try {
-            await reviewService.addReview(userId, contentType, contentId, rating, reviewText, contentTitle, imageUrl);
+            await reviewService.addReview(userId, contentType, contentId, rating, reviewText, contentTitle, imageUrl, postTitle, author);
             Toast.show({
                 type: 'success',
                 text1: 'Başarılı',
@@ -184,6 +187,15 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                         </View>
 
                         <View style={styles.reviewSection}>
+                            <Text style={styles.label}>Başlık (İsteğe bağlı):</Text>
+                            <TextInput
+                                style={[styles.textInput, { minHeight: 50, marginBottom: 16 }]}
+                                placeholder="Örn: Harika bir deneyimdi"
+                                value={postTitle}
+                                onChangeText={setPostTitle}
+                                placeholderTextColor={theme.colors.textSecondary}
+                            />
+
                             <Text style={styles.label}>İncelemeniz (opsiyonel):</Text>
                             <TextInput
                                 style={styles.textInput}

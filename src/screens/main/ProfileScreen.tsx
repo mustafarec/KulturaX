@@ -492,6 +492,78 @@ export const ProfileScreen = () => {
         }
     };
 
+    const LibraryItem = ({ item, type, handleContentPress, handleOpenStatusSheet, theme }: { item: any, type: string, handleContentPress: any, handleOpenStatusSheet: any, theme: any }) => {
+        const [imgError, setImgError] = useState(false);
+
+        return (
+            <View key={item.id} style={[styles.listItem, { justifyContent: 'space-between' }]}>
+                <TouchableOpacity
+                    style={{ flexDirection: 'row', flex: 1 }}
+                    onPress={() => handleContentPress(item.content_type, item.content_id)}
+                    activeOpacity={0.7}
+                >
+                    {/* Start: Content Poster */}
+                    <View style={styles.listPosterContainer}>
+                        {item.image_url && !imgError ? (
+                            <Image
+                                source={{ uri: item.image_url.replace('http://', 'https://') }}
+                                style={styles.listPoster}
+                                resizeMode="cover"
+                                onError={() => setImgError(true)}
+                            />
+                        ) : (
+                            <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                                {type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
+                            </View>
+                        )}
+                    </View>
+                    {/* End: Content Poster */}
+
+                    {/* Start: Info Column */}
+                    <View style={styles.listInfo}>
+                        <View>
+                            <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                                {item.content_title || 'Başlık Yok'}
+                            </Text>
+                            {/* Subtitle: Author/Artist/Director - ONLY if available */}
+                            {(item.content_subtitle || item.creator) && (
+                                <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                                    {item.content_subtitle || item.creator}
+                                </Text>
+                            )}
+                        </View>
+
+                        <View style={styles.listMetaRow}>
+                            {item.status && (
+                                <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                                    <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
+                                        {getStatusLabel(item.status, type)}
+                                    </Text>
+                                </View>
+                            )}
+                            {/* Rating if available */}
+                            {item.rating > 0 && (
+                                <View style={styles.listRating}>
+                                    <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                                    <Text style={styles.listRatingText}>{item.rating}</Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                    {/* End: Info Column */}
+                </TouchableOpacity>
+
+                {/* 3-dot menu for status update */}
+                <TouchableOpacity
+                    style={{ padding: 8, justifyContent: 'center' }}
+                    onPress={() => handleOpenStatusSheet(item)}
+                >
+                    <MoreVertical size={20} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+            </View>
+        );
+    };
+
     const renderGridContent = (type: 'book' | 'movie' | 'music') => {
         const filtered = libraryItems.filter(item => item.content_type === type);
 
@@ -505,66 +577,14 @@ export const ProfileScreen = () => {
         return (
             <View style={styles.listContainer}>
                 {filtered.map((item) => (
-                    <View key={item.id} style={[styles.listItem, { justifyContent: 'space-between' }]}>
-                        <TouchableOpacity
-                            style={{ flexDirection: 'row', flex: 1 }}
-                            onPress={() => handleContentPress(item.content_type, item.content_id)}
-                            activeOpacity={0.7}
-                        >
-                            {/* Start: Content Poster */}
-                            <View style={styles.listPosterContainer}>
-                                {item.image_url ? (
-                                    <Image source={{ uri: item.image_url }} style={styles.listPoster} resizeMode="cover" />
-                                ) : (
-                                    <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
-                                        {type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
-                                    </View>
-                                )}
-                            </View>
-                            {/* End: Content Poster */}
-
-                            {/* Start: Info Column */}
-                            <View style={styles.listInfo}>
-                                <View>
-                                    <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                                        {item.content_title || 'Başlık Yok'}
-                                    </Text>
-                                    {/* Subtitle: Author/Artist/Director - ONLY if available */}
-                                    {(item.content_subtitle || item.creator) && (
-                                        <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                                            {item.content_subtitle || item.creator}
-                                        </Text>
-                                    )}
-                                </View>
-
-                                <View style={styles.listMetaRow}>
-                                    {item.status && (
-                                        <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                                            <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
-                                                {getStatusLabel(item.status, type)}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {/* Rating if available */}
-                                    {item.rating > 0 && (
-                                        <View style={styles.listRating}>
-                                            <Star size={12} color="#F59E0B" fill="#F59E0B" />
-                                            <Text style={styles.listRatingText}>{item.rating}</Text>
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
-                            {/* End: Info Column */}
-                        </TouchableOpacity>
-
-                        {/* 3-dot menu for status update */}
-                        <TouchableOpacity
-                            style={{ padding: 8, justifyContent: 'center' }}
-                            onPress={() => handleOpenStatusSheet(item)}
-                        >
-                            <MoreVertical size={20} color={theme.colors.textSecondary} />
-                        </TouchableOpacity>
-                    </View>
+                    <LibraryItem
+                        key={item.id}
+                        item={item}
+                        type={type}
+                        handleContentPress={handleContentPress}
+                        handleOpenStatusSheet={handleOpenStatusSheet}
+                        theme={theme}
+                    />
                 ))}
             </View>
         );

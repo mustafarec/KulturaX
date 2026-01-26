@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, RefreshControl, ActivityIndicator, ScrollView, TextInput, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, RefreshControl, ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, BookOpen, Book, Film, Music, Calendar, Ghost, Star, MoreVertical, Search, X } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, Book, Film, Music, Calendar, Ghost, Star, MoreVertical, Search, X, AlertTriangle, RefreshCw } from 'lucide-react-native';
 import { libraryService } from '../../services/backendApi';
 import { LibraryBottomSheet } from '../../components/LibraryBottomSheet';
 import Toast from 'react-native-toast-message';
@@ -65,6 +65,7 @@ export const MyActivitiesScreen = () => {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [libraryItems, setLibraryItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [stats, setStats] = useState<any>(null);
@@ -74,13 +75,29 @@ export const MyActivitiesScreen = () => {
     const [selectedLibraryItem, setSelectedLibraryItem] = useState<any>(null);
 
     const fetchLibrary = useCallback(async () => {
-        if (!user?.id) return;
-        try {
-            // Fetch library items first
-            const libraryData = await libraryService.getUserLibrary(user.id);
-            setLibraryItems(libraryData || []);
+        if (!user?.id) {
+            return;
+        }
+        setIsLoading(true);
+        setError(null);
 
-            // Separately fetch stats to be resilient (if it fails, page still works)
+        // Timeout ekle - 10 saniye içinde yanıt gelmezse loading'i kapat
+        const timeoutId = setTimeout(() => {
+            if (isLoading) {
+                console.log('Library fetch timeout - stopping loading state');
+                setIsLoading(false);
+                setRefreshing(false);
+                setError('İstek zaman aşımına uğradı. Lütfen tekrar deneyin.');
+            }
+        }, 10000);
+
+        try {
+            const libraryData = await libraryService.getUserLibrary(user.id);
+            clearTimeout(timeoutId);
+            setLibraryItems(libraryData || []);
+            setError(null);
+
+            // Stats
             try {
                 const statsData = await libraryService.getStats(user.id);
                 setStats(statsData);
@@ -88,10 +105,10 @@ export const MyActivitiesScreen = () => {
                 console.warn('Error fetching stats:', statsError);
             }
 
-            // "Loved it" reminder logic
+            // Loved reminder
             if (libraryData && libraryData.length > 0) {
                 const lovedItems = libraryData.filter((i: any) => i.status === 'loved');
-                if (lovedItems.length > 0 && Math.random() > 0.7) { // 30% chance to show a reminder
+                if (lovedItems.length > 0 && Math.random() > 0.7) {
                     const randomLoved = lovedItems[Math.floor(Math.random() * lovedItems.length)];
                     setTimeout(() => {
                         Toast.show({
@@ -104,22 +121,30 @@ export const MyActivitiesScreen = () => {
                     }, 1500);
                 }
             }
-        } catch (error) {
-            console.error('Error fetching library:', error);
+        } catch (err: any) {
+            clearTimeout(timeoutId);
+            console.error('Error fetching library:', err);
+            setError(err?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
             Toast.show({
                 type: 'error',
                 text1: 'Hata',
                 text2: 'Kütüphane bilgileri alınamadı.',
             });
         } finally {
+            clearTimeout(timeoutId);
             setIsLoading(false);
             setRefreshing(false);
         }
     }, [user?.id]);
 
-    useEffect(() => {
-        fetchLibrary();
-    }, [fetchLibrary]);
+    // useFocusEffect ile ekran her odaklandığında veri çek
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.id) {
+                fetchLibrary();
+            }
+        }, [fetchLibrary, user?.id])
+    );
 
     useEffect(() => {
         setStatusFilter('all');
@@ -205,8 +230,8 @@ export const MyActivitiesScreen = () => {
 
     const handleItemPress = (item: any) => {
         (navigation as any).navigate('ContentDetail', {
-            contentId: item.content_id,
-            contentType: item.content_type
+            id: item.content_id,
+            type: item.content_type
         });
     };
 
@@ -242,73 +267,6 @@ export const MyActivitiesScreen = () => {
         }
         setLibrarySheetVisible(false);
         setSelectedLibraryItem(null);
-    };
-
-    const renderItem = ({ item }: { item: any }) => {
-        const TabIcon = TABS.find(t => t.key === item.content_type)?.icon || BookOpen;
-
-        return (
-            <View style={[styles.listItem, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                <TouchableOpacity
-                    style={styles.itemContent}
-                    onPress={() => handleItemPress(item)}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.posterContainer}>
-                        {item.image_url ? (
-                            <Image source={{ uri: item.image_url }} style={styles.poster} resizeMode="cover" />
-                        ) : (
-                            <View style={[styles.poster, { backgroundColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' }]}>
-                                <TabIcon size={24} color={theme.colors.textSecondary} />
-                            </View>
-                        )}
-                    </View>
-                    <View style={styles.itemInfo}>
-                        <Text style={[styles.itemTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                            {item.content_title || 'Başlık Yok'}
-                        </Text>
-                        {item.creator && (
-                            <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                                {item.creator}
-                            </Text>
-                        )}
-                        <View style={styles.metaRow}>
-                            {item.status && (
-                                <View style={[styles.statusBadge, {
-                                    backgroundColor: (item.status === 'loved' ? theme.colors.accent : getStatusColor(item.status)) + '15'
-                                }]}>
-                                    <Text style={[styles.statusText, {
-                                        color: item.status === 'loved' ? theme.colors.accent : getStatusColor(item.status)
-                                    }]}>
-                                        {getStatusLabel(item.status, item.content_type)}
-                                    </Text>
-                                </View>
-                            )}
-                            {item.rating > 0 && (
-                                <View style={styles.ratingContainer}>
-                                    <Star size={12} color="#F59E0B" fill="#F59E0B" />
-                                    <Text style={styles.ratingText}>{item.rating}</Text>
-                                </View>
-                            )}
-                        </View>
-                        {item.updated_at && (
-                            <Text style={[styles.dateText, { color: theme.colors.textSecondary }]}>
-                                {formatDate(item.updated_at)}
-                            </Text>
-                        )}
-                    </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.moreButton}
-                    onPress={() => {
-                        setSelectedLibraryItem(item);
-                        setLibrarySheetVisible(true);
-                    }}
-                >
-                    <MoreVertical size={20} color={theme.colors.textSecondary} />
-                </TouchableOpacity>
-            </View>
-        );
     };
 
     const styles = useMemo(() => StyleSheet.create({
@@ -527,7 +485,115 @@ export const MyActivitiesScreen = () => {
             justifyContent: 'center',
             alignItems: 'center',
         },
+        errorContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingVertical: 60,
+        },
+        errorIcon: {
+            marginBottom: 16,
+        },
+        errorText: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+            textAlign: 'center',
+            marginBottom: 20,
+            paddingHorizontal: 32,
+        },
+        retryButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 12,
+            backgroundColor: theme.colors.primary,
+            gap: 8,
+        },
+        retryButtonText: {
+            color: '#FFFFFF',
+            fontSize: 14,
+            fontWeight: '600',
+        },
     }), [theme, insets]);
+
+    // Memoized item renderer with image error handling
+    const ItemRenderer = useMemo(() => {
+        return function RenderItem({ item }: { item: any }) {
+            const [imgError, setImgError] = useState(false);
+            const TabIcon = TABS.find(t => t.key === item.content_type)?.icon || BookOpen;
+
+            return (
+                <View style={[styles.listItem, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    <TouchableOpacity
+                        style={styles.itemContent}
+                        onPress={() => handleItemPress(item)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.posterContainer}>
+                            {item.image_url && !imgError ? (
+                                <Image
+                                    source={{ uri: item.image_url.replace('http://', 'https://') }}
+                                    style={styles.poster}
+                                    resizeMode="cover"
+                                    onError={() => setImgError(true)}
+                                />
+                            ) : (
+                                <View style={[styles.poster, { backgroundColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' }]}>
+                                    <TabIcon size={24} color={theme.colors.textSecondary} />
+                                </View>
+                            )}
+                        </View>
+                        <View style={styles.itemInfo}>
+                            <Text style={[styles.itemTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                                {item.content_title || 'Başlık Yok'}
+                            </Text>
+                            {item.creator && (
+                                <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                                    {item.creator}
+                                </Text>
+                            )}
+                            <View style={styles.metaRow}>
+                                {item.status && (
+                                    <View style={[styles.statusBadge, {
+                                        backgroundColor: (item.status === 'loved' ? theme.colors.accent : getStatusColor(item.status)) + '15'
+                                    }]}>
+                                        <Text style={[styles.statusText, {
+                                            color: item.status === 'loved' ? theme.colors.accent : getStatusColor(item.status)
+                                        }]}>
+                                            {getStatusLabel(item.status, item.content_type)}
+                                        </Text>
+                                    </View>
+                                )}
+                                {item.rating > 0 && (
+                                    <View style={styles.ratingContainer}>
+                                        <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                                        <Text style={styles.ratingText}>{item.rating}</Text>
+                                    </View>
+                                )}
+                            </View>
+                            {item.updated_at && (
+                                <Text style={[styles.dateText, { color: theme.colors.textSecondary }]}>
+                                    {formatDate(item.updated_at)}
+                                </Text>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.moreButton}
+                        onPress={() => {
+                            setSelectedLibraryItem(item);
+                            setLibrarySheetVisible(true);
+                        }}
+                    >
+                        <MoreVertical size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+            );
+        };
+    }, [theme, styles, handleItemPress]);
+
+    const renderItem = useCallback(({ item }: { item: any }) => <ItemRenderer item={item} />, [ItemRenderer]);
 
     return (
         <View style={styles.container}>
@@ -676,11 +742,22 @@ export const MyActivitiesScreen = () => {
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
+            ) : error ? (
+                <View style={styles.errorContainer}>
+                    <TouchableOpacity style={styles.errorIcon} onPress={() => fetchLibrary()} activeOpacity={0.7}>
+                        <AlertTriangle size={48} color={theme.colors.error} />
+                    </TouchableOpacity>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={() => fetchLibrary()} activeOpacity={0.7}>
+                        <RefreshCw size={18} color="#FFFFFF" />
+                        <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 <FlatList
                     data={filteredItems}
                     renderItem={renderItem}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
                         <RefreshControl

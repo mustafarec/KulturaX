@@ -56,6 +56,7 @@ export interface Post {
     source?: string;
     author?: string;
     image_url?: string;
+    rating?: number;
 
     // Interactions
     like_count?: number | string;

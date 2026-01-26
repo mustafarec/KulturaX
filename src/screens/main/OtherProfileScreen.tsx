@@ -826,6 +826,68 @@ export const OtherProfileScreen = () => {
         }
     };
 
+    const LibraryItem = ({ item, handleContentPress, theme }: { item: any, handleContentPress: any, theme: any }) => {
+        const [imgError, setImgError] = useState(false);
+
+        return (
+            <TouchableOpacity
+                key={item.id}
+                style={styles.listItem}
+                onPress={() => handleContentPress(item.content_type || 'book', item.content_id)}
+                activeOpacity={0.7}
+            >
+                {/* Start: Content Poster */}
+                <View style={styles.listPosterContainer}>
+                    {item.image_url && !imgError ? (
+                        <Image
+                            source={{ uri: item.image_url.replace('http://', 'https://') }}
+                            style={styles.listPoster}
+                            resizeMode="cover"
+                            onError={() => setImgError(true)}
+                        />
+                    ) : (
+                        <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                            {item.content_type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : item.content_type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
+                        </View>
+                    )}
+                </View>
+                {/* End: Content Poster */}
+
+                {/* Start: Info Column */}
+                <View style={styles.listInfo}>
+                    <View>
+                        <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                            {item.content_title || 'Başlık Yok'}
+                        </Text>
+                        {/* Subtitle: Author/Artist/Director - ONLY if available */}
+                        {(item.content_subtitle || item.creator) && (
+                            <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                                {item.content_subtitle || item.creator}
+                            </Text>
+                        )}
+                    </View>
+
+                    <View style={styles.listMetaRow}>
+                        {item.status && (
+                            <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                                <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
+                                    {getStatusText(item.status, item.content_type)}
+                                </Text>
+                            </View>
+                        )}
+                        {/* Rating if available */}
+                        {item.rating > 0 && (
+                            <View style={styles.listRating}>
+                                <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                                <Text style={styles.listRatingText}>{item.rating}</Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
     const renderTabContent = (currentTab: string) => {
         // Check if account is private and we're not following
         // Handle is_private as string "0"/"1" from backend
@@ -999,59 +1061,16 @@ export const OtherProfileScreen = () => {
                 return (
                     <View style={styles.listContainer}>
                         {filteredItems.map((item) => (
-                            <TouchableOpacity
+                            <LibraryItem
                                 key={item.id}
-                                style={styles.listItem}
-                                onPress={() => handleContentPress(item.content_type || 'book', item.content_id)}
-                                activeOpacity={0.7}
-                            >
-                                {/* Start: Content Poster */}
-                                <View style={styles.listPosterContainer}>
-                                    {item.image_url ? (
-                                        <Image source={{ uri: item.image_url }} style={styles.listPoster} resizeMode="cover" />
-                                    ) : (
-                                        <View style={[styles.listPoster, { backgroundColor: theme.colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
-                                            {item.content_type === 'movie' ? <Film size={20} color={theme.colors.textSecondary} /> : item.content_type === 'music' ? <Music size={20} color={theme.colors.textSecondary} /> : <BookOpen size={20} color={theme.colors.textSecondary} />}
-                                        </View>
-                                    )}
-                                </View>
-                                {/* End: Content Poster */}
-
-                                {/* Start: Info Column */}
-                                <View style={styles.listInfo}>
-                                    <View>
-                                        <Text style={[styles.listTitle, { color: theme.colors.text }]} numberOfLines={1}>
-                                            {item.content_title || 'Başlık Yok'}
-                                        </Text>
-                                        {/* Subtitle: Author/Artist/Director - ONLY if available */}
-                                        {(item.content_subtitle || item.creator) && (
-                                            <Text style={[styles.listSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                                                {item.content_subtitle || item.creator}
-                                            </Text>
-                                        )}
-                                    </View>
-
-                                    <View style={styles.listMetaRow}>
-                                        {item.status && (
-                                            <View style={[styles.listStatusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                                                <Text style={[styles.listStatusText, { color: getStatusColor(item.status) }]}>
-                                                    {getStatusText(item.status, item.content_type)}
-                                                </Text>
-                                            </View>
-                                        )}
-                                        {/* Rating if available */}
-                                        {item.rating > 0 && (
-                                            <View style={styles.listRating}>
-                                                <Star size={12} color="#F59E0B" fill="#F59E0B" />
-                                                <Text style={styles.listRatingText}>{item.rating}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            </TouchableOpacity>
+                                item={item}
+                                handleContentPress={handleContentPress}
+                                theme={theme}
+                            />
                         ))}
                     </View>
                 );
+
             case 'reviews':
                 return userReviews.length > 0 ? (
                     userReviews.map((review) => (
@@ -1155,7 +1174,7 @@ export const OtherProfileScreen = () => {
                                         }}>
                                             {requestStatus === 'pending'
                                                 ? 'İstek Gönderildi'
-                                                : profile?.is_private
+                                                : Boolean(profile?.is_private)
                                                     ? 'İstek Gönder'
                                                     : 'Takip Et'}
                                         </Text>

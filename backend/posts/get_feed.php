@@ -150,6 +150,9 @@ try {
                 p.comment_count,
                 p.repost_count,
                 
+                -- Review Rating
+                (SELECT rating FROM reviews WHERE user_id = p.user_id AND content_type = p.content_type AND content_id = p.content_id LIMIT 1) as rating,
+                
                 -- OPTIMIZED: EXISTS stops at first match, faster than COUNT(*)
                 EXISTS(SELECT 1 FROM interactions WHERE post_id = p.id AND type = 'like' AND user_id = :user_id) as is_liked,
                 EXISTS(SELECT 1 FROM posts WHERE original_post_id = p.id AND user_id = :user_id) as is_reposted,
@@ -159,6 +162,9 @@ try {
                 op.like_count as op_like_count,
                 op.comment_count as op_comment_count,
                 op.repost_count as op_repost_count,
+                
+                -- Original Post Review Rating
+                (SELECT rating FROM reviews WHERE user_id = op.user_id AND content_type = op.content_type AND content_id = op.content_id LIMIT 1) as op_rating,
                 
                 EXISTS(SELECT 1 FROM interactions WHERE post_id = op.id AND type = 'like' AND user_id = :user_id) as op_is_liked,
                 EXISTS(SELECT 1 FROM posts WHERE original_post_id = op.id AND user_id = :user_id) as op_is_reposted,

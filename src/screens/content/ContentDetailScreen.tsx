@@ -982,6 +982,7 @@ export const ContentDetailScreen = () => {
                 imageUrl={coverUrl}
                 userId={user?.id || 0}
                 onReviewAdded={fetchData}
+                author={getSubtitle()}
             />
             <QuoteModal
                 visible={showQuoteModal}

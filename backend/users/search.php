@@ -12,7 +12,7 @@ if (empty($query)) {
 try {
     // Search by username, full_name (if exists), or name/surname (if exist)
     // We'll try to be flexible with the schema since we saw some optional field handling in get.php
-    
+
     // First, let's check what columns exist or just try a broad query that assumes standard columns
     // Based on get.php, 'username' is certain. 'full_name' might be there. 'name' and 'surname' are in the frontend types but get.php uses full_name.
     // Let's check register.php or similar to be sure about name/surname vs full_name, OR just try to select what we can.
@@ -27,24 +27,26 @@ try {
     // Let's try to select id, username, name, surname, avatar_url.
     // If name/surname don't exist, we might need to adjust.
     // Let's assume name and surname exist based on backendApi.ts.
-    
+
     $sql = "SELECT id, username, name, surname, avatar_url, is_private FROM users 
             WHERE username LIKE :query 
             OR name LIKE :query 
             OR surname LIKE :query 
             OR CONCAT(name, ' ', surname) LIKE :query
             LIMIT 20";
-            
+
     $stmt = $conn->prepare($sql);
     $searchTerm = "%{$query}%";
     $stmt->bindParam(':query', $searchTerm);
     $stmt->execute();
 
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // If the above fails due to missing columns (e.g. name/surname vs full_name), we might need a fallback.
-    // But for now, let's trust the frontend's expectation of name/surname.
-    
+
+    // Cast is_private to boolean for each user
+    foreach ($users as &$u) {
+        $u['is_private'] = isset($u['is_private']) ? (bool) $u['is_private'] : false;
+    }
+
     echo json_encode($users);
 
 } catch (Exception $e) {
@@ -59,6 +61,11 @@ try {
         $stmt->bindParam(':query', $searchTerm);
         $stmt->execute();
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($users as &$u) {
+            $u['is_private'] = isset($u['is_private']) ? (bool) $u['is_private'] : false;
+        }
+
         echo json_encode($users);
     } catch (Exception $e2) {
         http_response_code(500);

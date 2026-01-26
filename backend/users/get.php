@@ -13,7 +13,7 @@ try {
 
     if ($checkStmt->rowCount() > 0) {
         $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Diğer alanları (full_name, bio, avatar_url) ayrı ayrı çekmeyi dene veya varsayılan değer ata
         // Bu, eğer sütunlar yoksa hatayı önler
         try {
@@ -22,10 +22,10 @@ try {
             $detailStmt->bindParam(':user_id', $user_id);
             $detailStmt->execute();
             $details = $detailStmt->fetch(PDO::FETCH_ASSOC);
-            
-        if ($details) {
+
+            if ($details) {
                 $user = array_merge($user, $details);
-                
+
                 // Check if account is frozen (hide from others)
                 $viewer_id = isset($_GET['viewer_id']) ? $_GET['viewer_id'] : null;
                 if (isset($details['is_frozen']) && $details['is_frozen'] && $viewer_id != $user_id) {
@@ -57,7 +57,7 @@ try {
                 if ($followStmt->rowCount() > 0) {
                     $user['is_following'] = true;
                 }
-                
+
                 // Check for pending follow request (only if not already following)
                 if (!$user['is_following']) {
                     $requestQuery = "SELECT status FROM follow_requests WHERE requester_id = :viewer_id AND target_id = :user_id";
@@ -99,8 +99,9 @@ try {
             $user['following_count'] = 0;
         }
 
-        // Convert is_premium to boolean for proper JavaScript handling
-        $user['is_premium'] = (bool)($user['is_premium'] ?? false);
+        // Convert is_premium and is_private to boolean for proper JavaScript handling
+        $user['is_premium'] = (bool) ($user['is_premium'] ?? false);
+        $user['is_private'] = (bool) ($user['is_private'] ?? false);
         echo json_encode($user);
     } else {
         http_response_code(404);

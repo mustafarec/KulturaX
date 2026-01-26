@@ -543,6 +543,7 @@ export const BookDetailScreen = () => {
                 imageUrl={coverUrl}
                 userId={user?.id || 0}
                 onReviewAdded={fetchData}
+                author={author}
             />
 
             <QuoteModal

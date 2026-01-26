@@ -129,10 +129,11 @@ try {
 
         if ($check_post_stmt->rowCount() > 0) {
             $existing_post = $check_post_stmt->fetch(PDO::FETCH_ASSOC);
-            $post_update_query = "UPDATE posts SET content = :content, image_url = :image_url, created_at = CURRENT_TIMESTAMP WHERE id = :id";
+            $post_update_query = "UPDATE posts SET content = :content, title = :title, image_url = :image_url, created_at = CURRENT_TIMESTAMP WHERE id = :id";
             $post_update_stmt = $conn->prepare($post_update_query);
             $post_update_stmt->execute([
                 ':content' => $review_text,
+                ':title' => $title ?: $data->content_title,
                 ':image_url' => $image_url,
                 ':id' => $existing_post['id']
             ]);
@@ -142,7 +143,7 @@ try {
             $post_insert_stmt->execute([
                 ':user_id' => $userId,
                 ':content' => $review_text,
-                ':title' => "İnceleme: " . $data->content_title,
+                ':title' => $title ?: $data->content_title,
                 ':source' => $data->content_title,
                 ':author' => $author,
                 ':content_type' => $data->content_type,
