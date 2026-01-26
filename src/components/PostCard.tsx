@@ -12,6 +12,7 @@ import { usePostInteractions, PostUpdateFn } from '../hooks/usePostInteractions'
 import { RepostMenu } from './RepostMenu';
 import { Post, ContentType } from '../types/models';
 import { getStyles } from './styles/PostCard.styles';
+import { ensureHttps } from '../utils/urlUtils';
 
 interface PostCardProps {
     post: Post;
@@ -288,7 +289,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                             onPress={() => handleContent(displayPost.content_type!, displayPost.content_id!)}
                         >
                             <Image
-                                source={{ uri: displayPost.image_url || DefaultImages.placeholder }}
+                                source={{ uri: ensureHttps(displayPost.image_url) || DefaultImages.placeholder }}
                                 style={styles.bookCover}
                                 resizeMode="cover"
                             />
@@ -319,7 +320,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                         onPress={() => handleContent(displayPost.content_type!, displayPost.content_id!)}
                     >
                         <Image
-                            source={{ uri: displayPost.image_url || DefaultImages.placeholder }}
+                            source={{ uri: ensureHttps(displayPost.image_url) || DefaultImages.placeholder }}
                             style={styles.bookCover}
                             resizeMode="cover"
                         />
@@ -395,7 +396,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                             post.original_post.content_type === 'music') && post.original_post.image_url && (
                                 <View style={[styles.bookCard, { marginBottom: 8, marginTop: 8 }]}>
                                     <Image
-                                        source={{ uri: post.original_post.image_url }}
+                                        source={{ uri: ensureHttps(post.original_post.image_url) }}
                                         style={[styles.bookCover, { width: 50, height: 75 }]}
                                         resizeMode="cover"
                                     />
@@ -422,7 +423,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
                         {/* Fallback: Show image only if no content_type but has image */}
                         {!post.original_post.content_type && post.original_post.image_url && (
                             <Image
-                                source={{ uri: post.original_post.image_url }}
+                                source={{ uri: ensureHttps(post.original_post.image_url) }}
                                 style={styles.embeddedImage}
                                 resizeMode="cover"
                             />

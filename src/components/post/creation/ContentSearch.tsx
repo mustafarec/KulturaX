@@ -6,6 +6,7 @@ import { googleBooksApi } from '../../../services/googleBooksApi';
 import { tmdbApi } from '../../../services/tmdbApi';
 import { spotifyService, ticketmasterService } from '../../../services/backendApi';
 import { Card } from '../../ui/Card';
+import { ensureHttps } from '../../../utils/urlUtils';
 
 export type SearchType = 'book' | 'film' | 'music' | 'event' | 'concert' | 'theater';
 
@@ -90,15 +91,24 @@ export const ContentSearch: React.FC<ContentSearchProps> = ({ type, onSelect, pl
     };
 
     const getItemImage = (item: any) => {
+        let url = null;
         switch (type) {
-            case 'book': return item.volumeInfo?.imageLinks?.thumbnail;
-            case 'film': return item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : null;
-            case 'music': return item.album?.images?.[0]?.url;
+            case 'book':
+                url = item.volumeInfo?.imageLinks?.thumbnail;
+                break;
+            case 'film':
+                url = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : null;
+                break;
+            case 'music':
+                url = item.album?.images?.[0]?.url;
+                break;
             case 'event':
             case 'concert':
-            case 'theater': return item.images?.[0]?.url;
-            default: return null;
+            case 'theater':
+                url = item.images?.[0]?.url;
+                break;
         }
+        return ensureHttps(url);
     };
 
     const getItemSubtitle = (item: any) => {

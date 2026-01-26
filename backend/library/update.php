@@ -1,6 +1,7 @@
 <?php
 include '../config.php';
 include '../auth_middleware.php';
+include_once '../lib/image_helper.php';
 
 // Token'dan kimlik doğrula
 $user_id = requireAuth();
@@ -24,52 +25,12 @@ $author = isset($data->author) ? $data->author : null;
 $summary = isset($data->summary) ? $data->summary : null;
 $lyrics = isset($data->lyrics) ? $data->lyrics : null;
 
-// --- HELPER FUNCTION: ZERO DEPENDENCY ---
-function downloadAndSaveImage($url, $type, $contentId) {
-    // 0. Eğer URL zaten bizim sunucudaysa işlem yapma
-    if (strpos($url, 'mmreeo.online') !== false) {
-        return $url;
-    }
-
-    // 1. Hedef Dizin ve Dosya Adı
-    $uploadDir = '../uploads/covers/';
-    $fileName = $type . '_' . $contentId . '.jpg';
-    $filePath = $uploadDir . $fileName;
-    
-    // Public URL
-    $publicUrl = 'https://mmreeo.online/api/uploads/covers/' . $fileName;
-
-    // 2. Kontrol: Dosya zaten var mı?
-    if (file_exists($filePath)) {
-        return $publicUrl;
-    }
-
-    // 3. İndirme İşlemi (Fail-Safe)
-    try {
-        $context = stream_context_create([
-            'http' => ['timeout' => 5, 'header' => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n"]
-        ]);
-        
-        $imageData = @file_get_contents($url, false, $context);
-
-        if ($imageData === FALSE) {
-            return $url;
-        }
-
-        // 4. Dosyayı Yaz
-        file_put_contents($filePath, $imageData);
-        
-        return $publicUrl;
-
-    } catch (Exception $e) {
-        return $url;
-    }
-}
+// --- IMAGE HELPER IS NOW SHARED ---
 
 // --- ZERO DEPENDENCY IMAGE LOGIC ---
 $image_url = null;
 if ($image_url_input) {
-   $image_url = downloadAndSaveImage($image_url_input, $content_type, $content_id);
+    $image_url = downloadAndSaveImage($image_url_input, $content_type, $content_id);
 }
 
 // Geçerli durumları kontrol et
@@ -92,21 +53,27 @@ try {
     $check_stmt->bindParam(':content_type', $content_type);
     $check_stmt->bindParam(':content_id', $content_id);
     $check_stmt->execute();
-    
+
     $existing = $check_stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
         // KAYIT VAR: Güncelleme kontrolü
         $needs_update = false;
-        $new_status = $existing['status']; 
+        $new_status = $existing['status'];
 
         // Metadata Kontrolü (Smart Update)
-        if ($content_title !== null && $content_title !== $existing['content_title']) $needs_update = true;
-        if ($image_url !== null && $image_url !== $existing['image_url']) $needs_update = true;
-        if ($author !== null && $author !== $existing['author']) $needs_update = true;
-        if ($summary !== null && $summary !== $existing['summary']) $needs_update = true;
-        if ($lyrics !== null && $lyrics !== $existing['lyrics']) $needs_update = true;
-        if ($isbn !== null && $isbn !== $existing['isbn']) $needs_update = true;
+        if ($content_title !== null && $content_title !== $existing['content_title'])
+            $needs_update = true;
+        if ($image_url !== null && $image_url !== $existing['image_url'])
+            $needs_update = true;
+        if ($author !== null && $author !== $existing['author'])
+            $needs_update = true;
+        if ($summary !== null && $summary !== $existing['summary'])
+            $needs_update = true;
+        if ($lyrics !== null && $lyrics !== $existing['lyrics'])
+            $needs_update = true;
+        if ($isbn !== null && $isbn !== $existing['isbn'])
+            $needs_update = true;
 
         // Status Kontrolü ('visited' korumalı)
         if ($status !== 'visited' && $status !== $existing['status']) {
@@ -131,16 +98,16 @@ try {
                 isbn = :isbn,
                 updated_at = NOW() 
                 WHERE id = :id";
-            
+
             $stmt = $conn->prepare($update_query);
-            
+
             $final_title = $content_title !== null ? $content_title : $existing['content_title'];
             $final_image = $image_url !== null ? $image_url : $existing['image_url'];
             $final_author = $author !== null ? $author : $existing['author'];
             $final_summary = $summary !== null ? $summary : $existing['summary'];
             $final_lyrics = $lyrics !== null ? $lyrics : $existing['lyrics'];
             $final_isbn = $isbn !== null ? $isbn : $existing['isbn'];
-            
+
             $stmt->bindParam(':status', $new_status);
             $stmt->bindParam(':progress', $progress);
             $stmt->bindParam(':content_title', $final_title);
@@ -150,13 +117,13 @@ try {
             $stmt->bindParam(':lyrics', $final_lyrics);
             $stmt->bindParam(':isbn', $final_isbn);
             $stmt->bindParam(':id', $existing['id']);
-            
+
             $stmt->execute();
-            
+
             if ($new_status === 'read' && $existing['status'] !== 'read' && $content_type === 'book') {
                 updateReadingGoal($conn, $user_id);
             }
-            
+
             echo json_encode(array("message" => "Kütüphane güncellendi."));
         } else {
             echo json_encode(array("message" => "Değişiklik yok, güncel."));
@@ -177,13 +144,13 @@ try {
         $stmt->bindParam(':summary', $summary);
         $stmt->bindParam(':lyrics', $lyrics);
         $stmt->bindParam(':isbn', $isbn);
-        
+
         $stmt->execute();
 
         if ($status === 'read' && $content_type === 'book') {
             updateReadingGoal($conn, $user_id);
         }
-        
+
         http_response_code(201);
         echo json_encode(array("message" => "Kütüphaneye eklendi."));
     }
@@ -194,7 +161,7 @@ try {
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    
+
     if ($e instanceof PDOException && ($e->errorInfo[1] == 1213 || $e->getCode() == '40001')) {
         http_response_code(503);
         echo json_encode(array("message" => "Sunucu yoğun, işlem geri alındı."));
@@ -204,7 +171,8 @@ try {
     }
 }
 
-function updateReadingGoal($conn, $user_id) {
+function updateReadingGoal($conn, $user_id)
+{
     $year = date('Y');
     $goal_query = "UPDATE reading_goals SET current_count = current_count + 1 WHERE user_id = :user_id AND year = :year";
     $goal_stmt = $conn->prepare($goal_query);

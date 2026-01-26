@@ -14,6 +14,7 @@ import { reviewService } from '../../services/backendApi';
 import { draftService } from '../../services/DraftService';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { ContentSearch } from '../../components/post/creation/ContentSearch';
+import { ensureHttps } from '../../utils/urlUtils';
 
 export const CreateReviewScreen = () => {
     const navigation = useNavigation();
@@ -381,17 +382,17 @@ export const CreateReviewScreen = () => {
                             onSelect={(item) => {
                                 if (type === 'book') {
                                     setTitle(item.volumeInfo?.title);
-                                    setImageUrl(item.volumeInfo?.imageLinks?.thumbnail);
+                                    setImageUrl(ensureHttps(item.volumeInfo?.imageLinks?.thumbnail));
                                     setContentId(item.id);
                                 } else if (type === 'film') {
                                     setTitle(item.title);
-                                    setImageUrl(item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '');
+                                    setImageUrl(ensureHttps(item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : ''));
                                     setContentId(item.id.toString());
                                 } else if (type === 'music') {
                                     const musicTitle = item.title || item.name;
                                     const musicArtist = item.artist || item.artists?.[0]?.name;
                                     setTitle(musicTitle && musicArtist ? `${musicTitle} - ${musicArtist}` : musicTitle);
-                                    setImageUrl(item.image || item.album?.images?.[0]?.url);
+                                    setImageUrl(ensureHttps(item.image || item.album?.images?.[0]?.url));
                                     setContentId(item.id);
                                 }
                             }}

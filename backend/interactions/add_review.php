@@ -4,6 +4,7 @@ include_once '../config.php';
 include_once '../auth_middleware.php';
 include_once '../validation.php';
 include_once '../rate_limiter.php';
+include_once '../lib/image_helper.php';
 
 // Auth kontrolü
 $userId = requireAuth();
@@ -68,6 +69,11 @@ try {
     $author = isset($data->author) ? Validator::sanitizeInput($data->author) : null;
     $title = isset($data->title) ? Validator::sanitizeInput($data->title) : null;
 
+    // Cache image locally if provided
+    if ($image_url) {
+        $image_url = downloadAndSaveImage($image_url, $data->content_type, $data->content_id);
+    }
+
     // 1. Update/Insert into user_library (Cache content details)
     $check_lib_query = "SELECT id, status FROM user_library WHERE user_id = :user_id AND content_type = :content_type AND content_id = :content_id";
     $check_lib_stmt = $conn->prepare($check_lib_query);
@@ -127,7 +133,7 @@ try {
             $post_update_stmt = $conn->prepare($post_update_query);
             $post_update_stmt->execute([
                 ':content' => $review_text,
-                ':image_url' => $data->image_url,
+                ':image_url' => $image_url,
                 ':id' => $existing_post['id']
             ]);
         } else {
@@ -141,7 +147,7 @@ try {
                 ':author' => $author,
                 ':content_type' => $data->content_type,
                 ':content_id' => $data->content_id,
-                ':image_url' => $data->image_url
+                ':image_url' => $image_url
             ]);
         }
 
