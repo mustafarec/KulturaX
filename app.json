@@ -15,7 +15,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Profil fotoğrafı ve gönderi için fotoğraf çekmek amacıyla kameranıza erişim izni gereklidir.",
         "NSMicrophoneUsageDescription": "Video kaydı yapmak için mikrofonunuza erişim izni gereklidir.",
-        "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir."
+        "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
