@@ -26,10 +26,12 @@
         "NSMicrophoneUsageDescription": "Video kaydı yapmak için mikrofonunuza erişim izni gereklidir.",
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.anonymous.kitapmuzikfilm",
+      "versionCode": 2,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {},
