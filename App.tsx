@@ -12,6 +12,7 @@ import { toastConfig } from './src/components/ToastConfig';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { PostHubProvider } from './src/context/PostHubContext';
 import { WebSocketProvider } from './src/context/WebSocketContext';
+import { CollapsibleProvider } from './src/context/CollapsibleContext';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -84,15 +85,17 @@ function App(): React.JSX.Element {
                     <WebSocketProvider>
                       <PostHubProvider>
                         <NotificationProvider>
-                          <AppNavigator />
-                          <UpdateModal
-                            visible={showUpdateModal}
-                            isForceUpdate={updateInfo?.isForceUpdate || false}
-                            latestVersion={updateInfo?.latestVersion}
-                            releaseNotes={updateInfo?.releaseNotes}
-                            onUpdate={handleUpdate}
-                            onLater={handleLater}
-                          />
+                          <CollapsibleProvider>
+                            <AppNavigator />
+                            <UpdateModal
+                              visible={showUpdateModal}
+                              isForceUpdate={updateInfo?.isForceUpdate || false}
+                              latestVersion={updateInfo?.latestVersion}
+                              releaseNotes={updateInfo?.releaseNotes}
+                              onUpdate={handleUpdate}
+                              onLater={handleLater}
+                            />
+                          </CollapsibleProvider>
                         </NotificationProvider>
                       </PostHubProvider>
                     </WebSocketProvider>

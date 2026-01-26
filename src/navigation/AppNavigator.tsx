@@ -20,6 +20,7 @@ import { SettingsScreen } from '../screens/main/SettingsScreen';
 import { ChatDetailScreen } from '../screens/main/ChatDetailScreen';
 import { MessageScreen } from '../screens/main/MessageScreen';
 import { TopicDetailScreen } from '../screens/main/TopicDetailScreen';
+import { SearchContentScreen } from '../screens/main/SearchContentScreen';
 
 import { OtherProfileScreen } from '../screens/main/OtherProfileScreen';
 import { PostDetailScreen } from '../screens/main/PostDetailScreen';
@@ -106,6 +107,7 @@ export const AppNavigator = () => {
 
                             <Stack.Screen name="OtherProfile" component={OtherProfileScreen} options={{ headerShown: false }} />
                             <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ headerShown: false }} />
+                            <Stack.Screen name="SearchContent" component={SearchContentScreen} options={{ headerShown: false }} />
                             <Stack.Screen name="TopicDetail" component={TopicDetailScreen} options={{ headerShown: false }} />
                             <Stack.Screen
                                 name="CreatorDetail"

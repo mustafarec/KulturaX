@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, Dimensions, ScrollView, BackHandler, DeviceEventEmitter } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, StatusBar, TextInput, Animated as RNAnimated, Dimensions, ScrollView, BackHandler, DeviceEventEmitter, Platform } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, useAnimatedScrollHandler, interpolate, Extrapolate, runOnJS } from 'react-native-reanimated';
+import { useCollapsible } from '../../context/CollapsibleContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,6 +42,8 @@ import { getStyles } from './styles/FeedScreen.styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+
 const UnreadBadge = () => {
     const { unreadCount } = useMessage();
     const { theme } = useTheme();
@@ -72,6 +75,8 @@ export const FeedScreen = () => {
     const { theme } = useTheme();
     const navigation = useNavigation();
     const styles = getStyles(theme);
+    const { translateY: globalTranslateY, hideBars, showBars } = useCollapsible();
+
 
     // Interaction Hooks
     const { handleLike, handleToggleSave, handleDirectRepost, handleQuoteRepost, handleContentPress: handleContentPressHook, handleUserPress } = usePostInteractions({ onUpdatePost: handlePostUpdate });
@@ -83,8 +88,6 @@ export const FeedScreen = () => {
     const [isSubCategoriesVisible, setIsSubCategoriesVisible] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [isSearchVisible, setIsSearchVisible] = useState(false);
-    const searchAnim = useRef(new RNAnimated.Value(0)).current;
 
     // Modals
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
@@ -114,14 +117,7 @@ export const FeedScreen = () => {
         }
     }, [activeMainTab, activeSubTab, fetchFeed]);
 
-    // --- EFFECT: Search Animation ---
-    useEffect(() => {
-        RNAnimated.timing(searchAnim, {
-            toValue: isSearchVisible ? 1 : 0,
-            duration: 300,
-            useNativeDriver: false,
-        }).start();
-    }, [isSearchVisible]);
+
 
     // --- EFFECT: Search Logic ---
     const wasSearchUsed = useRef(false);
@@ -202,7 +198,7 @@ export const FeedScreen = () => {
     const viewedPosts = useRef(new Set<number>());
     const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50, minimumViewTime: 1000 }).current;
 
-    const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+    const onViewableItemsChanged = React.useCallback(({ viewableItems }: { viewableItems: any[] }) => {
         viewableItems.forEach(viewableItem => {
             const item = viewableItem.item;
             if (item && item.id && item.type === 'post') {
@@ -217,8 +213,53 @@ export const FeedScreen = () => {
                 }
             }
         });
-    }).current;
+    }, [user?.id]);
 
+    const lastScrollY = useSharedValue(0);
+    const headerHeight = 250; // Distance to translate (should be larger than the actual header)
+    const basePadding = Platform.OS === 'android' ? 140 : 180;
+    const dynamicHeaderHeight = isSubCategoriesVisible ? basePadding + 55 : basePadding;
+
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            const currentScrollY = event.contentOffset.y;
+            const diff = currentScrollY - lastScrollY.value;
+
+            if (currentScrollY <= 0) {
+                // At the top, ensure bars are shown
+                runOnJS(showBars)();
+            } else if (diff > 5 && currentScrollY > 50) {
+                // Scrolling down, hide bars
+                runOnJS(hideBars)();
+            } else if (diff < -5) {
+                // Scrolling up, show bars
+                runOnJS(showBars)();
+            }
+
+            lastScrollY.value = currentScrollY;
+        },
+    });
+
+    const headerAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            transform: [
+                {
+                    translateY: interpolate(
+                        globalTranslateY.value,
+                        [0, 1],
+                        [0, -headerHeight],
+                        'clamp'
+                    ),
+                },
+            ],
+            opacity: interpolate(globalTranslateY.value, [0, 0.5, 1], [1, 1, 0], 'clamp'),
+        };
+    });
 
     // --- RENDER ---
     const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
@@ -227,7 +268,7 @@ export const FeedScreen = () => {
     // AD_INTERVAL: Her kaç postta bir reklam gösterileceği
     const AD_INTERVAL = 5;
 
-    const renderItem = React.useCallback(({ item, index }: { item: any; index: number }) => {
+    const renderItem = React.useCallback(({ item, index }: { item: Post | any; index: number }) => {
         // Reklam ekleme: Her AD_INTERVAL postta bir (premium değilse)
         const showAdBefore = !user?.is_premium && index > 0 && index % AD_INTERVAL === 0;
 
@@ -259,16 +300,17 @@ export const FeedScreen = () => {
                 // Hook Actions
                 onLike={() => handleLike(item)}
                 onSave={() => handleToggleSave(item)}
+                onRepost={() => handleDirectRepost(item)}
             />
         );
 
         // Reklam + Post birlikte render
         if (showAdBefore) {
             return (
-                <>
+                <View key={`ad-wrapper-${item.id}`}>
                     <AdBanner />
                     {postCard}
-                </>
+                </View>
             );
         }
 
@@ -278,18 +320,20 @@ export const FeedScreen = () => {
     const renderList = (data: any[], loading: boolean) => {
         if (loading) {
             return (
-                <View style={[styles.listContainer, { paddingTop: 0 }]}>
+                <View style={[styles.listContainer, { paddingTop: dynamicHeaderHeight + 5 }]}>
                     <SkeletonPost /><SkeletonPost /><SkeletonPost />
                 </View>
             );
         }
         return (
-            <FlatList
+            <AnimatedFlatList
+                onScroll={scrollHandler}
+                scrollEventThrottle={16}
                 data={data}
                 renderItem={renderItem}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.listContainer}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+                keyExtractor={(item: any) => item.id.toString()}
+                contentContainerStyle={{ ...styles.listContainer, paddingTop: dynamicHeaderHeight + 5 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} progressViewOffset={dynamicHeaderHeight} />}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
                 removeClippedSubviews={true}
@@ -324,60 +368,56 @@ export const FeedScreen = () => {
         <View style={styles.container}>
             <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} translucent />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}><AnimatedMenuButton /></View>
-                <View style={styles.pageTitleContainer}><Image source={require('../../assets/images/header_logo.png')} style={styles.headerLogo} /></View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={() => {
-                        const newVisible = !isSearchVisible;
-                        setIsSearchVisible(newVisible);
-                        if (!newVisible) setSearchQuery('');
-                    }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}><Search size={24} color={theme.colors.text} /></TouchableOpacity>
-                    <TouchableOpacity onPress={() => (navigation as any).navigate('Notifications')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}><Bell size={24} color={theme.colors.text} /><NotificationBadge /></TouchableOpacity>
+            <Animated.View style={[{ zIndex: 100, backgroundColor: theme.colors.background }, headerAnimatedStyle]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}><AnimatedMenuButton /></View>
+                    <View style={styles.pageTitleContainer}><Image source={require('../../assets/images/header_logo.png')} style={styles.headerLogo} /></View>
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity onPress={() => (navigation as any).navigate('SearchContent')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Search size={24} color={theme.colors.text} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => (navigation as any).navigate('Notifications')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Bell size={24} color={theme.colors.text} />
+                            <NotificationBadge />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
 
-            {/* Search Bar */}
-            <RNAnimated.View style={[styles.searchContainer, { height: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 60] }), opacity: searchAnim, transform: [{ translateY: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }]}>
-                <View style={styles.searchInputContainer}>
-                    <Search size={16} color={theme.colors.textSecondary} />
-                    <TextInput style={styles.searchInput} placeholder="Kullanıcı veya gönderi ara..." placeholderTextColor={theme.colors.textSecondary} value={searchQuery} onChangeText={setSearchQuery} />
+
+                {/* Sub-Tabs */}
+                <View style={[styles.tabsContainer, { zIndex: 1, paddingBottom: 0 }]}>
+                    <TouchableOpacity onPress={() => activeMainTab === 'forYou' ? setIsSubCategoriesVisible(!isSubCategoriesVisible) : (setActiveMainTab('forYou'), setIsSubCategoriesVisible(true))} style={[styles.tab, activeMainTab === 'forYou' && styles.activeTab, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                        <Text style={[styles.tabText, activeMainTab === 'forYou' && styles.activeTabText]}>Trendler</Text>
+                        {activeMainTab === 'forYou' ? (isSubCategoriesVisible ? <ChevronUp size={16} color="#FFFFFF" /> : <ChevronDown size={16} color="#FFFFFF" />) : <ChevronDown size={16} color={theme.colors.textSecondary} />}
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setActiveMainTab('following')} style={[styles.tab, activeMainTab === 'following' && styles.activeTab]}>
+                        <Text style={[styles.tabText, activeMainTab === 'following' && styles.activeTabText]}>Takip</Text>
+                    </TouchableOpacity>
                 </View>
-            </RNAnimated.View>
 
-            {/* Tabs */}
-            <View style={[styles.tabsContainer, { zIndex: 1, paddingBottom: 0 }]}>
-                <TouchableOpacity onPress={() => activeMainTab === 'forYou' ? setIsSubCategoriesVisible(!isSubCategoriesVisible) : (setActiveMainTab('forYou'), setIsSubCategoriesVisible(true))} style={[styles.tab, activeMainTab === 'forYou' && styles.activeTab, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                    <Text style={[styles.tabText, activeMainTab === 'forYou' && styles.activeTabText]}>Trendler</Text>
-                    {activeMainTab === 'forYou' ? (isSubCategoriesVisible ? <ChevronUp size={16} color="#FFFFFF" /> : <ChevronDown size={16} color="#FFFFFF" />) : <ChevronDown size={16} color={theme.colors.textSecondary} />}
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setActiveMainTab('following')} style={[styles.tab, activeMainTab === 'following' && styles.activeTab]}>
-                    <Text style={[styles.tabText, activeMainTab === 'following' && styles.activeTabText]}>Takip</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Sub-Tabs */}
-            {activeMainTab === 'forYou' && isSubCategoriesVisible && (
-                <View style={styles.subCategoryContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subCategoryScrollContent}>
-                        {subCategories.map((item) => (
-                            <TouchableOpacity
-                                key={item.id}
-                                onPress={() => setActiveSubTab(item.id as any)}
-                                style={[
-                                    styles.subCategoryItem,
-                                    activeSubTab === item.id ? styles.subCategoryItemActive : styles.subCategoryItemInactive
-                                ]}>
-                                <Text style={[
-                                    styles.subCategoryText,
-                                    activeSubTab === item.id ? styles.subCategoryTextActive : styles.subCategoryTextInactive
-                                ]}>{item.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
+                {/* Sub-Tabs Scrollable */}
+                {activeMainTab === 'forYou' && isSubCategoriesVisible && (
+                    <View style={styles.subCategoryContainer}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subCategoryScrollContent}>
+                            {subCategories.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    onPress={() => setActiveSubTab(item.id as any)}
+                                    style={[
+                                        styles.subCategoryItem,
+                                        activeSubTab === item.id ? styles.subCategoryItemActive : styles.subCategoryItemInactive
+                                    ]}>
+                                    <Text style={[
+                                        styles.subCategoryText,
+                                        activeSubTab === item.id ? styles.subCategoryTextActive : styles.subCategoryTextInactive
+                                    ]}>{item.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+            </Animated.View>
 
             {/* Content Pages */}
             <Animated.View style={[styles.contentWrapper, { width: SCREEN_WIDTH * 2 }, animatedStyle]}>
@@ -428,4 +468,3 @@ export const FeedScreen = () => {
         </View>
     );
 };
-

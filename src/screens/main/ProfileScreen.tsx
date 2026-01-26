@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, Platform, UIManager, RefreshControl } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../../context/AuthContext';
@@ -9,7 +10,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import { Skeleton, SkeletonCircle } from '../../components/Skeleton';
 import LinearGradient from 'react-native-linear-gradient';
-import { Share2, MoreVertical, Film, BookOpen, Heart, MessageCircle, Bookmark, Settings, Repeat, Music, Ghost, Crown, MapPin, Link, Calendar, Users, UserPlus, MessageSquare, Package, Star } from 'lucide-react-native';
+import { Share2, MoreVertical, Film, BookOpen, Heart, MessageCircle, Bookmark, Settings, Repeat, Music, Ghost, Crown, MapPin, Link, Calendar, Users, UserPlus, MessageSquare, Package, Star, Quote } from 'lucide-react-native';
 import { postService, userService, libraryService, reviewService, interactionService } from '../../services/backendApi';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
@@ -33,6 +34,7 @@ export const ProfileScreen = () => {
     const { user, updateUser } = useAuth();
     const { theme } = useTheme();
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
 
     const [activeTab, setActiveTab] = useState('posts');
     const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -180,7 +182,7 @@ export const ProfileScreen = () => {
 
     // Animation Value for Tab Slide
     const translateX = useSharedValue(0);
-    const tabOrder = ['posts', 'replies', 'book', 'movie', 'music'];
+    const tabOrder = ['posts', 'replies', 'quotes', 'book', 'movie', 'music'];
 
     const getTabIndex = (tab: string) => {
         return tabOrder.indexOf(tab);
@@ -358,6 +360,35 @@ export const ProfileScreen = () => {
             );
         }
 
+        if (currentTab === 'quotes') {
+            const quotesOnly = userPosts.filter(p =>
+                (p.type === 'quote' || (p.quote_text && p.quote_text.trim().length > 0)) &&
+                !p.reply_to_post_id
+            );
+            return quotesOnly.length > 0 ? (
+                quotesOnly.map((post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        onPress={() => (navigation as any).navigate('PostDetail', { postId: post.id })}
+                        currentUserId={user?.id}
+                        onUserPress={() => { }}
+                        onContentPress={handleContentPress}
+                        onOptions={(pos) => handleOptionsPress(post, pos)}
+                        onTopicPress={(topicId, topicName) => (navigation as any).navigate('TopicDetail', { topic: { id: topicId, name: topicName } })}
+                        onComment={() => (navigation as any).navigate('PostDetail', { postId: post.id, autoFocusComment: true })}
+                        onShare={() => {
+                            setSelectedPostForShare(post);
+                            setShareOptionsVisible(true);
+                        }}
+                        onUpdatePost={(updater) => setUserPosts(prev => prev.map(updater))}
+                    />
+                ))
+            ) : (
+                <EmptyState icon={Quote} text="Henüz alıntı yok." />
+            );
+        }
+
         if (currentTab === 'replies') {
             if (isRepliesLoading && !refreshing) {
                 return (
@@ -412,7 +443,7 @@ export const ProfileScreen = () => {
             );
         }
 
-        const postsOnly = userPosts.filter(p => p.type !== 'quote' && !p.reply_to_post_id && p.type !== 'comment');
+        const postsOnly = userPosts.filter(p => p.type !== 'quote' && (!p.quote_text || p.quote_text.trim().length === 0) && !p.reply_to_post_id && p.type !== 'comment');
         return postsOnly.length > 0 ? (
             postsOnly.map((post) => (
                 <PostCard
@@ -613,13 +644,22 @@ export const ProfileScreen = () => {
     return (
         <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <ScrollView
+                {...(Platform.OS === 'ios' ? {
+                    contentInset: { top: insets.top },
+                    contentOffset: { x: 0, y: -insets.top }
+                } : {})}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={theme.colors.primary}
+                        progressViewOffset={Platform.OS === 'android' ? insets.top + 10 : 0}
+                    />
                 }
                 showsVerticalScrollIndicator={false}
             >
                 {/* Banner Section */}
-                <View style={styles.bannerContainer}>
+                <View style={[styles.bannerContainer, Platform.OS === 'ios' && { marginTop: -insets.top, height: 192 + insets.top }]}>
                     {headerImage ? (
                         <Image source={{ uri: headerImage }} style={styles.bannerImage} />
                     ) : (
@@ -865,7 +905,7 @@ export const ProfileScreen = () => {
                     style={[styles.tabContainer, { borderBottomColor: theme.colors.border }]}
                     contentContainerStyle={styles.tabContentContainer}
                 >
-                    {['posts', 'replies', 'book', 'movie', 'music'].map((tab) => (
+                    {['posts', 'replies', 'quotes', 'book', 'movie', 'music'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
                             style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.colors.primary }]}
@@ -877,7 +917,7 @@ export const ProfileScreen = () => {
                             }}
                         >
                             <Text style={[styles.tabText, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
-                                {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : 'Müzik'}
+                                {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'quotes' ? 'Alıntılar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : 'Müzik'}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -892,6 +932,7 @@ export const ProfileScreen = () => {
                     ]}>
                         <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 20, paddingBottom: 20 }}>{renderPosts('posts')}</View>
                         <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 20, paddingBottom: 20 }}>{renderPosts('replies')}</View>
+                        <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 20, paddingBottom: 20 }}>{renderPosts('quotes')}</View>
                         <View style={{ width: SCREEN_WIDTH }}>{renderGridContent('book')}</View>
                         <View style={{ width: SCREEN_WIDTH }}>{renderGridContent('movie')}</View>
                         <View style={{ width: SCREEN_WIDTH }}>{renderGridContent('music')}</View>

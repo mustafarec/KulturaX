@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text, Image, TouchableOpacity, DeviceEventEmitter, Modal, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
+import { useCollapsible } from '../context/CollapsibleContext';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { FeedScreen } from '../screens/main/FeedScreen';
@@ -72,10 +73,6 @@ const FloatingAnimatedButton = ({ onPress, isOpen, theme, bottomInset }: { onPre
     );
 };
 
-// ... (No inline PostMenuOverlay)
-
-// ... (No inline PostMenuOverlay)
-
 // --- Main Navigator ---
 
 export const TabNavigator = () => {
@@ -93,18 +90,46 @@ export const TabNavigator = () => {
     };
 
     // Calculate dynamic tab bar height and padding
-    // If there is a safe area (iPhone X+), use it. If not (older Android/iOS), use default padding.
     const bottomPadding = insets.bottom > 0 ? insets.bottom : 10;
     const tabBarHeight = 60 + bottomPadding;
     const iconSize = normalize(24);
     const activeIconScale = 1.1;
 
+    const { translateY: globalTranslateY } = useCollapsible();
+    const HIDE_DISTANCE = 150;
+
+    const bottomBarAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1000,
+            transform: [
+                {
+                    translateY: interpolate(
+                        globalTranslateY.value,
+                        [0, 1],
+                        [0, HIDE_DISTANCE],
+                        'clamp'
+                    ),
+                },
+            ],
+        };
+    });
+
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator
+                tabBar={(props) => (
+                    <Animated.View style={bottomBarAnimatedStyle}>
+                        <BottomTabBar {...props} />
+                    </Animated.View>
+                )}
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
+                        position: 'absolute',
                         backgroundColor: isBlackTheme ? 'rgba(0,0,0,1)' : theme.colors.surface,
                         borderTopWidth: isBlackTheme ? 0 : 1,
                         borderTopColor: theme.colors.border,
@@ -118,7 +143,7 @@ export const TabNavigator = () => {
                     tabBarActiveTintColor: isBlackTheme ? blackThemeBarSettings.activeColor : theme.colors.primary,
                     tabBarInactiveTintColor: isBlackTheme ? blackThemeBarSettings.inactiveColor : theme.colors.textSecondary,
                     tabBarItemStyle: {
-                        height: 60, // Fixed height for the touchable area within the bar
+                        height: 60,
                         flex: 1,
                         justifyContent: 'center',
                         alignItems: 'center',
@@ -160,14 +185,12 @@ export const TabNavigator = () => {
                     component={View}
                     listeners={{
                         tabPress: (e) => {
-                            e.preventDefault(); // Prevent navigation
-                            openModal(); // Trigger custom menu
+                            e.preventDefault();
+                            openModal();
                         },
                     }}
                     options={{
-                        // Render a transparent/empty placeholder in the tab bar to keep spacing
                         tabBarButton: (props) => {
-                            // Sanitize props to handle type mismatch (null vs undefined)
                             const { delayLongPress, disabled, onBlur, onFocus, onLongPress, onPress, onPressIn, onPressOut, ...rest } = props;
                             const safeDelayLongPress = delayLongPress === null ? undefined : delayLongPress;
                             const safeDisabled = disabled === null ? undefined : disabled;
@@ -180,7 +203,7 @@ export const TabNavigator = () => {
                             return (
                                 <TouchableOpacity
                                     {...(rest as any)}
-                                    disabled={true} // Disable default press, we handle via floating button
+                                    disabled={true}
                                     onBlur={safeOnBlur}
                                     onFocus={safeOnFocus}
                                     onLongPress={safeOnLongPress}
@@ -278,10 +301,9 @@ export const TabNavigator = () => {
                 />
             </Tab.Navigator>
 
-            {/* Overlay Menu - Moved to AppNavigator */}
-
-            {/* Hoisted Floating Button */}
-            <FloatingAnimatedButton isOpen={isModalVisible} onPress={() => openModal()} theme={theme} bottomInset={bottomPadding > 10 ? bottomPadding : 0} />
+            <Animated.View style={bottomBarAnimatedStyle}>
+                <FloatingAnimatedButton isOpen={isModalVisible} onPress={() => openModal()} theme={theme} bottomInset={bottomPadding > 10 ? bottomPadding : 0} />
+            </Animated.View>
 
         </View>
     );
@@ -290,11 +312,7 @@ export const TabNavigator = () => {
 const styles = StyleSheet.create({
     floatingButtonData: {
         position: 'absolute',
-        // bottom: setted inline
         alignSelf: 'center',
-        // width: setted inline
-        // height: setted inline
-        // borderRadius: setted inline
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: "#000",

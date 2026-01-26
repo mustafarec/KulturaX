@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { postService, interactionService, clickTrackingService } from '../../services/backendApi';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { PostCard } from '../../components/PostCard';
+import { Card } from '../../components/ui/Card';
 import { PostDetailSkeleton } from '../../components/Skeleton';
 import { ArrowLeft, Send, Heart, MessageCircle } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
@@ -331,10 +332,9 @@ export const PostDetailScreen = () => {
         },
         commentContent: {
             flex: 1,
-            backgroundColor: theme.colors.surface, // Was #F8F9FA
-            padding: 12,
-            borderRadius: 16,
-            borderTopLeftRadius: 4,
+            backgroundColor: 'transparent',
+            paddingLeft: 4,
+            paddingRight: 8,
         },
         commentHeader: {
             flexDirection: 'row',
@@ -493,88 +493,90 @@ export const PostDetailScreen = () => {
         const childCount = comments.filter(c => c.parent_id === item.id).length;
 
         return (
-            <View key={item.id} style={styles.commentItem}>
-                <TouchableOpacity onPress={() => goToProfile(item.user_id)}>
-                    <View style={styles.avatarPlaceholder}>
-                        {item.avatar_url ? (
-                            <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
-                        ) : (
-                            <Text style={styles.avatarText}>{item.username.charAt(0).toUpperCase()}</Text>
-                        )}
-                    </View>
-                </TouchableOpacity>
-                <View style={styles.commentContent}>
-                    <View style={styles.commentHeader}>
-                        <View style={{ flex: 1 }}>
-                            <TouchableOpacity onPress={() => goToProfile(item.user_id)}>
-                                <Text style={styles.displayName}>{item.name ? `${item.name} ${item.surname || ''}` : item.username}</Text>
-                            </TouchableOpacity>
-                            <View style={styles.subHeader}>
-                                <Text style={styles.usernameHandle}>@{item.username}</Text>
-                                <Text style={styles.dot}>•</Text>
-                                <Text style={styles.time}>{formatRelativeTime(item.created_at)}</Text>
-                            </View>
+            <View key={item.id} style={{ borderBottomWidth: 1, borderBottomColor: theme.colors.border + '40', paddingBottom: 16, marginBottom: 16 }}>
+                <View style={styles.commentItem}>
+                    <TouchableOpacity onPress={() => goToProfile(item.user_id)}>
+                        <View style={styles.avatarPlaceholder}>
+                            {item.avatar_url ? (
+                                <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+                            ) : (
+                                <Text style={styles.avatarText}>{item.username.charAt(0).toUpperCase()}</Text>
+                            )}
                         </View>
-                        {currentUser && item.user_id === currentUser.id && (
+                    </TouchableOpacity>
+                    <View style={styles.commentContent}>
+                        <View style={styles.commentHeader}>
+                            <View style={{ flex: 1 }}>
+                                <TouchableOpacity onPress={() => goToProfile(item.user_id)}>
+                                    <Text style={styles.displayName}>{item.name ? `${item.name} ${item.surname || ''}` : item.username}</Text>
+                                </TouchableOpacity>
+                                <View style={styles.subHeader}>
+                                    <Text style={styles.usernameHandle}>@{item.username}</Text>
+                                    <Text style={styles.dot}>•</Text>
+                                    <Text style={styles.time}>{formatRelativeTime(item.created_at)}</Text>
+                                </View>
+                            </View>
+                            {currentUser && item.user_id === currentUser.id && (
+                                <TouchableOpacity
+                                    style={styles.moreButton}
+                                    onPress={() => handleDeleteComment(item.id)}
+                                >
+                                    <MoreHorizontal size={16} color={theme.colors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <Text style={styles.text}>{item.content}</Text>
+
+                        <View style={styles.actionRow}>
                             <TouchableOpacity
-                                style={styles.moreButton}
-                                onPress={() => handleDeleteComment(item.id)}
+                                style={[styles.actionButton, { flexDirection: 'row', alignItems: 'center' }]}
+                                onPress={() => handleLikeComment(item.id)}
                             >
-                                <MoreHorizontal size={16} color={theme.colors.textSecondary} />
+                                <Heart
+                                    size={18}
+                                    color={item.is_liked ? theme.colors.error : theme.colors.textSecondary}
+                                    fill={item.is_liked ? theme.colors.error : 'transparent'}
+                                />
+                                <Text style={[styles.actionText, { marginLeft: 6 }, item.is_liked && { color: theme.colors.error }]}>
+                                    {item.like_count > 0 ? item.like_count : 'Beğen'}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.actionButton, { flexDirection: 'row', alignItems: 'center' }]}
+                                onPress={() => handleReply(item)}
+                            >
+                                <MessageCircle size={18} color={theme.colors.textSecondary} />
+                                <Text style={[styles.actionText, { marginLeft: 6 }]}>Cevapla</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Show Replies Button */}
+                        {!commentId && childCount > 0 && (
+                            <TouchableOpacity
+                                style={{
+                                    marginTop: 12,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingVertical: 4
+                                }}
+                                onPress={() => (navigation as any).push('PostDetail', { postId, commentId: item.id })}
+                            >
+                                <View style={{
+                                    width: 20,
+                                    height: 1,
+                                    backgroundColor: theme.colors.border,
+                                    marginRight: 8
+                                }} />
+                                <Text style={{
+                                    color: theme.colors.primary,
+                                    fontSize: 13,
+                                    fontWeight: '600'
+                                }}>
+                                    {childCount} yanıtı gör
+                                </Text>
                             </TouchableOpacity>
                         )}
                     </View>
-                    <Text style={styles.text}>{item.content}</Text>
-
-                    <View style={styles.actionRow}>
-                        <TouchableOpacity
-                            style={[styles.actionButton, { flexDirection: 'row', alignItems: 'center' }]}
-                            onPress={() => handleLikeComment(item.id)}
-                        >
-                            <Heart
-                                size={16}
-                                color={item.is_liked ? theme.colors.error : theme.colors.textSecondary}
-                                fill={item.is_liked ? theme.colors.error : 'transparent'}
-                            />
-                            <Text style={[styles.actionText, { marginLeft: 6 }, item.is_liked && { color: theme.colors.error }]}>
-                                {item.like_count > 0 ? item.like_count : 'Beğen'}
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.actionButton, { flexDirection: 'row', alignItems: 'center' }]}
-                            onPress={() => handleReply(item)}
-                        >
-                            <MessageCircle size={16} color={theme.colors.textSecondary} />
-                            <Text style={[styles.actionText, { marginLeft: 6 }]}>Cevapla</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Show Replies Button */}
-                    {!commentId && childCount > 0 && (
-                        <TouchableOpacity
-                            style={{
-                                marginTop: 12,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                paddingVertical: 4
-                            }}
-                            onPress={() => (navigation as any).push('PostDetail', { postId, commentId: item.id })}
-                        >
-                            <View style={{
-                                width: 20,
-                                height: 1,
-                                backgroundColor: theme.colors.border,
-                                marginRight: 8
-                            }} />
-                            <Text style={{
-                                color: theme.colors.primary,
-                                fontSize: 13,
-                                fontWeight: '600'
-                            }}>
-                                {childCount} yanıtı gör
-                            </Text>
-                        </TouchableOpacity>
-                    )}
                 </View>
             </View>
         );
@@ -679,26 +681,57 @@ export const PostDetailScreen = () => {
                                 <ArrowLeft size={16} color={theme.colors.primary} />
                                 <Text style={{ color: theme.colors.primary, marginLeft: 8, fontSize: 14 }}>Ana gönderiye dön</Text>
                             </TouchableOpacity>
-                            <View style={[styles.commentItem, { backgroundColor: theme.colors.surface, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }]}>
-                                <TouchableOpacity onPress={() => goToProfile(rootComment.user_id)}>
-                                    <View style={styles.avatarPlaceholder}>
-                                        {rootComment.avatar_url ? (
-                                            <Image source={{ uri: rootComment.avatar_url }} style={styles.avatar} />
-                                        ) : (
-                                            <Text style={styles.avatarText}>{rootComment.username.charAt(0).toUpperCase()}</Text>
-                                        )}
-                                    </View>
-                                </TouchableOpacity>
-                                <View style={styles.commentContent}>
-                                    <View style={styles.commentHeader}>
-                                        <View>
-                                            <Text style={styles.displayName}>{rootComment.name ? `${rootComment.name} ${rootComment.surname || ''}` : rootComment.username}</Text>
-                                            <Text style={styles.usernameHandle}>@{rootComment.username}</Text>
+                            <Card style={{ marginHorizontal: 16, marginBottom: 12 }}>
+                                <View style={styles.commentItem}>
+                                    <TouchableOpacity onPress={() => goToProfile(rootComment.user_id)}>
+                                        <View style={styles.avatarPlaceholder}>
+                                            {rootComment.avatar_url ? (
+                                                <Image source={{ uri: rootComment.avatar_url }} style={styles.avatar} />
+                                            ) : (
+                                                <Text style={styles.avatarText}>{rootComment.username.charAt(0).toUpperCase()}</Text>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                    <View style={[styles.commentContent, { backgroundColor: 'transparent', padding: 0 }]}>
+                                        <View style={styles.commentHeader}>
+                                            <View style={{ flex: 1 }}>
+                                                <TouchableOpacity onPress={() => goToProfile(rootComment.user_id)}>
+                                                    <Text style={styles.displayName}>{rootComment.name ? `${rootComment.name} ${rootComment.surname || ''}` : rootComment.username}</Text>
+                                                </TouchableOpacity>
+                                                <View style={styles.subHeader}>
+                                                    <Text style={styles.usernameHandle}>@{rootComment.username}</Text>
+                                                    <Text style={styles.dot}>•</Text>
+                                                    <Text style={styles.time}>{formatRelativeTime(rootComment.created_at)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                        <Text style={[styles.text, { fontSize: 16, marginTop: 12 }]}>{rootComment.content}</Text>
+
+                                        <View style={[styles.actionRow, { marginTop: 16 }]}>
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, { flexDirection: 'row', alignItems: 'center' }]}
+                                                onPress={() => handleLikeComment(rootComment.id)}
+                                            >
+                                                <Heart
+                                                    size={18}
+                                                    color={rootComment.is_liked ? theme.colors.error : theme.colors.textSecondary}
+                                                    fill={rootComment.is_liked ? theme.colors.error : 'transparent'}
+                                                />
+                                                <Text style={[styles.actionText, { marginLeft: 6, fontSize: 14 }, rootComment.is_liked && { color: theme.colors.error }]}>
+                                                    {rootComment.like_count > 0 ? rootComment.like_count : 'Beğen'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, { flexDirection: 'row', alignItems: 'center' }]}
+                                                onPress={() => handleReply(rootComment)}
+                                            >
+                                                <MessageCircle size={18} color={theme.colors.textSecondary} />
+                                                <Text style={[styles.actionText, { marginLeft: 6, fontSize: 14 }]}>Cevapla</Text>
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
-                                    <Text style={[styles.text, { fontSize: 16, marginTop: 8 }]}>{rootComment.content}</Text>
                                 </View>
-                            </View>
+                            </Card>
                         </View>
                     )}
 

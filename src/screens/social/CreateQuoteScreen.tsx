@@ -1,20 +1,25 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Platform, BackHandler } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import ViewShot from 'react-native-view-shot';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { QuoteCard } from '../../components/QuoteCard';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { postService, libraryService, spotifyService } from '../../services/backendApi';
+import { postService } from '../../services/api/postApi';
+import { libraryService } from '../../services/api/libraryApi';
+import { spotifyService } from '../../services/api/integrationApi';
 import { useAuth } from '../../context/AuthContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { tmdbApi } from '../../services/tmdbApi';
-import { X, Tag, XCircle, Search, User, FileText, Check, Book, Film, Music } from 'lucide-react-native';
+import { Avatar } from '../../components/ui/Avatar';
+import { X, Search, FileText, Tag, XCircle, Book, Music, Film, Check, BookOpen, Quote, ArrowLeft } from 'lucide-react-native';
 import { TopicSelectionModal } from '../../components/TopicSelectionModal';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { draftService } from '../../services/DraftService';
+import { ThemedDialog } from '../../components/ThemedDialog';
 
 export const CreateQuoteScreen = () => {
     const route = useRoute<any>();
@@ -26,19 +31,21 @@ export const CreateQuoteScreen = () => {
     const initialImage = route.params?.initialImage || undefined;
     const initialType = route.params?.initialType || null;
     const initialId = route.params?.initialId || null;
+    const draft = route.params?.draft;
 
-    const [quoteText, setQuoteText] = useState(initialText);
-    const [title, setTitle] = useState('');
-    const [comment, setComment] = useState('');
-    const [source, setSource] = useState(initialSource);
-    const [author, setAuthor] = useState(initialAuthor);
-    const [selectedImage, setSelectedImage] = useState<string | undefined>(initialImage);
-    const [selectedType, setSelectedType] = useState<'book' | 'movie' | 'music' | null>(initialType);
-    const [selectedId, setSelectedId] = useState<string | null>(initialId);
+    const [quoteText, setQuoteText] = useState(draft?.data?.quoteText || initialText);
+    const [title, setTitle] = useState(draft?.data?.title || '');
+    const [comment, setComment] = useState(draft?.data?.comment || '');
+    const [source, setSource] = useState(draft?.data?.source || initialSource);
+    const [author, setAuthor] = useState(draft?.data?.author || initialAuthor);
+    const [selectedImage, setSelectedImage] = useState<string | undefined>(draft?.data?.selectedImage || initialImage);
+    const [selectedType, setSelectedType] = useState<'book' | 'movie' | 'music' | null>(draft?.data?.selectedType || initialType);
+    const [selectedId, setSelectedId] = useState<string | null>(draft?.data?.selectedId || initialId);
 
-    const [status, setStatus] = useState<string | null>(null);
-    const [selectedTopic, setSelectedTopic] = useState<any>(null);
+    const [status, setStatus] = useState<string | null>(draft?.data?.status || null);
+    const [selectedTopic, setSelectedTopic] = useState<any>(draft?.data?.selectedTopic || null);
     const [topicModalVisible, setTopicModalVisible] = useState(false);
+    const [dialogVisible, setDialogVisible] = useState(false);
 
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
@@ -50,8 +57,60 @@ export const CreateQuoteScreen = () => {
     const { theme } = useTheme();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
-
     const isDark = theme.dark;
+
+    const hasUnsavedChanges = quoteText.trim().length > 0 || title.trim().length > 0 || comment.trim().length > 0 || !!selectedId;
+
+    useFocusEffect(
+        React.useCallback(() => {
+            const backAction = () => {
+                if (hasUnsavedChanges) {
+                    setDialogVisible(true);
+                    return true;
+                }
+                return false;
+            };
+
+            const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+            return () => backHandler.remove();
+        }, [hasUnsavedChanges])
+    );
+
+    const handleClose = () => {
+        if (hasUnsavedChanges) {
+            setDialogVisible(true);
+        } else {
+            navigation.goBack();
+        }
+    };
+
+    const handleSaveDraft = async () => {
+        try {
+            const draftData = {
+                quoteText,
+                title,
+                comment,
+                source,
+                author,
+                selectedImage,
+                selectedType,
+                selectedId,
+                status,
+                selectedTopic
+            };
+
+            if (draft) {
+                await draftService.updateDraft(draft.id, draftData);
+            } else {
+                await draftService.saveDraft({ type: 'quote', data: draftData });
+            }
+            Toast.show({ type: 'info', text1: 'Taslak Kaydedildi' });
+            navigation.goBack();
+        } catch (error) {
+            Toast.show({ type: 'error', text1: 'Hata', text2: 'Taslak kaydedilemedi.' });
+        }
+        setDialogVisible(false);
+    };
 
     const handleSearchSource = async (query: string) => {
         setSource(query);
@@ -77,65 +136,58 @@ export const CreateQuoteScreen = () => {
 
             let allResults: any[] = [];
 
-            if (people && Array.isArray(people) && people.length > 0) {
+            if (people && people.length > 0) {
                 const person = people[0];
                 try {
                     const credits = await tmdbApi.getPersonCredits(person.id);
-                    if (Array.isArray(credits)) {
-                        const personMovies = credits.slice(0, 10).map((movie: any) => ({
-                            id: movie.id.toString(),
-                            title: movie.title,
-                            subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'}) • ${person.name}`,
-                            type: 'movie',
-                            author: person.name,
-                            image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
-                        }));
-                        allResults = [...allResults, ...personMovies];
-                    }
-                } catch (e) { console.log('Person credits fetch error', e); }
+                    const allCastCrew = [...(credits?.cast || []), ...(credits?.crew || [])];
+                    const personMovies = allCastCrew.slice(0, 10).map((movie: any) => ({
+                        id: movie.id.toString(),
+                        title: movie.title || movie.name,
+                        subtitle: `${movie.title ? 'Film' : 'Dizi'} (${movie.release_date || movie.first_air_date ? new Date(movie.release_date || movie.first_air_date).getFullYear() : '?'}) • ${person.name}`,
+                        type: 'movie',
+                        author: person.name,
+                        image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
+                    }));
+                    allResults = [...allResults, ...personMovies];
+                } catch (creditsError) {
+                    console.error('Person credits fetch failed:', creditsError);
+                }
             }
 
-            if (Array.isArray(movies)) {
-                const formattedMovies = movies.slice(0, 5).map((movie: any) => ({
-                    id: movie.id.toString(),
-                    title: movie.title,
-                    subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'})`,
-                    type: 'movie',
-                    author: 'Film',
-                    image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
-                }));
-                allResults = [...allResults, ...formattedMovies];
-            }
+            const formattedMovies = movies.slice(0, 5).map((movie: any) => ({
+                id: movie.id.toString(),
+                title: movie.title,
+                subtitle: `Film (${movie.release_date ? new Date(movie.release_date).getFullYear() : '?'})`,
+                type: 'movie',
+                author: 'Film',
+                image: movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : undefined
+            }));
 
-            if (Array.isArray(books)) {
-                const formattedBooks = books.slice(0, 5).map((book: any) => ({
-                    id: book.id,
-                    title: book.volumeInfo.title,
-                    subtitle: book.volumeInfo.authors?.join(', ') || 'Kitap',
-                    type: 'book',
-                    author: book.volumeInfo.authors?.[0] || '',
-                    image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:')
-                }));
-                allResults = [...allResults, ...formattedBooks];
-            }
+            const formattedBooks = books.slice(0, 5).map((book: any) => ({
+                id: book.id,
+                title: book.volumeInfo.title,
+                subtitle: book.volumeInfo.authors?.join(', ') || 'Kitap',
+                type: 'book',
+                author: book.volumeInfo.authors?.[0] || '',
+                image: book.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:')
+            }));
 
-            if (Array.isArray(tracks)) {
-                const formattedTracks = tracks.map((track: any) => ({
-                    id: track.id,
-                    title: track.title,
-                    subtitle: `Müzik • ${track.artist}`,
-                    type: 'music',
-                    author: track.artist,
-                    image: track.image
-                }));
-                allResults = [...allResults, ...formattedTracks];
-            }
+            const formattedTracks = tracks.map((track: any) => ({
+                id: track.id,
+                title: track.title,
+                subtitle: `Müzik • ${track.artist}`,
+                type: 'music',
+                author: track.artist,
+                image: track.image
+            }));
 
+            allResults = [...allResults, ...formattedMovies, ...formattedBooks, ...formattedTracks];
             const uniqueResults = Array.from(new Map(allResults.map(item => [item.id + item.type, item])).values());
             setSearchResults(uniqueResults);
             setShowResults(true);
         } catch (error) {
-            console.error(error);
+            console.error('Search error:', error);
         } finally {
             setIsSearching(false);
         }
@@ -177,15 +229,7 @@ export const CreateQuoteScreen = () => {
         try {
             if (user) {
                 if (originalPost) {
-                    await postService.create(
-                        user.id,
-                        '', // quote
-                        comment || '', // comment
-                        'Paylaşım', // source
-                        originalPost.user.username, // author
-                        undefined, // title
-                        originalPost.id // original_post_id
-                    );
+                    await postService.create(user.id, '', comment || '', 'Paylaşım', originalPost.user.username, originalPost.id);
                 } else {
                     const finalSource = mode === 'thought' ? 'Düşünce' : source;
                     const finalAuthor = mode === 'thought' ? user.username : author;
@@ -199,7 +243,7 @@ export const CreateQuoteScreen = () => {
                         finalSource,
                         finalAuthor,
                         title,
-                        undefined, // original_post_id
+                        undefined,
                         selectedType || initialType || undefined,
                         selectedId || initialId || undefined,
                         selectedImage || initialImage,
@@ -208,6 +252,10 @@ export const CreateQuoteScreen = () => {
 
                     if (status && selectedType && selectedId) {
                         await libraryService.updateStatus(selectedType, selectedId, status);
+                    }
+
+                    if (draft) {
+                        await draftService.deleteDraft(draft.id);
                     }
                 }
                 Toast.show({ type: 'success', text1: 'Başarılı', text2: 'Paylaşıldı!' });
@@ -228,6 +276,107 @@ export const CreateQuoteScreen = () => {
             flex: 1,
             backgroundColor: theme.colors.background,
         },
+        topicBadgePreview: {
+            backgroundColor: theme.colors.secondary + '30',
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: 12,
+            marginLeft: 4,
+        },
+        topicBadgeTextPreview: {
+            fontSize: 10,
+            color: theme.colors.primary,
+            fontWeight: '600',
+        },
+        // --- Preview Specific Styles (matching PostCard) ---
+        previewCard: {
+            width: '100%',
+            marginBottom: theme.spacing.m,
+            borderBottomWidth: 0,
+        },
+        previewHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: theme.spacing.s,
+            paddingRight: 20,
+        },
+        userInfo: {
+            flex: 1,
+            marginLeft: theme.spacing.s,
+        },
+        name: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: theme.colors.text,
+        },
+        meta: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 2,
+            flexWrap: 'wrap',
+        },
+        username: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+        },
+        dot: {
+            marginHorizontal: 4,
+            color: theme.colors.textSecondary,
+            fontSize: 10,
+        },
+        time: {
+            fontSize: 13,
+            color: theme.colors.textSecondary,
+        },
+        content: {
+            fontSize: 15,
+            lineHeight: 22,
+            color: theme.colors.text,
+            marginBottom: theme.spacing.m,
+        },
+        bookCard: {
+            backgroundColor: theme.colors.muted,
+            borderRadius: theme.borderRadius.m,
+            padding: theme.spacing.m,
+            flexDirection: 'row',
+            marginBottom: theme.spacing.m,
+        },
+        bookCover: {
+            width: 60,
+            height: 90,
+            borderRadius: theme.borderRadius.s,
+            backgroundColor: theme.colors.secondary,
+        },
+        bookInfo: {
+            flex: 1,
+            marginLeft: theme.spacing.m,
+            justifyContent: 'center',
+        },
+        bookTitle: {
+            fontSize: 16,
+            fontWeight: '700',
+            color: theme.colors.primary,
+            marginBottom: 4,
+        },
+        bookAuthor: {
+            fontSize: 14,
+            color: theme.colors.textSecondary,
+        },
+        quoteBox: {
+            backgroundColor: theme.colors.background,
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.primary,
+            padding: theme.spacing.m,
+            borderRadius: theme.borderRadius.s,
+            marginBottom: theme.spacing.m,
+        },
+        quoteText: {
+            fontSize: 16,
+            fontStyle: 'italic',
+            color: theme.colors.text,
+            lineHeight: 24,
+        },
+        // --- End Preview Styles ---
         header: {
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -298,32 +447,45 @@ export const CreateQuoteScreen = () => {
             marginLeft: 12,
         },
         dropdown: {
-            position: 'absolute',
-            top: 60,
-            left: 0,
-            right: 0,
             backgroundColor: theme.colors.surface,
-            borderRadius: 20,
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: theme.colors.border,
-            maxHeight: 400,
+            maxHeight: 350,
             zIndex: 1000,
-            ...theme.shadows.soft,
+            elevation: 10,
+            marginTop: 4,
             overflow: 'hidden',
         },
         dropdownItem: {
             flexDirection: 'row',
             alignItems: 'center',
-            padding: 16,
+            padding: 12,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border + '30',
         },
+        categoryHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface + '80',
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border + '50',
+        },
+        categoryTitle: {
+            fontSize: 10,
+            fontWeight: '800',
+            color: theme.colors.textSecondary,
+            marginLeft: 6,
+            letterSpacing: 0.5,
+        },
         dropdownImage: {
-            width: 48,
-            height: 72,
-            borderRadius: 8,
+            width: 40,
+            height: 60,
+            borderRadius: 4,
             backgroundColor: theme.colors.border,
-            marginRight: 16,
+            marginRight: 12,
         },
         chip: {
             paddingVertical: 8,
@@ -345,21 +507,6 @@ export const CreateQuoteScreen = () => {
         },
         chipTextActive: {
             color: '#fff',
-        },
-        categoryHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            backgroundColor: theme.colors.surface + '80',
-            marginTop: 4,
-        },
-        categoryTitle: {
-            fontSize: 11,
-            fontWeight: '900',
-            color: theme.colors.textSecondary,
-            marginLeft: 8,
-            letterSpacing: 1.2,
         },
     }), [theme, insets.top]);
 
@@ -387,8 +534,8 @@ export const CreateQuoteScreen = () => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <X size={20} color={theme.colors.text} />
+                <TouchableOpacity onPress={handleClose} style={styles.backButton}>
+                    <ArrowLeft size={20} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
                     {originalPost ? 'Alıntıyı Paylaş' : (mode === 'thought' ? 'Düşünceni Paylaş' : 'Yeni Paylaşım')}
@@ -408,10 +555,10 @@ export const CreateQuoteScreen = () => {
                 style={{ flex: 1 }}
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
-                bottomOffset={Platform.OS === 'ios' ? 50 : 0}
+                bottomOffset={20}
             >
                 {/* Preview / Quote Card */}
-                <View style={{ marginBottom: 24, alignItems: 'center' }}>
+                <View style={{ marginBottom: 24 }}>
                     {originalPost ? (
                         <Card variant="glass" style={{ padding: 16, width: '100%' }}>
                             <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
@@ -423,13 +570,91 @@ export const CreateQuoteScreen = () => {
                         </Card>
                     ) : (
                         <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
-                            <QuoteCard
-                                text={quoteText || (mode === 'thought' ? 'Aklından geçenler...' : 'Alıntı metni...')}
-                                source={source || (mode === 'thought' ? 'Düşünce' : 'Kaynak')}
-                                author={author || user?.username}
-                                imageUrl={selectedImage}
-                                variant="default" // Using default visual style
-                            />
+                            {/* Realistic Post Preview */}
+                            <View style={{ marginBottom: 24, width: '100%' }}>
+                                <Card style={styles.previewCard} variant="default" padding="md">
+                                    {/* Header */}
+                                    <View style={styles.previewHeader}>
+                                        <Avatar
+                                            src={user?.avatar_url}
+                                            alt={user?.username || 'User'}
+                                            size="md"
+                                        />
+                                        <View style={styles.userInfo}>
+                                            <Text style={styles.name}>{user?.full_name || user?.username || 'Kullanıcı'}</Text>
+                                            <View style={styles.meta}>
+                                                <Text style={styles.username}>@{user?.username || 'username'}</Text>
+                                                <Text style={styles.dot}>•</Text>
+                                                <Text style={styles.time}>Şimdi</Text>
+                                                {selectedTopic && (
+                                                    <>
+                                                        <Text style={styles.dot}>•</Text>
+                                                        <View style={styles.topicBadgePreview}>
+                                                            <Text style={styles.topicBadgeTextPreview}>{selectedTopic.name.replace(/^#/, '')}</Text>
+                                                        </View>
+                                                    </>
+                                                )}
+                                            </View>
+                                        </View>
+                                    </View>
+
+                                    {/* Post Title */}
+                                    {title.trim() ? (
+                                        <Text style={[styles.content, { fontWeight: 'bold', marginBottom: 4, fontSize: 17 }]}>
+                                            {title}
+                                        </Text>
+                                    ) : null}
+
+                                    {/* Content Text (Comment) */}
+                                    {comment.trim() ? (
+                                        <Text style={styles.content}>{comment}</Text>
+                                    ) : null}
+
+                                    {/* Book/Movie/Music Card */}
+                                    {(selectedType === 'book' || selectedType === 'movie' || selectedType === 'music') && (
+                                        <View style={{ marginBottom: theme.spacing.m }}>
+                                            <View style={styles.bookCard}>
+                                                <Image
+                                                    source={{ uri: selectedImage || 'https://via.placeholder.com/150' }}
+                                                    style={styles.bookCover}
+                                                    resizeMode="cover"
+                                                />
+                                                <View style={styles.bookInfo}>
+                                                    <Text style={styles.bookTitle} numberOfLines={1}>{source || (selectedType === 'book' ? 'Kitap Seçilmedi' : selectedType === 'movie' ? 'Film Seçilmedi' : 'Müzik Seçilmedi')}</Text>
+                                                    <Text style={styles.bookAuthor} numberOfLines={1}>{author || 'Bilinmeyen'}</Text>
+                                                    {selectedType === 'book' && (
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                            <BookOpen size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                                            <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Şu an okuyor</Text>
+                                                        </View>
+                                                    )}
+                                                    {selectedType === 'music' && (
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                            <Music size={14} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                                                            <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Dinliyor</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </View>
+
+                                            {/* Quote Box */}
+                                            {quoteText.trim() ? (
+                                                <View style={[styles.quoteBox, { marginTop: 0 }]}>
+                                                    <Quote size={32} color={theme.colors.primary} style={{ opacity: 0.2, position: 'absolute', top: 12, right: 12 }} />
+                                                    <Text style={styles.quoteText}>"{quoteText}"</Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                    )}
+
+                                    {/* Quote Only (if no book/movie/music) */}
+                                    {!selectedType && quoteText.trim() ? (
+                                        <View style={styles.quoteBox}>
+                                            <Text style={styles.quoteText}>"{quoteText}"</Text>
+                                        </View>
+                                    ) : null}
+                                </Card>
+                            </View>
                         </ViewShot>
                     )}
                 </View>
@@ -446,10 +671,13 @@ export const CreateQuoteScreen = () => {
                             onChangeText={setTitle}
                             maxLength={60}
                         />
+                        {title.length > 0 && (
+                            <Text style={{ fontSize: 10, color: theme.colors.textSecondary }}>{title.length}/60</Text>
+                        )}
                     </View>
                 )}
 
-                {/* Main Input */}
+                {/* Main Input (Quote/Thought) */}
                 {!originalPost && (
                     <View style={styles.textInputContainer}>
                         <TextInput
@@ -480,22 +708,6 @@ export const CreateQuoteScreen = () => {
                         </View>
                     </>
                 )}
-
-                {/* Topic Selector */}
-                <TouchableOpacity
-                    style={[styles.singleInputContainer, { marginTop: 16 }]}
-                    onPress={() => setTopicModalVisible(true)}
-                >
-                    <Tag size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
-                    <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
-                        {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
-                    </Text>
-                    {selectedTopic && (
-                        <TouchableOpacity onPress={() => setSelectedTopic(null)}>
-                            <XCircle size={20} color={theme.colors.textSecondary} />
-                        </TouchableOpacity>
-                    )}
-                </TouchableOpacity>
 
                 {/* Metadata Section (Search + Status) */}
                 {!originalPost && mode !== 'thought' && (
@@ -558,17 +770,6 @@ export const CreateQuoteScreen = () => {
                             )}
                         </View>
 
-                        <View style={styles.singleInputContainer}>
-                            <User size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
-                            <TextInput
-                                style={styles.singleInput}
-                                placeholder="Yazar / Yönetmen / Sanatçı"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                value={author}
-                                onChangeText={setAuthor}
-                            />
-                        </View>
-
                         {selectedType && (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                                 {getStatusOptions().map((opt: any) => (
@@ -585,12 +786,39 @@ export const CreateQuoteScreen = () => {
                     </View>
                 )}
 
+                {/* Topic Selector - Moved to Bottom */}
+                <TouchableOpacity
+                    style={[styles.singleInputContainer, { marginTop: 24 }]}
+                    onPress={() => setTopicModalVisible(true)}
+                >
+                    <Tag size={20} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                    <Text style={[styles.singleInput, { color: selectedTopic ? theme.colors.primary : theme.colors.textSecondary }]}>
+                        {selectedTopic ? `#${selectedTopic.name}` : 'Konu Etiketi Ekle (İsteğe Bağlı)'}
+                    </Text>
+                    {selectedTopic && (
+                        <TouchableOpacity onPress={() => setSelectedTopic(null)}>
+                            <XCircle size={20} color={theme.colors.textSecondary} />
+                        </TouchableOpacity>
+                    )}
+                </TouchableOpacity>
+
             </KeyboardAwareScrollView>
 
             <TopicSelectionModal
                 visible={topicModalVisible}
                 onClose={() => setTopicModalVisible(false)}
                 onSelect={(topic) => setSelectedTopic(topic)}
+            />
+
+            <ThemedDialog
+                visible={dialogVisible}
+                title="Taslak Kaydedilsin mi?"
+                message="Yaptığınız değişiklikleri taslak olarak kaydetmek ister misiniz?"
+                onClose={() => setDialogVisible(false)}
+                actions={[
+                    { text: 'Kaydetme', onPress: () => { setDialogVisible(false); navigation.goBack(); }, style: 'cancel' },
+                    { text: 'Kaydet', onPress: handleSaveDraft, style: 'default' },
+                ]}
             />
         </View>
     );

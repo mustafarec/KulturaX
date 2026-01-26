@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, RefreshControl, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, RefreshControl, ActivityIndicator, ScrollView, TextInput, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, BookOpen, Film, Music, Calendar, Ghost, Star, MoreVertical } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, Book, Film, Music, Calendar, Ghost, Star, MoreVertical, Search, X } from 'lucide-react-native';
 import { libraryService } from '../../services/backendApi';
 import { LibraryBottomSheet } from '../../components/LibraryBottomSheet';
 import Toast from 'react-native-toast-message';
@@ -12,13 +12,41 @@ import Toast from 'react-native-toast-message';
 type TabType = 'book' | 'movie' | 'music' | 'event';
 type StatusFilter = 'all' | 'read' | 'reading' | 'want_to_read' | 'dropped';
 
-const STATUS_FILTERS = [
-    { key: 'all' as StatusFilter, label: 'Tümü' },
-    { key: 'read' as StatusFilter, label: 'Tamamladım' },
-    { key: 'reading' as StatusFilter, label: 'Devam Ediyor' },
-    { key: 'want_to_read' as StatusFilter, label: 'Listemdekiler' },
-    { key: 'dropped' as StatusFilter, label: 'Bıraktım' },
-];
+const getStatusFilters = (type: TabType): { key: StatusFilter | 'loved', label: string }[] => {
+    const base = [{ key: 'all' as StatusFilter, label: 'Tümü' }];
+
+    switch (type) {
+        case 'book':
+            return [
+                ...base,
+                { key: 'read', label: 'Tamamladım' },
+                { key: 'reading', label: 'Devam Ediyor' },
+                { key: 'want_to_read', label: 'Listemdekiler' },
+                { key: 'dropped', label: 'Bıraktım' },
+            ];
+        case 'movie':
+            return [
+                ...base,
+                { key: 'read', label: 'İzlediklerim' },
+                { key: 'want_to_read', label: 'İzleyeceklerim' },
+            ];
+        case 'music':
+            return [
+                ...base,
+                { key: 'read', label: 'Dinlediklerim' },
+                { key: 'loved', label: 'Favorilerim' },
+                { key: 'want_to_read', label: 'Dinleyeceklerim' },
+            ];
+        case 'event':
+            return [
+                ...base,
+                { key: 'read', label: 'Katıldıklarım' },
+                { key: 'want_to_read', label: 'Katılacaklarım' },
+            ];
+        default:
+            return base;
+    }
+};
 
 const TABS = [
     { key: 'book' as TabType, label: 'Kitaplar', icon: BookOpen, emoji: '📚' },
@@ -38,6 +66,8 @@ export const MyActivitiesScreen = () => {
     const [libraryItems, setLibraryItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [stats, setStats] = useState<any>(null);
 
     // Library status sheet state
     const [librarySheetVisible, setLibrarySheetVisible] = useState(false);
@@ -46,10 +76,41 @@ export const MyActivitiesScreen = () => {
     const fetchLibrary = useCallback(async () => {
         if (!user?.id) return;
         try {
-            const data = await libraryService.getUserLibrary(user.id);
-            setLibraryItems(data || []);
+            // Fetch library items first
+            const libraryData = await libraryService.getUserLibrary(user.id);
+            setLibraryItems(libraryData || []);
+
+            // Separately fetch stats to be resilient (if it fails, page still works)
+            try {
+                const statsData = await libraryService.getStats(user.id);
+                setStats(statsData);
+            } catch (statsError) {
+                console.warn('Error fetching stats:', statsError);
+            }
+
+            // "Loved it" reminder logic
+            if (libraryData && libraryData.length > 0) {
+                const lovedItems = libraryData.filter((i: any) => i.status === 'loved');
+                if (lovedItems.length > 0 && Math.random() > 0.7) { // 30% chance to show a reminder
+                    const randomLoved = lovedItems[Math.floor(Math.random() * lovedItems.length)];
+                    setTimeout(() => {
+                        Toast.show({
+                            type: 'info',
+                            text1: 'Tekrar dinlemek ister misiniz?',
+                            text2: `${randomLoved.content_title} içeriğini çok beğenmiştiniz.`,
+                            position: 'bottom',
+                            visibilityTime: 5000,
+                        });
+                    }, 1500);
+                }
+            }
         } catch (error) {
             console.error('Error fetching library:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Hata',
+                text2: 'Kütüphane bilgileri alınamadı.',
+            });
         } finally {
             setIsLoading(false);
             setRefreshing(false);
@@ -60,6 +121,10 @@ export const MyActivitiesScreen = () => {
         fetchLibrary();
     }, [fetchLibrary]);
 
+    useEffect(() => {
+        setStatusFilter('all');
+    }, [activeTab]);
+
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchLibrary();
@@ -68,6 +133,7 @@ export const MyActivitiesScreen = () => {
     const getStatusLabel = (status: string, type: string) => {
         switch (status) {
             case 'read': return type === 'movie' ? 'İzledim' : type === 'music' ? 'Dinledim' : type === 'event' ? 'Katıldım' : 'Okudum';
+            case 'loved': return 'Çok Beğendim';
             case 'reading': return type === 'movie' ? 'İzliyorum' : type === 'music' ? 'Dinliyorum' : type === 'event' ? 'Katılıyorum' : 'Okuyorum';
             case 'want_to_read':
             case 'want_to_watch':
@@ -81,14 +147,34 @@ export const MyActivitiesScreen = () => {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'read': return '#10B981';
-            case 'reading': return '#3B82F6';
+            case 'read': return theme.colors.success;
+            case 'loved': return theme.colors.accent;
+            case 'reading': return theme.colors.primary;
             case 'want_to_read':
             case 'want_to_watch':
             case 'want_to_listen':
-            case 'want_to_attend': return '#F59E0B';
-            case 'dropped': return '#EF4444';
-            default: return '#6B7280';
+            case 'want_to_attend': return theme.colors.warning;
+            case 'dropped': return theme.colors.error;
+            default: return theme.colors.textSecondary;
+        }
+    };
+
+    const getCategoryColor = (type: string) => {
+        switch (type) {
+            case 'movie': return theme.colors.secondary;
+            case 'music': return theme.colors.accent;
+            case 'event': return theme.colors.textSecondary;
+            default: return theme.colors.primary;
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch (e) {
+            return '';
         }
     };
 
@@ -96,12 +182,24 @@ export const MyActivitiesScreen = () => {
         const matchesTab = item.content_type === activeTab;
         if (!matchesTab) return false;
 
+        const matchesSearch = searchQuery === '' ||
+            (item.content_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.creator?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        if (!matchesSearch) return false;
+
         if (statusFilter === 'all') return true;
 
         // Map status filter to actual status values
         if (statusFilter === 'want_to_read') {
             return ['want_to_read', 'want_to_watch', 'want_to_listen', 'want_to_attend'].includes(item.status);
         }
+
+        // Special case for 'loved' filter in music
+        if (statusFilter === 'loved' as any) {
+            return item.status === 'loved';
+        }
+
         return item.status === statusFilter;
     });
 
@@ -176,8 +274,12 @@ export const MyActivitiesScreen = () => {
                         )}
                         <View style={styles.metaRow}>
                             {item.status && (
-                                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                                <View style={[styles.statusBadge, {
+                                    backgroundColor: (item.status === 'loved' ? theme.colors.accent : getStatusColor(item.status)) + '15'
+                                }]}>
+                                    <Text style={[styles.statusText, {
+                                        color: item.status === 'loved' ? theme.colors.accent : getStatusColor(item.status)
+                                    }]}>
                                         {getStatusLabel(item.status, item.content_type)}
                                     </Text>
                                 </View>
@@ -189,6 +291,11 @@ export const MyActivitiesScreen = () => {
                                 </View>
                             )}
                         </View>
+                        {item.updated_at && (
+                            <Text style={[styles.dateText, { color: theme.colors.textSecondary }]}>
+                                {formatDate(item.updated_at)}
+                            </Text>
+                        )}
                     </View>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -204,7 +311,7 @@ export const MyActivitiesScreen = () => {
         );
     };
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         container: {
             flex: 1,
             backgroundColor: theme.colors.background,
@@ -225,7 +332,6 @@ export const MyActivitiesScreen = () => {
         },
         headerTitle: {
             fontSize: 20,
-            fontWeight: '700',
             color: theme.colors.text,
         },
         tabContainer: {
@@ -247,15 +353,12 @@ export const MyActivitiesScreen = () => {
             marginRight: 8,
         },
         tabActive: {
-            backgroundColor: theme.colors.primary + '20',
+            borderWidth: 1,
         },
         tabText: {
             fontSize: 12,
             fontWeight: '600',
             color: theme.colors.textSecondary,
-        },
-        tabTextActive: {
-            color: theme.colors.primary,
         },
         filterContainer: {
             paddingVertical: 10,
@@ -281,6 +384,61 @@ export const MyActivitiesScreen = () => {
         },
         filterChipTextActive: {
             color: theme.colors.primary,
+        },
+        searchContainer: {
+            paddingHorizontal: 16,
+            paddingTop: 12,
+        },
+        searchBar: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+            height: 44,
+            borderRadius: 12,
+            borderWidth: 1,
+            gap: 8,
+        },
+        searchInput: {
+            flex: 1,
+            fontSize: 14,
+            paddingVertical: 8,
+        },
+        statsContainer: {
+            padding: 16,
+        },
+        statsCard: {
+            padding: 16,
+            borderRadius: 16,
+            borderWidth: 1,
+        },
+        statsTitle: {
+            fontSize: 14,
+            marginBottom: 16,
+            textAlign: 'center',
+        },
+        statsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-around',
+        },
+        statItem: {
+            alignItems: 'center',
+            gap: 6,
+        },
+        statIconContainer: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 4,
+        },
+        statValue: {
+            fontSize: 18,
+            fontWeight: '800',
+        },
+        statLabel: {
+            fontSize: 11,
+            fontWeight: '500',
         },
         listContent: {
             padding: 16,
@@ -319,7 +477,12 @@ export const MyActivitiesScreen = () => {
         },
         itemSubtitle: {
             fontSize: 13,
-            marginBottom: 8,
+            marginBottom: 4,
+        },
+        dateText: {
+            fontSize: 11,
+            marginTop: 4,
+            fontStyle: 'italic',
         },
         metaRow: {
             flexDirection: 'row',
@@ -364,7 +527,7 @@ export const MyActivitiesScreen = () => {
             justifyContent: 'center',
             alignItems: 'center',
         },
-    });
+    }), [theme, insets]);
 
     return (
         <View style={styles.container}>
@@ -373,7 +536,7 @@ export const MyActivitiesScreen = () => {
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                     <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Etkinliklerim</Text>
+                <Text style={[styles.headerTitle, theme.typography.h2]}>Etkinliklerim</Text>
             </View>
 
             {/* Tabs */}
@@ -383,20 +546,102 @@ export const MyActivitiesScreen = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ gap: 0 }}
                 >
-                    {TABS.map((tab) => (
-                        <TouchableOpacity
-                            key={tab.key}
-                            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-                            onPress={() => setActiveTab(tab.key)}
-                        >
-                            <Text style={{ fontSize: 16 }}>{tab.emoji}</Text>
-                            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-                                {tab.label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    {TABS.map((tab) => {
+                        const isActive = activeTab === tab.key;
+                        const tabColor = tab.key === 'movie' ? theme.colors.secondary :
+                            tab.key === 'music' ? theme.colors.accent :
+                                tab.key === 'event' ? theme.colors.textSecondary :
+                                    theme.colors.primary;
+                        return (
+                            <TouchableOpacity
+                                key={tab.key}
+                                style={[
+                                    styles.tab,
+                                    isActive && { backgroundColor: tabColor + '15', borderColor: tabColor },
+                                    isActive && styles.tabActive
+                                ]}
+                                onPress={() => setActiveTab(tab.key)}
+                            >
+                                <Text style={{ fontSize: 16 }}>{tab.emoji}</Text>
+                                <Text style={[styles.tabText, isActive && { color: tabColor }]}>
+                                    {tab.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </ScrollView>
             </View>
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={[styles.searchBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    <Search size={18} color={theme.colors.textSecondary} />
+                    <TextInput
+                        style={[styles.searchInput, { color: theme.colors.text }]}
+                        placeholder="Ara..."
+                        placeholderTextColor={theme.colors.textSecondary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <X size={18} color={theme.colors.textSecondary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
+            {/* Stats Summary */}
+            {stats && (
+                <View style={styles.statsContainer}>
+                    <View style={[styles.statsCard, {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: getCategoryColor(activeTab) + '40'
+                    }]}>
+                        <Text style={[styles.statsTitle, { color: theme.colors.text }, theme.typography.h3]}>
+                            Bu Yılki {TABS.find(t => t.key === activeTab)?.label || 'Etkinlik'} Özetin
+                        </Text>
+                        <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                                <View style={[styles.statIconContainer, { backgroundColor: getCategoryColor(activeTab) + '10' }]}>
+                                    <Star size={18} color={getCategoryColor(activeTab)} fill={getCategoryColor(activeTab)} />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                                    {stats[activeTab]?.avg_rating > 0 ? stats[activeTab].avg_rating : '-'}
+                                </Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Ortalama</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.success + '10' }]}>
+                                    <BookOpen size={18} color={theme.colors.success} />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                                    {(stats[activeTab]?.counts?.read || 0) + (stats[activeTab]?.counts?.loved || 0)}
+                                </Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Bitti</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.primary + '10' }]}>
+                                    <Calendar size={18} color={theme.colors.primary} />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                                    {stats[activeTab]?.counts?.reading || 0}
+                                </Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Devam</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.warning + '10' }]}>
+                                    <Book size={18} color={theme.colors.warning} />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                                    {stats[activeTab]?.counts?.want_to_read || 0}
+                                </Text>
+                                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Listem</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            )}
 
             {/* Status Filters */}
             <View style={styles.filterContainer}>
@@ -405,17 +650,24 @@ export const MyActivitiesScreen = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ gap: 0 }}
                 >
-                    {STATUS_FILTERS.map((filter) => (
-                        <TouchableOpacity
-                            key={filter.key}
-                            style={[styles.filterChip, statusFilter === filter.key && styles.filterChipActive]}
-                            onPress={() => setStatusFilter(filter.key)}
-                        >
-                            <Text style={[styles.filterChipText, statusFilter === filter.key && styles.filterChipTextActive]}>
-                                {filter.label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    {getStatusFilters(activeTab).map((filter) => {
+                        const isActive = statusFilter === filter.key;
+                        const activeColor = getCategoryColor(activeTab);
+                        return (
+                            <TouchableOpacity
+                                key={filter.key}
+                                style={[
+                                    styles.filterChip,
+                                    isActive && { backgroundColor: activeColor + '15', borderColor: activeColor }
+                                ]}
+                                onPress={() => setStatusFilter(filter.key as any)}
+                            >
+                                <Text style={[styles.filterChipText, isActive && { color: activeColor }]}>
+                                    {filter.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </ScrollView>
             </View>
 

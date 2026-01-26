@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, Share, Dimensions, LayoutAnimation, UIManager } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { postService, userService, libraryService, reviewService, interactionService, messageService } from '../../services/backendApi';
@@ -10,7 +11,7 @@ import { ReviewCard } from '../../components/ReviewCard';
 import { SkeletonPost } from '../../components/ui/SkeletonPost';
 import Toast from 'react-native-toast-message';
 import { ThemedDialog } from '../../components/ThemedDialog';
-import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock, Ban, UserMinus, Star, Crown } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, Share2, MoreVertical, Users, UserPlus, MessageSquare, BookOpen, Film, Calendar, MapPin, Music, Package, Pencil, Lock, Ban, UserMinus, Star, Crown, Quote } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
@@ -40,6 +41,7 @@ export const OtherProfileScreen = () => {
     }
     const { user: currentUser } = useAuth();
     const { theme } = useTheme();
+    const insets = useSafeAreaInsets();
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -626,7 +628,7 @@ export const OtherProfileScreen = () => {
 
     // Animation Value for Tab Slide
     const translateX = useSharedValue(0);
-    const tabOrder = ['posts', 'replies', 'book', 'movie', 'music', 'reviews'];
+    const tabOrder = ['posts', 'replies', 'quotes', 'book', 'movie', 'music', 'reviews'];
 
     const getTabIndex = (tab: string) => {
         return tabOrder.indexOf(tab);
@@ -855,8 +857,9 @@ export const OtherProfileScreen = () => {
                         </View>
                     );
                 }
-                return userPosts.filter(p => p.type !== 'quote').length > 0 ? (
-                    userPosts.filter(p => p.type !== 'quote').map((post) => (
+                const postsExceptQuotes = userPosts.filter(p => p.type !== 'quote' && (!p.quote_text || p.quote_text.trim().length === 0) && !p.reply_to_post_id && p.type !== 'comment');
+                return postsExceptQuotes.length > 0 ? (
+                    postsExceptQuotes.map((post) => (
                         <PostCard
                             key={post.id}
                             post={post}
@@ -948,9 +951,8 @@ export const OtherProfileScreen = () => {
                 );
             case 'quotes':
                 const quotePosts = userPosts.filter(p =>
-                    p.type === 'quote' ||
-                    (p.quote_text && p.quote_text.length > 0) ||
-                    (p.content_type && ['book', 'movie', 'music'].includes(p.content_type) && p.content)
+                    (p.type === 'quote' || (p.quote_text && p.quote_text.trim().length > 0)) &&
+                    !p.reply_to_post_id
                 );
 
                 return quotePosts.length > 0 ? (
@@ -1065,14 +1067,23 @@ export const OtherProfileScreen = () => {
 
     return (
         <ScrollView
+            {...(Platform.OS === 'ios' ? {
+                contentInset: { top: insets.top },
+                contentOffset: { x: 0, y: -insets.top }
+            } : {})}
             style={styles.container}
             refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    colors={[theme.colors.primary]}
+                    progressViewOffset={Platform.OS === 'android' ? insets.top + 10 : 0}
+                />
             }
             showsVerticalScrollIndicator={false}
         >
             {/* Header Image Area */}
-            <View style={styles.headerImageContainer}>
+            <View style={[styles.headerImageContainer, Platform.OS === 'ios' && { marginTop: -insets.top, height: 192 + insets.top }]}>
                 {headerImage ? (
                     <Image
                         key={headerImage}
@@ -1330,7 +1341,7 @@ export const OtherProfileScreen = () => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={[styles.tabContainer, { borderBottomColor: theme.colors.border, minWidth: '100%' }]}
                 >
-                    {['posts', 'replies', 'book', 'movie', 'music', 'reviews'].map((tab) => (
+                    {['posts', 'replies', 'quotes', 'book', 'movie', 'music', 'reviews'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
                             style={[styles.tabItem, activeTab === tab && { borderBottomColor: theme.colors.primary }]}
@@ -1342,7 +1353,7 @@ export const OtherProfileScreen = () => {
                             }}
                         >
                             <Text style={[styles.tabText, { color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary }]}>
-                                {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : tab === 'music' ? 'Müzik' : 'İncelemeler'}
+                                {tab === 'posts' ? 'Gönderiler' : tab === 'replies' ? 'Yanıtlar' : tab === 'quotes' ? 'Alıntılar' : tab === 'book' ? 'Kitaplar' : tab === 'movie' ? 'Filmler' : tab === 'music' ? 'Müzik' : 'İncelemeler'}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -1352,11 +1363,12 @@ export const OtherProfileScreen = () => {
             {/* Content Section */}
             <View style={[styles.contentArea, { overflow: 'hidden' }]}>
                 <Animated.View style={[
-                    { flexDirection: 'row', width: width * 6 },
+                    { flexDirection: 'row', width: width * 7 },
                     animatedStyle
                 ]}>
                     <View style={{ width, paddingHorizontal: 20, paddingBottom: 20 }}>{renderTabContent('posts')}</View>
                     <View style={{ width, paddingHorizontal: 20, paddingBottom: 20 }}>{renderTabContent('replies')}</View>
+                    <View style={{ width, paddingHorizontal: 20, paddingBottom: 20 }}>{renderTabContent('quotes')}</View>
                     <View style={{ width }}>{renderTabContent('book')}</View>
                     <View style={{ width }}>{renderTabContent('movie')}</View>
                     <View style={{ width }}>{renderTabContent('music')}</View>
