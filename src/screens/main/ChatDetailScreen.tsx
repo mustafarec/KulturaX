@@ -316,13 +316,15 @@ export const ChatDetailScreen = () => {
 
     // Render message item
     const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
-        const isMyMessage = item.sender_id === user?.id;
+        // Fix: Cast sender_id to Number to handle string/number mismatch from backend vs local
+        const isMyMessage = Number(item.sender_id) === Number(user?.id);
 
         const prevMessage = reversedMessages[index + 1];
         const nextMessage = reversedMessages[index - 1];
 
-        const isSameSenderAsPrev = prevMessage?.sender_id === item.sender_id;
-        const isSameSenderAsNext = nextMessage?.sender_id === item.sender_id;
+        // Fix: Ensure safe comparison for grouping
+        const isSameSenderAsPrev = prevMessage ? Number(prevMessage.sender_id) === Number(item.sender_id) : false;
+        const isSameSenderAsNext = nextMessage ? Number(nextMessage.sender_id) === Number(item.sender_id) : false;
 
         const messageDate = parseDate(item.created_at);
         const prevMessageDate = prevMessage ? parseDate(prevMessage.created_at) : null;

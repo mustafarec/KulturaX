@@ -16,7 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { googleBooksApi } from '../../services/googleBooksApi';
 import { tmdbApi } from '../../services/tmdbApi';
 import { Avatar } from '../../components/ui/Avatar';
-import { X, Search, FileText, Tag, XCircle, Book, Music, Film, Check, BookOpen, Quote, ArrowLeft } from 'lucide-react-native';
+import { X, Search, FileText, Tag, XCircle, Book, Music, Film, Check, BookOpen, Quote, ArrowLeft, Layers } from 'lucide-react-native';
 import { TopicSelectionModal } from '../../components/TopicSelectionModal';
 import { draftService } from '../../services/DraftService';
 import { ThemedDialog } from '../../components/ThemedDialog';
@@ -46,6 +46,14 @@ export const CreateQuoteScreen = () => {
     const [selectedTopic, setSelectedTopic] = useState<any>(draft?.data?.selectedTopic || null);
     const [topicModalVisible, setTopicModalVisible] = useState(false);
     const [dialogVisible, setDialogVisible] = useState(false);
+    const [searchType, setSearchType] = useState<'book' | 'movie' | 'music'>('book');
+
+    // Re-search when tab changes
+    React.useEffect(() => {
+        if (source.length >= 3) {
+            handleSearchSource(source);
+        }
+    }, [searchType]);
 
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
@@ -122,12 +130,30 @@ export const CreateQuoteScreen = () => {
 
         setIsSearching(true);
         try {
-            const results = await Promise.allSettled([
-                googleBooksApi.searchBooks(query),
-                tmdbApi.searchMovies(query),
-                tmdbApi.searchPerson(query),
-                spotifyService.searchTracks(query)
-            ]);
+            // Filter API calls based on searchType
+            const promises = [];
+
+            if (searchType === 'book') {
+                promises.push(googleBooksApi.searchBooks(query));
+            } else {
+                promises.push(Promise.resolve([]));
+            }
+
+            if (searchType === 'movie') {
+                promises.push(tmdbApi.searchMovies(query));
+                promises.push(tmdbApi.searchPerson(query)); // Person search usually relates to movies/cast
+            } else {
+                promises.push(Promise.resolve([]));
+                promises.push(Promise.resolve([]));
+            }
+
+            if (searchType === 'music') {
+                promises.push(spotifyService.searchTracks(query));
+            } else {
+                promises.push(Promise.resolve([]));
+            }
+
+            const results = await Promise.allSettled(promises);
 
             const books = results[0].status === 'fulfilled' ? results[0].value : [];
             const movies = results[1].status === 'fulfilled' ? results[1].value : [];
@@ -410,7 +436,7 @@ export const CreateQuoteScreen = () => {
             fontWeight: 'bold',
             color: theme.colors.textSecondary,
             marginBottom: 8,
-            marginTop: 24,
+            marginTop: 12,
             textTransform: 'uppercase',
             letterSpacing: 1,
         },
@@ -558,7 +584,7 @@ export const CreateQuoteScreen = () => {
                 bottomOffset={20}
             >
                 {/* Preview / Quote Card */}
-                <View style={{ marginBottom: 24 }}>
+                <View style={{ marginBottom: 16 }}>
                     {originalPost ? (
                         <Card variant="glass" style={{ padding: 16, width: '100%' }}>
                             <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>
@@ -571,7 +597,7 @@ export const CreateQuoteScreen = () => {
                     ) : (
                         <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
                             {/* Realistic Post Preview */}
-                            <View style={{ marginBottom: 24, width: '100%' }}>
+                            <View style={{ marginBottom: 0, width: '100%' }}>
                                 <Card style={styles.previewCard} variant="default" padding="md">
                                     {/* Header */}
                                     <View style={styles.previewHeader}>
@@ -665,67 +691,62 @@ export const CreateQuoteScreen = () => {
                     )}
                 </View>
 
-                {/* Title Input */}
-                {!originalPost && (
-                    <View style={[styles.singleInputContainer, { marginBottom: 16 }]}>
-                        <FileText size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
-                        <TextInput
-                            style={styles.singleInput}
-                            placeholder="Başlık Yazın (Opsiyonel)"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={title}
-                            onChangeText={setTitle}
-                            maxLength={60}
-                        />
-                        {title.length > 0 && (
-                            <Text style={{ fontSize: 10, color: theme.colors.textSecondary }}>{title.length}/60</Text>
-                        )}
-                    </View>
-                )}
-
-                {/* Main Input (Quote/Thought) */}
-                {!originalPost && (
-                    <View style={styles.textInputContainer}>
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder={mode === 'thought' ? "Ne düşünüyorsun?" : "Alıntıyı buraya yaz..."}
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={quoteText}
-                            onChangeText={setQuoteText}
-                            multiline
-                            autoFocus={mode === 'thought'}
-                        />
-                    </View>
-                )}
-
-                {/* Comment Input */}
-                {(mode === 'quote' || originalPost) && (
-                    <>
-                        <Text style={styles.sectionTitle}>Yorumun</Text>
-                        <View style={styles.textInputContainer}>
-                            <TextInput
-                                style={[styles.textInput, { minHeight: 80 }]}
-                                placeholder="Bu konuda eklemek istediklerin..."
-                                placeholderTextColor={theme.colors.textSecondary}
-                                value={comment}
-                                onChangeText={setComment}
-                                multiline
-                            />
-                        </View>
-                    </>
-                )}
-
-                {/* Metadata Section (Search + Status) */}
+                {/* Metadata Section (Search + Status) - Moved Above Title */}
                 {!originalPost && mode !== 'thought' && (
-                    <View style={{ marginTop: 24, zIndex: 100 }}>
+                    <View style={{ marginTop: 0, zIndex: 100, marginBottom: 24 }}>
                         <Text style={styles.sectionTitle}>Detaylar</Text>
+
+                        {/* Search Type Tabs - Styled like CreateReviewScreen */}
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                            {[
+                                { id: 'book', label: 'Kitap', icon: Book },
+                                { id: 'movie', label: 'Film', icon: Film },
+                                { id: 'music', label: 'Müzik', icon: Music }
+                            ].map((tab) => (
+                                <TouchableOpacity
+                                    key={tab.id}
+                                    onPress={() => {
+                                        setSearchType(tab.id as any);
+                                        if (source.length >= 3) {
+                                            // Trigger search (useEffect handles it)
+                                        }
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        paddingVertical: 12,
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        gap: 6,
+                                        borderColor: searchType === tab.id ? theme.colors.primary : theme.colors.border,
+                                        backgroundColor: searchType === tab.id ? theme.colors.primary + '15' : 'transparent',
+                                    }}
+                                >
+                                    <tab.icon size={16} color={searchType === tab.id ? theme.colors.primary : theme.colors.textSecondary} />
+                                    <Text style={{
+                                        fontSize: 12,
+                                        fontWeight: '600',
+                                        color: searchType === tab.id ? theme.colors.primary : theme.colors.textSecondary
+                                    }}>
+                                        {tab.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
 
                         <View style={{ zIndex: 200 }}>
                             <View style={styles.singleInputContainer}>
                                 <Search size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
                                 <TextInput
                                     style={styles.singleInput}
-                                    placeholder="Kitap, Film veya Müzik Ara..."
+                                    placeholder={
+                                        searchType === 'book' ? "Kitap Ara..." :
+                                            searchType === 'movie' ? "Film veya Dizi Ara..." :
+                                                searchType === 'music' ? "Müzik Ara..." :
+                                                    "Kitap, Film veya Müzik Ara..."
+                                    }
                                     placeholderTextColor={theme.colors.textSecondary}
                                     value={source}
                                     onChangeText={handleSearchSource}
@@ -791,6 +812,58 @@ export const CreateQuoteScreen = () => {
                         )}
                     </View>
                 )}
+
+                {/* Title Input */}
+                {!originalPost && (
+                    <View style={[styles.singleInputContainer, { marginBottom: 16 }]}>
+                        <FileText size={18} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                        <TextInput
+                            style={styles.singleInput}
+                            placeholder="Başlık Yazın (Opsiyonel)"
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={title}
+                            onChangeText={setTitle}
+                            maxLength={60}
+                        />
+                        {title.length > 0 && (
+                            <Text style={{ fontSize: 10, color: theme.colors.textSecondary }}>{title.length}/60</Text>
+                        )}
+                    </View>
+                )}
+
+                {/* Main Input (Quote/Thought) */}
+                {!originalPost && (
+                    <View style={styles.textInputContainer}>
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder={mode === 'thought' ? "Ne düşünüyorsun?" : "Alıntıyı buraya yaz..."}
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={quoteText}
+                            onChangeText={setQuoteText}
+                            multiline
+                            autoFocus={mode === 'thought'}
+                        />
+                    </View>
+                )}
+
+                {/* Comment Input */}
+                {(mode === 'quote' || originalPost) && (
+                    <>
+                        <Text style={styles.sectionTitle}>Yorumun</Text>
+                        <View style={styles.textInputContainer}>
+                            <TextInput
+                                style={[styles.textInput, { minHeight: 80 }]}
+                                placeholder="Bu konuda eklemek istediklerin..."
+                                placeholderTextColor={theme.colors.textSecondary}
+                                value={comment}
+                                onChangeText={setComment}
+                                multiline
+                            />
+                        </View>
+                    </>
+                )}
+
+
 
                 {/* Topic Selector - Moved to Bottom */}
                 <TouchableOpacity

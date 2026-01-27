@@ -9,6 +9,7 @@
 
 // Memory-based rate limiter'ı yükle
 require_once __DIR__ . '/MemoryRateLimiter.php';
+require_once __DIR__ . '/RedisManager.php';
 
 class RateLimiter
 {

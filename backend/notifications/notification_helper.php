@@ -1,7 +1,8 @@
 <?php
 // backend/notifications/notification_helper.php
 
-function sendRepostNotification($conn, $senderId, $newPostId, $originalPostId, $type) {
+function sendRepostNotification($conn, $senderId, $newPostId, $originalPostId, $type)
+{
     try {
         // Orijinal gönderi sahibini bul
         $postOwnerQuery = "SELECT user_id FROM posts WHERE id = :post_id";
@@ -11,7 +12,7 @@ function sendRepostNotification($conn, $senderId, $newPostId, $originalPostId, $
         $postOwner = $postOwnerStmt->fetch(PDO::FETCH_ASSOC);
 
         if ($postOwner) {
-            $ownerId = (int)$postOwner['user_id'];
+            $ownerId = (int) $postOwner['user_id'];
 
             // Kendine bildirim gelmesini engelle
             if ($ownerId != $senderId) {
@@ -24,12 +25,12 @@ function sendRepostNotification($conn, $senderId, $newPostId, $originalPostId, $
                 $senderName = $sender ? $sender['username'] : "Bir kullanıcı";
 
                 $title = ($type === 'quote') ? "Yeni Alıntı" : "Yeni Repost";
-                $message = ($type === 'quote') 
-                    ? "@$senderName gönderini alıntıladı." 
+                $message = ($type === 'quote')
+                    ? "@$senderName gönderini alıntıladı."
                     : "@$senderName gönderini paylaştı.";
-                
+
                 $notifData = json_encode(array(
-                    "sender_id" => $senderId, 
+                    "sender_id" => $senderId,
                     "post_id" => $newPostId,
                     "original_post_id" => $originalPostId
                 ));
@@ -41,12 +42,13 @@ function sendRepostNotification($conn, $senderId, $newPostId, $originalPostId, $
                 $notifStmt->bindParam(':title', $title);
                 $notifStmt->bindParam(':message', $message);
                 $notifStmt->bindParam(':data', $notifData);
-                
+
                 if ($notifStmt->execute()) {
-                        if (file_exists(__DIR__ . '/FCM.php')) {
+                    if (file_exists(__DIR__ . '/FCM.php')) {
                         include_once __DIR__ . '/FCM.php';
                         $fcm = new FCM($conn);
-                        $fcm->sendToUser($ownerId, $title, $message, array("type" => $type, "post_id" => $newPostId));
+                        // Async sending via Queue to improve performance
+                        $fcm->sendToUserAsync($ownerId, $title, $message, array("type" => $type, "post_id" => $newPostId));
                     }
                 }
             }

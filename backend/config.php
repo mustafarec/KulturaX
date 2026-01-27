@@ -6,13 +6,18 @@ $envCacheKey = 'kulturax_env_config';
 $envCacheTTL = 300; // 5 dakika
 
 // APCu varsa cache'den oku
-if (function_exists('apcu_enabled') && apcu_enabled()) {
+// APCu varsa cache'den oku (CLI hariç - Worker her zaman taze config okusun)
+if (php_sapi_name() !== 'cli' && function_exists('apcu_enabled') && apcu_enabled()) {
     $env = apcu_fetch($envCacheKey, $success);
     if (!$success) {
         // Cache miss - dosyadan oku ve cache'le
         $envFile = __DIR__ . '/.env';
         if (file_exists($envFile)) {
             $env = parse_ini_file($envFile);
+            if ($env === false) {
+                error_log("Config: parse_ini_file failed for .env");
+                $env = [];
+            }
             apcu_store($envCacheKey, $env, $envCacheTTL);
         } else {
             error_log("Config: .env file not found");
@@ -20,13 +25,16 @@ if (function_exists('apcu_enabled') && apcu_enabled()) {
         }
     }
 } else {
-    // APCu yok - her seferinde dosyadan oku
+    // APCu yok veya CLI - her seferinde dosyadan oku
     $envFile = __DIR__ . '/.env';
     $env = [];
     if (file_exists($envFile)) {
         $env = parse_ini_file($envFile);
+        if ($env === false) {
+            error_log("Config: parse_ini_file failed for .env");
+        }
     } else {
-        error_log("Config: .env file not found");
+        error_log("Config: .env file not found at $envFile");
     }
 }
 
@@ -34,7 +42,7 @@ if (function_exists('apcu_enabled') && apcu_enabled()) {
 $host = $env['DB_HOST'] ?? 'localhost';
 $db_name = $env['DB_NAME'] ?? '';
 $username = $env['DB_USER'] ?? '';
-$password = $env['DB_PASS'] ?? '';
+$password = $env['DB_PASSWORD'] ?? '';
 
 // API Signature Secret - Will be loaded from .env after env parsing
 // Fallback is empty to enforce .env usage for security
@@ -54,6 +62,11 @@ define('LASTFM_SHARED_SECRET', $env['LASTFM_SHARED_SECRET'] ?? '');
 define('GENIUS_ACCESS_TOKEN', $env['GENIUS_ACCESS_TOKEN'] ?? '');
 define('TICKETMASTER_API_KEY', $env['TICKETMASTER_API_KEY'] ?? '');
 
+// Redis Configuration
+define('REDIS_HOST', $env['REDIS_HOST'] ?? '127.0.0.1');
+define('REDIS_PORT', $env['REDIS_PORT'] ?? 6379);
+define('REDIS_PASSWORD', $env['REDIS_PASSWORD'] ?? null);
+
 $allowed_origins = [
     "https://mmreeo.online",
     "http://localhost:8081", // React Native Debugger
@@ -70,11 +83,13 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
  */
 function validateApiSignature()
 {
-    // Skip validation in development
+    // Skip validation in development (Localhost & Local Network)
+    $host = $_SERVER['HTTP_HOST'] ?? '';
     if (
-        isset($_SERVER['HTTP_HOST']) &&
-        (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false ||
-            strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)
+        strpos($host, 'localhost') !== false ||
+        strpos($host, '127.0.0.1') !== false ||
+        strpos($host, '192.168.') === 0 ||
+        strpos($host, '10.') === 0
     ) {
         return true;
     }
@@ -100,7 +115,12 @@ function validateApiSignature()
     }
 
     // Validate signature
-    $expectedSignature = hash_hmac('sha256', $timestamp . ':' . API_SIGNATURE_SECRET, API_SIGNATURE_SECRET);
+    if (empty(API_SIGNATURE_SECRET)) {
+        error_log("Security Critical: API_SIGNATURE_SECRET is not set!");
+        return false; // Fail secure
+    }
+
+    $expectedSignature = hash_hmac('sha256', (string) $timestamp . ':' . API_SIGNATURE_SECRET, API_SIGNATURE_SECRET);
 
     if (!hash_equals($expectedSignature, $signature)) {
         error_log("API Signature: Invalid signature");
@@ -116,12 +136,17 @@ if (in_array($origin, $allowed_origins)) {
 } elseif (empty($origin)) {
     // Origin header yok - muhtemelen mobil uygulama veya sunucu-sunucu isteği
     // Mobil uygulamalar için signature kontrolü yap (production'da)
-    if (!validateApiSignature()) {
-        http_response_code(401);
-        echo json_encode(["error" => "Invalid API signature", "code" => "INVALID_SIGNATURE"]);
-        exit();
+    // CLI (Worker/Cron) isteklerini hariç tut
+    if (php_sapi_name() !== 'cli') {
+        if (!validateApiSignature()) {
+            http_response_code(401);
+            echo json_encode(["error" => "Invalid API signature", "code" => "INVALID_SIGNATURE"]);
+            exit();
+        }
     }
-    header("Access-Control-Allow-Origin: *");
+    // Access-Control-Allow-Origin: * KALDIRILDI
+    // Native uygulamalar CORS headerina ihtiyaç duymaz.
+    // Web tarayıcıları ise Origin gönderir, bu bloğa girmez.
 } else {
     // Bilinmeyen origin - güvenlik için kısıtlı izin
     error_log("Unknown CORS origin attempt: " . $origin);
@@ -132,7 +157,7 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
