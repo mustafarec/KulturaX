@@ -77,13 +77,13 @@ export const ProfileScreen = () => {
     // Mock Banner if not present, and Profile Image
     const headerImage = React.useMemo(() =>
         user?.header_image_url
-            ? `${user.header_image_url}?t = ${new Date().getTime()} `
+            ? `${user.header_image_url}?t=${new Date().getTime()}`
             : null,
         [user?.header_image_url, user?.avatar_url, user?.updated_at, user]); // Depend on user object changes
 
     const profileImage = React.useMemo(() =>
         user?.avatar_url
-            ? `${user.avatar_url}?t = ${new Date().getTime()} `
+            ? `${user.avatar_url}?t=${new Date().getTime()}`
             : null,
         [user?.avatar_url, user?.updated_at, user]);
 

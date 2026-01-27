@@ -332,8 +332,22 @@ export const FeedScreen = () => {
                 data={data}
                 renderItem={renderItem}
                 keyExtractor={(item: any) => item.id.toString()}
-                contentContainerStyle={{ ...styles.listContainer, paddingTop: dynamicHeaderHeight + 5 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} progressViewOffset={dynamicHeaderHeight} />}
+                contentContainerStyle={{
+                    ...styles.listContainer,
+                    paddingTop: Platform.OS === 'ios' ? 5 : dynamicHeaderHeight + 5
+                }}
+                contentInset={{ top: dynamicHeaderHeight }}
+                contentOffset={{ x: 0, y: Platform.OS === 'ios' ? -dynamicHeaderHeight : 0 }}
+                automaticallyAdjustContentInsets={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[theme.colors.primary]}
+                        tintColor={theme.colors.primary}
+                        progressViewOffset={Platform.OS === 'ios' ? 0 : dynamicHeaderHeight}
+                    />
+                }
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
                 removeClippedSubviews={true}

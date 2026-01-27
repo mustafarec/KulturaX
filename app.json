@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "KültüraX",
+    "name": "KulturaX",
     "slug": "kitapmuzikfilm",
     "scheme": "kitapmuzikfilm",
     "runtimeVersion": "1.0.0",
@@ -27,11 +27,11 @@
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "package": "com.anonymous.kitapmuzikfilm",
-      "versionCode": 2,
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {},
