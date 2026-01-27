@@ -4,9 +4,9 @@ include_once '../config.php';
 include_once '../validation.php';
 include_once '../rate_limiter.php';
 
-// Rate limiting - IP bazlı, 5 istek/saat
+// Rate limiting - IP bazlı, Kademeli Engelleme
 $ip = $_SERVER['REMOTE_ADDR'];
-checkRateLimit($conn, $ip, 'forgot_password_attempt', 5, 3600);
+checkGradualRateLimit($conn, $ip, 'forgot_password_attempt');
 
 $data = json_decode(file_get_contents("php://input"));
 

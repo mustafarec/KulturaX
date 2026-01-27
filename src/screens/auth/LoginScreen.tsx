@@ -11,7 +11,7 @@ import { API_URL } from '../../services/backendApi';
 export const LoginScreen = () => {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
-    const { login } = useAuth();
+    const { login, isFirstLaunch } = useAuth();
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState('');
@@ -170,9 +170,9 @@ export const LoginScreen = () => {
             } else if (error.message === 'Geçersiz email formatı.') {
                 errorTitle = 'Geçersiz Format';
                 errorMessage = 'Lütfen geçerli bir e-posta adresi giriniz.';
-            } else if (error.message && error.message.includes('Çok fazla istek')) {
+            } else if (error.message && (error.message.includes('Çok fazla') || error.message.includes('bekleyiniz'))) {
                 errorTitle = 'Çok Fazla Deneme';
-                errorMessage = 'Çok fazla başarısız giriş denemesi. Lütfen 5 dakika bekleyin.';
+                errorMessage = error.message; // Backend'den gelen dinamik mesajı kullan (örn: "Lütfen 2 dakika bekleyiniz.")
             }
 
             Toast.show({
@@ -211,7 +211,9 @@ export const LoginScreen = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Tekrar Hoşgeldiniz</Text>
+            <Text style={styles.title}>
+                {isFirstLaunch ? "KulturaX'e Hoş Geldiniz" : "Tekrar Hoşgeldiniz"}
+            </Text>
 
             <View style={styles.inputContainer}>
                 <View style={styles.inputWrapper}>

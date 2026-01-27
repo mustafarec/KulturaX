@@ -161,4 +161,59 @@ function checkRateLimitDB($conn, $key, $action, $limit, $timeWindow)
         exit;
     }
 }
+
+/**
+ * Gradal Rate Limiting - Exponential Backoff mantığı
+ * Çok katmanlı kontrol sağlar:
+ * 1. Katman: 5 deneme / 2 dakika
+ * 2. Katman: 10 deneme / 15 dakika
+ * 3. Katman: 15 deneme / 60 dakika
+ */
+function checkGradualRateLimit($conn, $key, $action)
+{
+    // Memory-based rate limiting kullan
+    if (class_exists('MemoryRateLimiter')) {
+        // En dar pencereden en genişe doğru kontrol et
+        $levels = [
+            ['limit' => 5, 'window' => 120, 'id' => 'l1'],
+            ['limit' => 10, 'window' => 900, 'id' => 'l2'],
+            ['limit' => 20, 'window' => 3600, 'id' => 'l3']
+        ];
+
+        $maxRetryAfter = 0;
+        $isBlocked = false;
+
+        foreach ($levels as $level) {
+            $levelAction = $action . '_' . $level['id'];
+            if (!MemoryRateLimiter::check($key, $levelAction, $level['limit'], $level['window'])) {
+                $retryAfter = MemoryRateLimiter::getTimeToReset($key, $levelAction);
+                $maxRetryAfter = max($maxRetryAfter, $retryAfter);
+                $isBlocked = true;
+            }
+        }
+
+        if ($isBlocked) {
+            error_log("Gradual Rate limit exceeded for: $key, action: $action");
+            http_response_code(429);
+            header("Retry-After: $maxRetryAfter");
+            
+            // Kullanıcıya daha açıklayıcı bir mesaj ver
+            $minutes = ceil($maxRetryAfter / 60);
+            $message = "Çok fazla başarısız deneme yaptınız. Güvenliğiniz için lütfen " . $minutes . " dakika bekleyiniz.";
+            if ($maxRetryAfter < 60) {
+                $message = "Çok fazla başarısız deneme yaptınız. Güvenliğiniz için lütfen " . $maxRetryAfter . " saniye bekleyiniz.";
+            }
+
+            echo json_encode([
+                "message" => $message,
+                "retry_after" => $maxRetryAfter,
+                "retry_after_minutes" => $minutes
+            ]);
+            exit;
+        }
+    } else {
+        // Fallback: Eski sisteme dön (güvenlik için)
+        checkRateLimit($conn, $key, $action, 5, 300);
+    }
+}
 ?>

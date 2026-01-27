@@ -16,6 +16,7 @@ export const SECURE_KEYS = {
     AUTH_TOKEN: 'auth_token',
     USER_DATA: 'user_data',
     FCM_TOKEN: 'fcm_token',
+    HAS_LAUNCHED: 'has_launched',
 } as const;
 
 // Options for SecureStore

@@ -5,9 +5,9 @@ include_once '../auth_middleware.php';
 include_once '../validation.php';
 include_once '../rate_limiter.php';
 
-// Rate limiting - Brute force koruması: 5 deneme/5 dakika
+// Rate limiting - Brute force koruması: Kademeli Engelleme
 $ip = getClientIp();
-checkRateLimit($conn, $ip, 'login_attempt', 5, 300);
+checkGradualRateLimit($conn, $ip, 'login_attempt');
 
 $data = json_decode(file_get_contents("php://input"));
 

@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { onUnauthorized } from '../services/api/client';
 import { authService } from '../services/api/authApi';
-import { secureSetObject, secureGetObject, secureDelete, SECURE_KEYS, migrateToSecureStorage } from '../services/SecureStorageService';
+import { secureSetObject, secureGetObject, secureDelete, secureGet, secureSet, SECURE_KEYS, migrateToSecureStorage } from '../services/SecureStorageService';
 import { registerFCMToken, unregisterFCMToken } from '../services/PushNotificationService';
 import { User } from '../types/models';
 
@@ -16,6 +16,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     updateUser: (userData: Partial<User>) => Promise<void>;
     isLoading: boolean;
+    isFirstLaunch: boolean;
     error: string | null;
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isFirstLaunch, setIsFirstLaunch] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Oturum yenileme (Heartbeat) fonksiyonu
@@ -96,6 +98,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 // Run migration from AsyncStorage to SecureStore (one-time)
                 await migrateToSecureStorage();
 
+                // Check if it's first launch
+                const hasLaunched = await secureGet(SECURE_KEYS.HAS_LAUNCHED);
+                if (!hasLaunched) {
+                    setIsFirstLaunch(true);
+                }
+
                 const userData = await secureGetObject<User>(SECURE_KEYS.USER_DATA);
                 if (userData) {
                     setUser(userData);
@@ -144,6 +152,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.log('FCM registration error:', e);
             }
 
+            // Mark as launched
+            await secureSet(SECURE_KEYS.HAS_LAUNCHED, 'true');
+            setIsFirstLaunch(false);
+
             // Login sonrası hemen heartbeat
             refreshSession();
 
@@ -183,6 +195,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             setUser(userData);
             await secureSetObject(SECURE_KEYS.USER_DATA, userData);
+
+            // Mark as launched
+            await secureSet(SECURE_KEYS.HAS_LAUNCHED, 'true');
+            setIsFirstLaunch(false);
 
             // Register FCM Token
             try {
@@ -225,7 +241,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, signup, verifyEmail, resendEmailCode, logout, updateUser, isLoading, error }}>
+        <AuthContext.Provider value={{ user, login, signup, verifyEmail, resendEmailCode, logout, updateUser, isLoading, isFirstLaunch, error }}>
             {children}
         </AuthContext.Provider>
     );

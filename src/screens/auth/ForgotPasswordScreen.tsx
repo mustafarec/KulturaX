@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
 import { API_URL } from '../../services/backendApi';
 
 export const ForgotPasswordScreen = () => {
@@ -15,6 +16,8 @@ export const ForgotPasswordScreen = () => {
     const [code, setCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -51,6 +54,24 @@ export const ForgotPasswordScreen = () => {
             borderWidth: 1,
             borderColor: theme.colors.border,
             fontSize: 16,
+        },
+        passwordContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginBottom: theme.spacing.m,
+        },
+        passwordInput: {
+            flex: 1,
+            color: theme.colors.text,
+            padding: theme.spacing.m,
+            fontSize: 16,
+        },
+        eyeButton: {
+            padding: theme.spacing.m,
         },
         button: {
             backgroundColor: theme.colors.primary,
@@ -94,13 +115,20 @@ export const ForgotPasswordScreen = () => {
 
             const data = await response.json();
 
-            Toast.show({
-                type: 'success',
-                text1: 'Kod Gönderildi',
-                text2: data.message,
-            });
-
-            setCodeSent(true);
+            if (response.ok) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Kod Gönderildi',
+                    text2: data.message,
+                });
+                setCodeSent(true);
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: response.status === 429 ? 'Çok Fazla Deneme' : 'Hata',
+                    text2: data.message || 'Bir hata oluştu.',
+                });
+            }
         } catch (error) {
             Toast.show({
                 type: 'error',
@@ -219,23 +247,49 @@ export const ForgotPasswordScreen = () => {
                         maxLength={6}
                     />
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Yeni Şifre"
-                        placeholderTextColor={theme.colors.textSecondary}
-                        value={newPassword}
-                        onChangeText={setNewPassword}
-                        secureTextEntry
-                    />
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Yeni Şifre"
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={newPassword}
+                            onChangeText={setNewPassword}
+                            secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? (
+                                <EyeOff size={20} color={theme.colors.textSecondary} />
+                            ) : (
+                                <Eye size={20} color={theme.colors.textSecondary} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Yeni Şifre (Tekrar)"
-                        placeholderTextColor={theme.colors.textSecondary}
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        secureTextEntry
-                    />
+                    <PasswordStrengthIndicator password={newPassword} />
+
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Yeni Şifre (Tekrar)"
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry={!showConfirmPassword}
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                            {showConfirmPassword ? (
+                                <EyeOff size={20} color={theme.colors.textSecondary} />
+                            ) : (
+                                <Eye size={20} color={theme.colors.textSecondary} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
 
                     <TouchableOpacity
                         style={[styles.button, loading && styles.buttonDisabled]}
