@@ -8,6 +8,7 @@ import { ArrowLeft, BookOpen, Book, Film, Music, Calendar, Ghost, Star, MoreVert
 import { libraryService } from '../../services/backendApi';
 import { LibraryBottomSheet } from '../../components/LibraryBottomSheet';
 import Toast from 'react-native-toast-message';
+import { ensureHttps } from '../../utils/urlUtils';
 
 type TabType = 'book' | 'movie' | 'music' | 'event';
 type StatusFilter = 'all' | 'read' | 'reading' | 'want_to_read' | 'dropped';
@@ -533,7 +534,7 @@ export const MyActivitiesScreen = () => {
                         <View style={styles.posterContainer}>
                             {item.image_url && !imgError ? (
                                 <Image
-                                    source={{ uri: item.image_url.replace('http://', 'https://') }}
+                                    source={{ uri: ensureHttps(item.image_url) }}
                                     style={styles.poster}
                                     resizeMode="cover"
                                     onError={() => setImgError(true)}

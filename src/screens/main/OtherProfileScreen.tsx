@@ -16,6 +16,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { PostOptionsModal } from '../../components/PostOptionsModal';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ContentType } from '../../types/models';
+import { ensureHttps } from '../../utils/urlUtils';
+import { parseDate } from '../../utils/dateUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -419,7 +421,7 @@ export const OtherProfileScreen = () => {
 
 
     // Mock Header Image (Random Library/Aesthetic)
-    const headerImage = profile?.header_image_url || null;
+    const headerImage = ensureHttps(profile?.header_image_url) || null;
 
     const [isFollowing, setIsFollowing] = useState(initialFollowing ?? false);
     const [requestStatus, setRequestStatus] = useState<'pending' | 'accepted' | 'rejected' | null>(null);
@@ -840,7 +842,7 @@ export const OtherProfileScreen = () => {
                 <View style={styles.listPosterContainer}>
                     {item.image_url && !imgError ? (
                         <Image
-                            source={{ uri: item.image_url.replace('http://', 'https://') }}
+                            source={{ uri: ensureHttps(item.image_url) }}
                             style={styles.listPoster}
                             resizeMode="cover"
                             onError={() => setImgError(true)}
@@ -1129,7 +1131,7 @@ export const OtherProfileScreen = () => {
                     <View style={styles.avatarContainer}>
                         {profile.avatar_url ? (
                             <Image
-                                source={{ uri: profile.avatar_url }}
+                                source={{ uri: ensureHttps(profile.avatar_url) }}
                                 style={styles.avatar}
                             />
                         ) : (
@@ -1258,7 +1260,7 @@ export const OtherProfileScreen = () => {
                         </View>
                         <View style={styles.metaItem}>
                             <Calendar size={14} color={theme.colors.textSecondary} />
-                            <Text style={styles.metaText}>Katılım: {profile.created_at ? new Date(profile.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}</Text>
+                            <Text style={styles.metaText}>Katılım: {profile.created_at ? parseDate(profile.created_at)?.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}</Text>
                         </View>
                     </View>
                 </View>

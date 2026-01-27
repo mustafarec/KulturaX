@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Image, Text, StyleSheet, ViewStyle } from 'react-native';
 import { theme } from '../../theme/theme';
+import { ensureHttps } from '../../utils/urlUtils';
 
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl' | number;
 
@@ -70,7 +71,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         <View style={[styles.container, style]}>
             {src && !imageError ? (
                 <Image
-                    source={{ uri: src }}
+                    source={{ uri: ensureHttps(src) }}
                     style={styles.image}
                     onError={() => setImageError(true)}
                     resizeMode="cover"

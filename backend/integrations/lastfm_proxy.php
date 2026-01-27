@@ -18,7 +18,8 @@ if (!$username) {
     exit;
 }
 
-$url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=" . urlencode($username) . "&api_key=" . LASTFM_API_KEY . "&format=json&limit=1";
+$url = "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=" . urlencode($username) . "&api_key=" . LASTFM_API_KEY . "&format=json&limit=1";
+
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $url);
@@ -30,14 +31,17 @@ $data = json_decode($response, true);
 
 if (isset($data['recenttracks']['track'][0])) {
     $track = $data['recenttracks']['track'][0];
-    
+
     // LastFM "now playing" durumunu '@attr' ile belirtir
     $is_playing = isset($track['@attr']['nowplaying']) && $track['@attr']['nowplaying'] == "true";
-    
+
     $artist = $track['artist']['#text'];
     $song = $track['name'];
     $image = $track['image'][2]['#text']; // Large image
-    
+    if (strpos($image, 'http://') === 0) {
+        $image = str_replace('http://', 'https://', $image);
+    }
+
     echo json_encode(array(
         "is_playing" => $is_playing, // LastFM her zaman son şarkıyı döner, çalmıyor olsa bile
         "provider" => "lastfm",

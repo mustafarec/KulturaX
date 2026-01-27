@@ -21,6 +21,8 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { ShareOptionsSheet } from '../../components/ShareOptionsSheet';
 import { ShareCardModal } from '../../components/ShareCardModal';
 import { ContentType } from '../../types/models';
+import { ensureHttps } from '../../utils/urlUtils';
+import { parseDate } from '../../utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -75,17 +77,36 @@ export const ProfileScreen = () => {
     const [selectedLibraryItem, setSelectedLibraryItem] = useState<any>(null);
 
     // Mock Banner if not present, and Profile Image
-    const headerImage = React.useMemo(() =>
-        user?.header_image_url
-            ? `${user.header_image_url}?t=${new Date().getTime()}`
-            : null,
-        [user?.header_image_url, user?.avatar_url, user?.updated_at, user]); // Depend on user object changes
+    const headerImage = React.useMemo(() => {
+        const uri = ensureHttps(user?.header_image_url);
+        if (!uri) return null;
 
-    const profileImage = React.useMemo(() =>
-        user?.avatar_url
-            ? `${user.avatar_url}?t=${new Date().getTime()}`
-            : null,
-        [user?.avatar_url, user?.updated_at, user]);
+        try {
+            // Basic validation
+            if (uri.length < 5) return null;
+
+            const separator = uri.includes('?') ? '&' : '?';
+            return `${uri}${separator}t=${new Date().getTime()}`;
+        } catch (e) {
+            console.warn('Error parsing header image URL', e);
+            return null;
+        }
+    }, [user?.header_image_url, user?.updated_at]);
+
+    const profileImage = React.useMemo(() => {
+        const uri = ensureHttps(user?.avatar_url);
+        if (!uri) return null;
+
+        try {
+            if (uri.length < 5) return null;
+
+            const separator = uri.includes('?') ? '&' : '?';
+            return `${uri}${separator}t=${new Date().getTime()}`;
+        } catch (e) {
+            console.warn('Error parsing profile image URL', e);
+            return null;
+        }
+    }, [user?.avatar_url, user?.updated_at]);
 
     const fetchUserPosts = async () => {
         if (!refreshing) setIsLoading(true);
@@ -506,7 +527,7 @@ export const ProfileScreen = () => {
                     <View style={styles.listPosterContainer}>
                         {item.image_url && !imgError ? (
                             <Image
-                                source={{ uri: item.image_url.replace('http://', 'https://') }}
+                                source={{ uri: ensureHttps(item.image_url) }}
                                 style={styles.listPoster}
                                 resizeMode="cover"
                                 onError={() => setImgError(true)}
@@ -681,7 +702,11 @@ export const ProfileScreen = () => {
                 {/* Banner Section */}
                 <View style={[styles.bannerContainer, Platform.OS === 'ios' && { marginTop: -insets.top, height: 192 + insets.top }]}>
                     {headerImage ? (
-                        <Image source={{ uri: headerImage }} style={styles.bannerImage} />
+                        <Image
+                            source={{ uri: headerImage }}
+                            style={styles.bannerImage}
+                            onError={(e) => console.log('Header image load error:', e.nativeEvent.error)}
+                        />
                     ) : (
                         <View style={[styles.bannerImage, { backgroundColor: theme.colors.border }]} />
                     )}
@@ -699,7 +724,11 @@ export const ProfileScreen = () => {
                     <View style={styles.avatarRow}>
                         <View style={styles.avatarContainer}>
                             {profileImage ? (
-                                <Image source={{ uri: profileImage }} style={[styles.avatar, { borderColor: theme.colors.background }]} />
+                                <Image
+                                    source={{ uri: profileImage }}
+                                    style={[styles.avatar, { borderColor: theme.colors.background }]}
+                                    onError={(e) => console.log('Profile image load error:', e.nativeEvent.error)}
+                                />
                             ) : (
                                 <View style={[styles.avatar, { borderColor: theme.colors.background, backgroundColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' }]}>
                                     <Text style={{ color: theme.colors.textSecondary, fontSize: 32, fontWeight: '600' }}>
@@ -755,13 +784,13 @@ export const ProfileScreen = () => {
                             <View style={styles.metaItem}>
                                 <Calendar size={14} color={theme.colors.textSecondary} />
                                 <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-                                    Katılım: {user.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}
+                                    Katılım: {user.created_at ? parseDate(user.created_at)?.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}
                                 </Text>
                             </View>
                             {user.birth_date && (
                                 <View style={styles.metaItem}>
                                     <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-                                        🎂 {new Date(user.birth_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        🎂 {parseDate(user.birth_date)?.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
                                     </Text>
                                 </View>
                             )}

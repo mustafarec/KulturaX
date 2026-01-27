@@ -27,11 +27,11 @@
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "25"
     },
     "android": {
       "package": "com.anonymous.kitapmuzikfilm",
-      "versionCode": 3,
+      "versionCode": 25,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {},
