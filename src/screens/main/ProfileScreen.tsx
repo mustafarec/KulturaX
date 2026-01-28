@@ -804,20 +804,25 @@ export const ProfileScreen = () => {
                         </View>
                         {/* Interests */}
                         {(() => {
-                            // Parse interests if it's a string
                             let interestsArray: string[] = [];
-                            if (user.interests) {
-                                if (typeof user.interests === 'string') {
-                                    try {
-                                        interestsArray = JSON.parse(user.interests);
-                                    } catch (e) {
-                                        interestsArray = [];
+                            try {
+                                if (user.interests) {
+                                    if (typeof user.interests === 'string') {
+                                        const parsed = JSON.parse(user.interests);
+                                        if (Array.isArray(parsed)) {
+                                            interestsArray = parsed;
+                                        }
+                                    } else if (Array.isArray(user.interests)) {
+                                        interestsArray = user.interests;
                                     }
-                                } else if (Array.isArray(user.interests)) {
-                                    interestsArray = user.interests;
                                 }
+                            } catch (e) {
+                                interestsArray = [];
                             }
-                            return interestsArray.length > 0 ? (
+
+                            if (!Array.isArray(interestsArray) || interestsArray.length === 0) return null;
+
+                            return (
                                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                                     {interestsArray.map((interest: string, index: number) => (
                                         <View
@@ -835,7 +840,7 @@ export const ProfileScreen = () => {
                                         </View>
                                     ))}
                                 </View>
-                            ) : null;
+                            );
                         })()}
                     </View>
 

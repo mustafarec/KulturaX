@@ -9,6 +9,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
 import { messageService } from '../../services/backendApi';
+import { useWebSocket } from '../../context/WebSocketContext';
 import { ArrowLeft, ChevronRight, Search, ChevronUp, ChevronDown, X } from 'lucide-react-native';
 
 // Native module for Android notification suppression
@@ -42,6 +43,7 @@ export const ChatDetailScreen = () => {
 
     const { user } = useAuth();
     const { markAsRead, setCurrentChatUserId, dismissNotifications } = useMessage();
+    const { isConnected } = useWebSocket(); // Get global WS status
     const { theme } = useTheme();
     const insets = useSafeAreaInsets();
     const flatListRef = useRef<FlatList>(null);
@@ -319,10 +321,19 @@ export const ChatDetailScreen = () => {
         // Fix: Cast sender_id to Number to handle string/number mismatch from backend vs local
         const isMyMessage = Number(item.sender_id) === Number(user?.id);
 
+        // We use the item's own properties for grouping if available, 
+        // but since reversedMessages is changing, we still need to know adjacent messages.
+        // HOWEVER, we can pass index-based lookups ONLY if we really need grouping.
+        // To prevent full re-renders, components should ideally handle this or we memoize heavily.
+
+        // For now, let's keep the logic but be careful with dependencies.
+        // We'll pass the necessary flags to MessageBubble.
+
+        // Note: index+1 is OLDER message in inverted list
+        // index-1 is NEWER message in inverted list
         const prevMessage = reversedMessages[index + 1];
         const nextMessage = reversedMessages[index - 1];
 
-        // Fix: Ensure safe comparison for grouping
         const isSameSenderAsPrev = prevMessage ? Number(prevMessage.sender_id) === Number(item.sender_id) : false;
         const isSameSenderAsNext = nextMessage ? Number(nextMessage.sender_id) === Number(item.sender_id) : false;
 
@@ -333,57 +344,25 @@ export const ChatDetailScreen = () => {
         const showUnreadDivider = !hasViewedMessages && (initialUnreadCount || 0) > 0 && index === (initialUnreadCount || 0) - 1;
 
         return (
-            <View>
-                {/* Date Separator (Rendered visually above because Inverted list logic usually keeps item content top-down, but item stacking is reversed) */}
-                {/* ACTUALLY: In an inverted list, item N is below item N+1. 
-                    If we want separator visually ABOVE Item N, we should render it 'after' the bubble if the content is inverted? 
-                    NO. Standard View behavior: Children are Top->Bottom.
-                    Item N contains [Separator, Bubble].
-                    It appears as Separator
-                                  Bubble
-                    Item N+1 (Older) is ABOVE Item N.
-                    So:
-                    [Item N+1 Bubble]
-                    [Item N Separator]
-                    [Item N Bubble]
-                    This is correct.
-                */}
-                {showDateSeparator && (
-                    <View style={{ alignItems: 'center', marginVertical: 16 }}>
-                        <Text style={{
-                            color: theme.colors.textSecondary,
-                            fontSize: 12,
-                            fontWeight: '500',
-                            backgroundColor: theme.colors.background,
-                            paddingHorizontal: 12,
-                            paddingVertical: 4,
-                            borderRadius: 12,
-                        }}>
-                            {getDateLabel(messageDate)}
-                        </Text>
-                    </View>
-                )}
-
-                <MessageBubble
-                    item={item}
-                    isMyMessage={isMyMessage}
-                    isFirstInGroup={!isSameSenderAsPrev}
-                    isLastInGroup={!isSameSenderAsNext}
-                    isNewMessage={item.id === newMessageId}
-                    showUnreadDivider={showUnreadDivider}
-                    // showDateSeparator prop removed
-                    showDateSeparator={false}
-                    dateLabel={getDateLabel(messageDate)}
-                    chatUsername={chatUser?.username || 'Kullanıcı'}
-                    theme={theme}
-                    highlightText={searchText}
-                    isFocusedMatch={searchMatches[currentMatchIndex] === index}
-                    onLongPress={handleLongPress}
-                    onSwipeReply={handleReplyFromSwipe}
-                />
-            </View>
+            <MessageBubble
+                item={item}
+                isMyMessage={isMyMessage}
+                isFirstInGroup={!isSameSenderAsPrev}
+                isLastInGroup={!isSameSenderAsNext}
+                isNewMessage={item.id === newMessageId}
+                showUnreadDivider={showUnreadDivider}
+                showDateSeparator={showDateSeparator}
+                dateLabel={getDateLabel(messageDate)}
+                chatUsername={chatUser?.username || 'Kullanıcı'}
+                theme={theme}
+                highlightText={searchText}
+                isFocusedMatch={searchMatches[currentMatchIndex] === index}
+                onLongPress={handleLongPress}
+                onSwipeReply={handleReplyFromSwipe}
+            />
         );
-    }, [reversedMessages, user?.id, newMessageId, initialUnreadCount, chatUser, theme, handleLongPress, handleReplyFromSwipe]);
+    }, [user?.id, newMessageId, hasViewedMessages, initialUnreadCount, chatUser, theme, searchText, searchMatches, currentMatchIndex, handleLongPress, handleReplyFromSwipe, reversedMessages]); // Still needs reversedMessages for grouping lookups
+
 
     // Stable key extractor
     const keyExtractor = useCallback((item: Message) => item._internalId || item.id.toString(), []);
@@ -488,6 +467,8 @@ export const ChatDetailScreen = () => {
                     </TouchableOpacity>
                 </View>
             )}
+
+
 
             {/* Messages List */}
             {isLoading ? (

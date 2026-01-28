@@ -54,10 +54,12 @@ if (
     // 3. Sanitization
     $data->content = Validator::sanitizeInput($data->content);
 
-    $messageId = null; // Initialize messageId
+    $messageId = null; 
 
-    // Try inserting with client_id
+    // USE TRANSACTION for atomicity
     try {
+        $conn->beginTransaction();
+
         $query = "INSERT INTO messages SET 
                     sender_id = :sender_id, 
                     receiver_id = :receiver_id, 
@@ -75,9 +77,25 @@ if (
 
         $stmt->execute();
         $messageId = $conn->lastInsertId();
-    } catch (PDOException $e) {
-        // Log detailed error and return 500
-        error_log("Message Insert Error: " . $e->getMessage());
+
+        if ($messageId) {
+            // 4. Auto-accept permission
+            $permQuery = "INSERT INTO message_permissions (user_id, partner_id, status) VALUES (:sender_id, :receiver_id, 'accepted') ON DUPLICATE KEY UPDATE status = 'accepted'";
+            $permStmt = $conn->prepare($permQuery);
+            $permStmt->bindParam(':sender_id', $userId);
+            $permStmt->bindParam(':receiver_id', $data->receiver_id);
+            $permStmt->execute();
+
+            $conn->commit();
+        } else {
+            $conn->rollBack();
+            throw new Exception("LastInsertId failed.");
+        }
+    } catch (Exception $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log("Message Send Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(array("message" => "Mesaj gönderilirken sunucu hatası oluştu."));
         exit;
@@ -91,18 +109,8 @@ if (
             $getMsg->execute();
             $newMessage = $getMsg->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Message Select Error: " . $e->getMessage());
-            // Continue execution as message is sent, just response might lack details
             $newMessage = ['created_at' => date('Y-m-d H:i:s')];
         }
-
-        // 4. Auto-accept permission: Eğer ben mesaj atıyorsam, karşı tarafın bana mesaj atmasını kabul etmişimdir.
-        // Bu sayede takipleşme bitse bile konuşma gelen kutumda kalır.
-        $permQuery = "INSERT INTO message_permissions (user_id, partner_id, status) VALUES (:sender_id, :receiver_id, 'accepted') ON DUPLICATE KEY UPDATE status = 'accepted'";
-        $permStmt = $conn->prepare($permQuery);
-        $permStmt->bindParam(':sender_id', $userId);
-        $permStmt->bindParam(':receiver_id', $data->receiver_id);
-        $permStmt->execute();
 
         http_response_code(201);
         echo json_encode(array(
@@ -116,6 +124,9 @@ if (
             $senderId = (int) $userId;
             $receiverId = (int) $data->receiver_id;
 
+            // NEW: Backend-Driven WebSocket Broadcast (Real-Time Guarantee)
+            broadcastToWebSocket($senderId, $receiverId, $data->content, (int)$messageId, $replyToId);
+
             // Gönderen kullanıcı adını al
             $senderQuery = "SELECT username FROM users WHERE id = :sender_id";
             $senderStmt = $conn->prepare($senderQuery);
@@ -128,16 +139,14 @@ if (
             $message = (strlen($data->content) > 50) ? substr($data->content, 0, 47) . "..." : $data->content;
 
             // Push Bildirim Gönder (FCM - Asenkron)
-            // Bildirim kuyruğa eklenir, cron job ile işlenir
             if (file_exists('../notifications/FCM.php')) {
                 include_once '../notifications/FCM.php';
                 $fcm = new FCM($conn);
-                // Async: Kuyruğa ekle ve hemen dön (API yanıt süresini azaltır)
                 $fcm->sendToUserAsync($receiverId, $title, $message, array(
                     "type" => "message",
                     "sender_id" => (string) $senderId,
                     "sender_name" => $senderName
-                ), 'high'); // Mesajlar yüksek öncelikli
+                ), 'high');
             }
         } catch (Exception $e) {
             error_log("General notification error in send.php: " . $e->getMessage());
@@ -149,5 +158,53 @@ if (
 } else {
     http_response_code(400);
     echo json_encode(array("message" => "Incomplete data."));
+}
+
+/**
+ * Helper to internal broadcast
+ */
+function broadcastToWebSocket($senderId, $receiverId, $content, $messageId, $replyTo) {
+    global $api_signature_secret; // Use constant or global
+    $secret = defined('API_SIGNATURE_SECRET') ? API_SIGNATURE_SECRET : ($api_signature_secret ?? 'default_internal_secret');
+
+    try {
+        $messageData = [
+            'type' => 'new_message',
+            'message' => [
+                'id' => $messageId,
+                'sender_id' => $senderId,
+                'receiver_id' => $receiverId,
+                'content' => $content,
+                'created_at' => date('Y-m-d H:i:s'),
+                'is_read' => 0,
+                'reply_to' => $replyTo
+            ]
+        ];
+
+        $payloadBase = [
+            'type' => 'internal_broadcast',
+            'secret' => $secret,
+            'payload' => $messageData
+        ];
+
+        $socket = @stream_socket_client('tcp://127.0.0.1:8080', $errno, $errstr, 2);
+        if ($socket) {
+            // 1. Broadcast to Receiver
+            $receiverPayload = $payloadBase;
+            $receiverPayload['receiverId'] = $receiverId;
+            fwrite($socket, json_encode($receiverPayload) . "\n");
+
+            // 2. Broadcast to Sender (Multi-device sync)
+            $senderPayload = $payloadBase;
+            $senderPayload['receiverId'] = $senderId;
+            fwrite($socket, json_encode($senderPayload) . "\n");
+
+            fclose($socket);
+        } else {
+            error_log("WS Broadcast Failed: $errstr ($errno)");
+        }
+    } catch (Exception $e) {
+        error_log("WS Broadcast Logic Error: " . $e->getMessage());
+    }
 }
 ?>

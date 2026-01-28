@@ -1263,6 +1263,47 @@ export const OtherProfileScreen = () => {
                             <Text style={styles.metaText}>Katılım: {profile.created_at ? parseDate(profile.created_at)?.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' }) : 'Bilinmiyor'}</Text>
                         </View>
                     </View>
+
+                    {/* Interests */}
+                    {(() => {
+                        let interestsArray: string[] = [];
+                        try {
+                            if (profile.interests) {
+                                if (typeof profile.interests === 'string') {
+                                    const parsed = JSON.parse(profile.interests);
+                                    if (Array.isArray(parsed)) {
+                                        interestsArray = parsed;
+                                    }
+                                } else if (Array.isArray(profile.interests)) {
+                                    interestsArray = profile.interests;
+                                }
+                            }
+                        } catch (e) {
+                            interestsArray = [];
+                        }
+
+                        if (!Array.isArray(interestsArray) || interestsArray.length === 0) return null;
+
+                        return (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                                {interestsArray.map((interest: string, index: number) => (
+                                    <View
+                                        key={index}
+                                        style={{
+                                            backgroundColor: theme.colors.primary + '15',
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                            borderRadius: 16
+                                        }}
+                                    >
+                                        <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '500' }}>
+                                            {interest}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        );
+                    })()}
                 </View>
 
                 {/* Stats Grid */}

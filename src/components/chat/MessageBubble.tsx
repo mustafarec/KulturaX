@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, Animated as RNAnimated, StyleSheet } from 'react-native';
-import Animated, { FadeInUp, FadeIn, LinearTransition, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition, withTiming } from 'react-native-reanimated';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { Reply } from 'lucide-react-native';
 import { SharedPostMessage } from '../SharedPostMessage';
@@ -53,18 +53,16 @@ const decodeContent = (content: string) => {
 
 // Parse date string without timezone conversion (treat as local time)
 const parseLocalDate = (dateStr: string): Date => {
-    // Handle ISO format (from optimistic message)
     if (dateStr.includes('T')) {
         return new Date(dateStr);
     }
-    // Handle YYYY-MM-DD HH:mm:ss format from backend (interpret as local time)
     const [datePart, timePart] = dateStr.split(' ');
     const [year, month, day] = datePart.split('-').map(Number);
     const [hours, minutes, seconds] = (timePart || '00:00:00').split(':').map(Number);
     return new Date(year, month - 1, day, hours, minutes, seconds);
 };
 
-// Start: Helper to highlight text
+// Helper to highlight text
 const renderHighlightedText = (text: string, highlight: string, styles: any, isFocused: boolean) => {
     if (!highlight || !text) return <Text>{text}</Text>;
 
@@ -83,7 +81,6 @@ const renderHighlightedText = (text: string, highlight: string, styles: any, isF
         </Text>
     );
 };
-// End: Helper
 
 // Parse shared post JSON
 const parseSharedPost = (content: string) => {
@@ -113,6 +110,116 @@ const CustomEntering = (targetValues: any) => {
     };
 };
 
+const createStyles = (theme: any) => StyleSheet.create({
+    messageBubble: {
+        maxWidth: '80%',
+        padding: 14,
+        borderRadius: 20,
+        marginBottom: 12,
+        position: 'relative',
+        ...theme.shadows.default,
+    },
+    myMessage: {
+        alignSelf: 'flex-end',
+        backgroundColor: theme.colors.primary,
+    },
+    theirMessage: {
+        alignSelf: 'flex-start',
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    messageText: {
+        fontSize: 15,
+        lineHeight: 22,
+        fontFamily: theme.fonts.main,
+    },
+    myMessageText: { color: '#fff' },
+    theirMessageText: { color: theme.colors.text },
+    timeText: {
+        fontSize: 11,
+        fontFamily: theme.fonts.main,
+    },
+    myTimeText: { color: 'rgba(255,255,255,0.7)' },
+    theirTimeText: { color: theme.colors.textSecondary },
+    readStatusText: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.7)',
+        fontFamily: theme.fonts.main,
+    },
+    myMessageTail: {
+        position: 'absolute',
+        bottom: 0,
+        right: -6,
+        width: 0,
+        height: 0,
+        borderStyle: 'solid',
+        borderLeftWidth: 8,
+        borderRightWidth: 0,
+        borderTopWidth: 8,
+        borderLeftColor: theme.colors.primary,
+        borderRightColor: 'transparent',
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+    },
+    theirMessageTail: {
+        position: 'absolute',
+        bottom: 0,
+        left: -6,
+        width: 0,
+        height: 0,
+        borderStyle: 'solid',
+        borderLeftWidth: 0,
+        borderRightWidth: 8,
+        borderTopWidth: 8,
+        borderLeftColor: 'transparent',
+        borderRightColor: theme.colors.surface,
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+    },
+    dateSeparator: {
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    dateSeparatorText: {
+        color: theme.colors.textSecondary,
+        fontSize: 12,
+        fontWeight: '500',
+        backgroundColor: theme.colors.background,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    unreadDivider: {
+        width: '100%',
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    unreadDividerText: {
+        color: theme.colors.primary,
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    reactionBadge: {
+        backgroundColor: theme.colors.background,
+        borderRadius: 12,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginRight: 4,
+        marginTop: 2,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    highlightedText: {
+        backgroundColor: '#FFE066',
+        color: '#000',
+    },
+    activeHighlightedText: {
+        backgroundColor: '#FF9F1C',
+        color: '#fff',
+    },
+});
+
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     item,
     isMyMessage,
@@ -129,128 +236,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     onLongPress,
     onSwipeReply
 }) => {
-    const content = decodeContent(item.content);
-    const { isSharedPost, sharedPostData, sharedPostComment } = parseSharedPost(content);
+    // Memoize content analysis
+    const { content, isSharedPost, sharedPostData, sharedPostComment, detectedUrl } = React.useMemo(() => {
+        const decoded = decodeContent(item.content);
+        const shared = parseSharedPost(decoded);
+        return {
+            content: decoded,
+            ...shared,
+            detectedUrl: !shared.isSharedPost ? extractUrl(decoded) : null
+        };
+    }, [item.content]);
 
-    // Detect URL in content
-    const detectedUrl = !isSharedPost ? extractUrl(content) : null;
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-    const styles = StyleSheet.create({
-        messageBubble: {
-            maxWidth: '80%',
-            padding: 14,
-            borderRadius: 20,
-            marginBottom: 12,
-            position: 'relative',
-            ...theme.shadows.default,
-        },
-        myMessage: {
-            alignSelf: 'flex-end',
-            backgroundColor: theme.colors.primary,
-        },
-        theirMessage: {
-            alignSelf: 'flex-start',
-            backgroundColor: theme.colors.surface,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-        },
-        messageText: {
-            fontSize: 15,
-            lineHeight: 22,
-            fontFamily: theme.fonts.main,
-        },
-        myMessageText: { color: '#fff' },
-        theirMessageText: { color: theme.colors.text },
-        timeText: {
-            fontSize: 11,
-            fontFamily: theme.fonts.main,
-        },
-        myTimeText: { color: 'rgba(255,255,255,0.7)' },
-        theirTimeText: { color: theme.colors.textSecondary },
-        readStatusText: {
-            fontSize: 11,
-            color: 'rgba(255,255,255,0.7)',
-            fontFamily: theme.fonts.main,
-        },
-        myMessageTail: {
-            position: 'absolute',
-            bottom: 0,
-            right: -6,
-            width: 0,
-            height: 0,
-            borderStyle: 'solid',
-            borderLeftWidth: 8,
-            borderRightWidth: 0,
-            borderTopWidth: 8,
-            borderLeftColor: theme.colors.primary,
-            borderRightColor: 'transparent',
-            borderTopColor: 'transparent',
-            borderBottomColor: 'transparent',
-        },
-        theirMessageTail: {
-            position: 'absolute',
-            bottom: 0,
-            left: -6,
-            width: 0,
-            height: 0,
-            borderStyle: 'solid',
-            borderLeftWidth: 0,
-            borderRightWidth: 8,
-            borderTopWidth: 8,
-            borderLeftColor: 'transparent',
-            borderRightColor: theme.colors.surface,
-            borderTopColor: 'transparent',
-            borderBottomColor: 'transparent',
-        },
-        dateSeparator: {
-            alignItems: 'center',
-            marginVertical: 16,
-        },
-        dateSeparatorText: {
-            color: theme.colors.textSecondary,
-            fontSize: 12,
-            fontWeight: '500',
-            backgroundColor: theme.colors.background,
-            paddingHorizontal: 12,
-            paddingVertical: 4,
-            borderRadius: 12,
-        },
-        unreadDivider: {
-            width: '100%',
-            alignItems: 'center',
-            marginVertical: 16,
-        },
-        unreadDividerText: {
-            color: theme.colors.primary,
-            fontSize: 12,
-            fontWeight: 'bold',
-        },
-        reactionBadge: {
-            backgroundColor: theme.colors.background,
-            borderRadius: 12,
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            marginRight: 4,
-            marginTop: 2,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-        },
-        highlightedText: {
-            backgroundColor: '#FFE066',
-            color: '#000',
-        },
-        activeHighlightedText: {
-            backgroundColor: '#FF9F1C',
-            color: '#fff',
-        },
-    });
-
-    const animationProps = {
+    const animationProps = React.useMemo(() => ({
         entering: CustomEntering,
         layout: LinearTransition.duration(200)
-    };
+    }), []);
 
-    const groupedStyle = {
+    const groupedStyle = React.useMemo(() => ({
         marginBottom: isLastInGroup ? 12 : 4,
         ...(isMyMessage ? {
             borderTopRightRadius: isFirstInGroup ? 20 : 12,
@@ -259,10 +263,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             borderTopLeftRadius: isFirstInGroup ? 20 : 12,
             borderBottomLeftRadius: isLastInGroup ? 4 : 12,
         }),
-    };
+    }), [isLastInGroup, isMyMessage, isFirstInGroup]);
 
     return (
-        <>
+        <View>
             {/* Date Separator */}
             {showDateSeparator && (
                 <View style={styles.dateSeparator}>
@@ -369,7 +373,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                         )}
 
                         {/* Time and Read Status */}
-                        {/* Time and Read Status */}
                         <Animated.View
                             layout={LinearTransition.duration(200)}
                             style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 4 }}
@@ -381,7 +384,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                                 <Animated.Text
                                     entering={FadeIn.duration(300)}
                                     layout={LinearTransition.duration(200)}
-                                    key={item.is_read ? 'read' : 'sent'} // Key change triggers animation on status change
+                                    key={item.is_read ? 'read' : 'sent'}
                                     style={styles.readStatusText}
                                 >
                                     {item.is_read ? ' · Okundu' : ' · Gönderildi'}
@@ -391,6 +394,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                     </Animated.View>
                 </Pressable>
             </Swipeable>
-        </>
+        </View>
     );
 });
