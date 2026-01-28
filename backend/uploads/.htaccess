@@ -1,0 +1,27 @@
+# Security hardening for uploaded files
+# 1. Disable PHP engine
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# 2. Prevent execution of scripts
+Options -ExecCGI
+AddHandler cgi-script .sh .php .phtml .php3 .php4 .php5 .py .pl .jsp .asp .aspx .shtml .rb
+
+# 3. Disable Directory Listing
+Options -Indexes
+
+# 4. Only allow common image/video extensions
+<FilesMatch "\.(?i:jpe?g|png|gif|webp|mp4|mov)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# 5. Deny everything else
+<FilesMatch "\.(?i:php|phtml|php3|php4|php5|sh|py|pl|jsp|asp|aspx|shtml|rb|exe|cgi)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>

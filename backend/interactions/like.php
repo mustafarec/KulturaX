@@ -25,6 +25,13 @@ try {
             $stmt->bindParam(':user_id', $userId);
             $stmt->bindParam(':post_id', $data->post_id);
             $stmt->execute();
+            
+            // Atomic decrement post like count
+            $updateCount = "UPDATE posts SET like_count = GREATEST(0, like_count - 1) WHERE id = :post_id";
+            $updateStmt = $conn->prepare($updateCount);
+            $updateStmt->bindParam(':post_id', $data->post_id);
+            $updateStmt->execute();
+            
             $liked = false;
         } else {
             // Like
@@ -33,6 +40,13 @@ try {
             $stmt->bindParam(':user_id', $userId);
             $stmt->bindParam(':post_id', $data->post_id);
             $stmt->execute();
+            
+            // Atomic increment post like count
+            $updateCount = "UPDATE posts SET like_count = like_count + 1 WHERE id = :post_id";
+            $updateStmt = $conn->prepare($updateCount);
+            $updateStmt->bindParam(':post_id', $data->post_id);
+            $updateStmt->execute();
+            
             $liked = true;
 
             // Bildirim Oluştur

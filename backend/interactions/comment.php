@@ -58,6 +58,12 @@ try {
         $stmt->bindParam(':parent_id', $parentId);
 
         if ($stmt->execute()) {
+            // Atomic increment post comment count
+            $updateCount = "UPDATE posts SET comment_count = comment_count + 1 WHERE id = :post_id";
+            $updateStmt = $conn->prepare($updateCount);
+            $updateStmt->bindParam(':post_id', $data->post_id);
+            $updateStmt->execute();
+
             http_response_code(201);
             echo json_encode(array("message" => "Yorum eklendi."));
 

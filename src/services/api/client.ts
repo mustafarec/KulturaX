@@ -21,8 +21,10 @@ import { API_URL as ENV_API_URL, API_SIGNATURE_SECRET as ENV_API_SECRET } from '
 // Configuration
 // =============================================================================
 
-/** API Base URL - from environment variable with fallback */
-export const API_URL = ENV_API_URL || 'https://mmreeo.online/api';
+/** API Base URL - from environment variable */
+export const API_URL = ENV_API_URL;
+
+
 
 /** API Signature Secret - from environment variable (Must match backend config.php) */
 const API_SIGNATURE_SECRET = ENV_API_SECRET || '';
@@ -102,12 +104,27 @@ export const onUnauthorized = unauthorizedHandler.set;
 
 /**
  * Generate API signature for request authentication
- * Format: timestamp:hmac_sha256(timestamp:secret)
+ * Format: timestamp:hmac_sha256(method:url:body:timestamp:secret)
  */
-const generateApiSignature = (): string => {
+const generateApiSignature = (method: string = '', url: string = '', body: any = null): string => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const message = `${timestamp}:${API_SIGNATURE_SECRET}`;
+
+    // Normalize body: Use empty string if no body, otherwise stringify
+    let bodyString = '';
+    if (body) {
+        try {
+            // Ensure stable stringification (though JSON.stringify is usually enough for simple objects)
+            bodyString = typeof body === 'string' ? body : JSON.stringify(body);
+        } catch (e) {
+            bodyString = '';
+        }
+    }
+
+    // Create message: method:url:body:timestamp
+    // We use the full message to bind the signature to the specific request
+    const message = `${method.toUpperCase()}:${url}:${bodyString}:${timestamp}:${API_SIGNATURE_SECRET}`;
     const signature = CryptoJS.HmacSHA256(message, API_SIGNATURE_SECRET).toString();
+
     return `${timestamp}:${signature}`;
 };
 
@@ -118,7 +135,7 @@ const generateApiSignature = (): string => {
 /** Axios instance with default configuration */
 export const apiClient = axios.create({
     baseURL: API_URL,
-    timeout: 10000, // 10 seconds timeout
+    timeout: 120000, // 120 seconds timeout
     headers: {
         'Content-Type': 'application/json',
     },
@@ -143,8 +160,12 @@ axiosRetry(apiClient, {
 // Request interceptor - Add token and API signature to every request
 apiClient.interceptors.request.use(
     async (config) => {
-        // Add API signature for security
-        config.headers['X-App-Signature'] = generateApiSignature();
+        // Add API signature for security - Now binding to request details
+        config.headers['X-App-Signature'] = generateApiSignature(
+            config.method,
+            config.url,
+            config.data
+        );
 
         const token = await tokenManager.get();
         if (token) {
@@ -182,17 +203,21 @@ apiClient.interceptors.response.use(
             }
         }
 
-        // HTML Error Handling
-        if (typeof error.response.data === 'string' &&
-            (error.response.data.trim().startsWith('<!DOCTYPE') ||
-                error.response.data.trim().startsWith('<html'))) {
-            console.warn('Backend returned HTML instead of JSON:', error.config.url);
-            error.response.data = { message: 'Sunucu hatası veya geçersiz uç nokta.' };
+        // 5xx Server Errors
+        if (error.response.status >= 500) {
+            console.error(`Status 500+ Error at ${error.config.url}:`, error.response.data);
+            Toast.show({
+                type: 'error',
+                text1: 'Sunucu Hatası',
+                text2: 'Şu an isteğinizi gerçekleştiremiyoruz. Lütfen daha sonra tekrar deneyin.',
+                visibilityTime: 4000
+            });
         }
 
         return Promise.reject(error);
     }
 );
+
 
 // =============================================================================
 // Error Handling

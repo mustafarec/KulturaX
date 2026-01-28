@@ -12,31 +12,40 @@ if (php_sapi_name() !== 'cli' && function_exists('apcu_enabled') && apcu_enabled
     if (!$success) {
         // Cache miss - dosyadan oku ve cache'le
         $envFile = __DIR__ . '/.env';
+        if (!file_exists($envFile)) {
+            $envFile = dirname(__DIR__) . '/.env';
+        }
+
         if (file_exists($envFile)) {
             $env = parse_ini_file($envFile);
             if ($env === false) {
-                error_log("Config: parse_ini_file failed for .env");
+                error_log("Config: parse_ini_file failed for .env at $envFile");
                 $env = [];
             }
             apcu_store($envCacheKey, $env, $envCacheTTL);
         } else {
-            error_log("Config: .env file not found");
+            error_log("Config: .env file not found at $envFile");
             $env = [];
         }
     }
 } else {
     // APCu yok veya CLI - her seferinde dosyadan oku
     $envFile = __DIR__ . '/.env';
+    if (!file_exists($envFile)) {
+        $envFile = dirname(__DIR__) . '/.env';
+    }
+
     $env = [];
     if (file_exists($envFile)) {
         $env = parse_ini_file($envFile);
         if ($env === false) {
-            error_log("Config: parse_ini_file failed for .env");
+            error_log("Config: parse_ini_file failed for .env at $envFile");
         }
     } else {
         error_log("Config: .env file not found at $envFile");
     }
 }
+
 
 // Database Configuration
 $host = $env['DB_HOST'] ?? 'localhost';
@@ -67,12 +76,9 @@ define('REDIS_HOST', $env['REDIS_HOST'] ?? '127.0.0.1');
 define('REDIS_PORT', $env['REDIS_PORT'] ?? 6379);
 define('REDIS_PASSWORD', $env['REDIS_PASSWORD'] ?? null);
 
-$allowed_origins = [
-    "https://mmreeo.online",
-    "http://localhost:8081", // React Native Debugger
-    "http://localhost:19000", // Expo
-    "http://localhost:19006"  // Web
-];
+$allowed_origins_raw = $env['ALLOWED_ORIGINS'] ?? "https://mmreeo.online,http://localhost:8081,http://localhost:19000,http://localhost:19006";
+$allowed_origins = array_map('trim', explode(',', $allowed_origins_raw));
+
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
@@ -120,10 +126,30 @@ function validateApiSignature()
         return false; // Fail secure
     }
 
-    $expectedSignature = hash_hmac('sha256', (string) $timestamp . ':' . API_SIGNATURE_SECRET, API_SIGNATURE_SECRET);
+    // Reconstruct the message: METHOD:URL:BODY:TIMESTAMP:SECRET
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    // Use REQUEST_URI but strip the domain if present, and handle the fact that client.ts sends the relative path usually
+    // However, apiClient.baseURL is 'https://mmreeo.online/api', so config.url is just the relative part like '/auth/login'
+    // Backend also needs to know exactly what 'url' was used in the hash. 
+    // In axios, config.url is usually the string passed to the request method.
+    
+    // We need to be careful with URL matching. Let's assume the client sends the path relative to the /api endpoint.
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    // Strip /api prefix if exists to match client-side relative URLs
+    $search_path = '/api';
+    if (strpos($uri, $search_path) === 0) {
+        $uri = substr($uri, strlen($search_path));
+    }
+    // Remove query params for signature consistency if needed, but client.ts uses the full url property.
+    // If config.url has query params, they should be in the hash.
+    
+    $body = file_get_contents('php://input');
+    
+    $message = strtoupper($method) . ':' . $uri . ':' . $body . ':' . $timestamp . ':' . API_SIGNATURE_SECRET;
+    $expectedSignature = hash_hmac('sha256', $message, API_SIGNATURE_SECRET);
 
     if (!hash_equals($expectedSignature, $signature)) {
-        error_log("API Signature: Invalid signature");
+        error_log("API Signature: Invalid signature. Expected for message: $message");
         return false;
     }
 
@@ -188,17 +214,36 @@ try {
  */
 function getClientIp()
 {
-    if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
-        $_SERVER['REMOTE_ADDR'] = $_SERVER["HTTP_CF_CONNECTING_IP"];
-        return $_SERVER["HTTP_CF_CONNECTING_IP"];
+    // List of trusted proxy IP ranges (e.g. Cloudflare)
+    // In production, this should be maintained/updated.
+    static $trustedProxies = [
+        '127.0.0.1', '::1'
+        // Add Cloudflare IPs here if using CF
+    ];
+
+    $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+    $isTrusted = false;
+    
+    foreach ($trustedProxies as $proxy) {
+        if ($remoteAddr === $proxy) {
+            $isTrusted = true;
+            break;
+        }
     }
 
-    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        // Handle multiple IPs in X-Forwarded-For (take the first one)
-        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        return trim($ips[0]);
+    // Only trust headers if they come from a known proxy
+    // NOTE: If not behind a proxy, we should ONLY use REMOTE_ADDR.
+    if ($isTrusted) {
+        if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
+            return $_SERVER["HTTP_CF_CONNECTING_IP"];
+        }
+
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            return trim($ips[0]);
+        }
     }
 
-    return $_SERVER['REMOTE_ADDR'];
+    return $remoteAddr;
 }
 ?>

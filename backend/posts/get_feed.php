@@ -127,7 +127,8 @@ try {
 
     // --- 3. Main Feed Query ---
     $query = "SELECT 
-                p.*, 
+                p.id, p.content, p.content_type, p.content_id, p.user_id, p.topic_id, p.created_at, p.image_url, 
+                p.source, p.author, p.quote_text, p.comment_text, p.original_post_id, p.view_count, p.trending_score, p.score,
                 u.username, 
                 u.full_name,
                 u.avatar_url,
@@ -230,30 +231,8 @@ try {
         )";
     }
 
-    // Sorting Logic with Gravity Formula
-    $query .= " ORDER BY 
-                (
-                    (
-                        (CASE 
-                            WHEN p.content_type = 'book' OR op.content_type = 'book' THEN :score_book + :boost_book + 20
-                            WHEN p.content_type = 'movie' OR op.content_type = 'movie' THEN :score_movie + :boost_movie + 20
-                            WHEN p.content_type = 'music' OR op.content_type = 'music' THEN :score_music + :boost_music + 20
-                            WHEN p.content_type = 'event' OR op.content_type = 'event' THEN 35
-                            WHEN p.content_type = 'lyrics' OR op.content_type = 'lyrics' THEN 30
-                            WHEN p.quote_text IS NOT NULL AND p.quote_text != '' THEN 30
-                            ELSE 15
-                        END) 
-                        /
-                        (POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.5))
-                    )
-                    +
-                    (
-                        p.trending_score
-                        *
-                        (CASE WHEN pv.id IS NOT NULL OR opv.id IS NOT NULL THEN 0.2 ELSE 1 END)
-                    )
-                ) DESC,
-                p.created_at DESC";
+    // Sorting Logic: Optimized to use denormalized score
+    $query .= " ORDER BY p.score DESC, p.created_at DESC";
 
     // Pagination
     $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -264,12 +243,6 @@ try {
 
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-    $stmt->bindParam(':score_book', $scores['book']);
-    $stmt->bindParam(':score_movie', $scores['movie']);
-    $stmt->bindParam(':score_music', $scores['music']);
-    $stmt->bindParam(':boost_book', $boostBook);
-    $stmt->bindParam(':boost_movie', $boostMovie);
-    $stmt->bindParam(':boost_music', $boostMusic);
     $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
 

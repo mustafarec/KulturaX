@@ -52,6 +52,12 @@ try {
         $deleteStmt->bindParam(':comment_id', $data->comment_id);
 
         if ($deleteStmt->execute()) {
+            // Atomic decrement post comment count
+            $updateCount = "UPDATE posts SET comment_count = GREATEST(0, comment_count - 1) WHERE id = :post_id";
+            $updateStmt = $conn->prepare($updateCount);
+            $updateStmt->bindParam(':post_id', $comment['post_id']);
+            $updateStmt->execute();
+
             // İlgili bildirimleri de temizlemek iyi olabilir ama zorunlu değil
             // Bildirim tablosunda comment_id doğrudan bir sütun değil, data json içinde tutuluyor.
             // Karmaşık olacağı için şimdilik pas geçiyoruz.
