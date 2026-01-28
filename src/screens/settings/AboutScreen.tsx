@@ -14,6 +14,8 @@ import { useTheme } from '../../context/ThemeContext';
 import LinearGradient from 'react-native-linear-gradient';
 import { RefreshCcw } from 'lucide-react-native';
 import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
+
 import { checkForUpdates, applyOTAUpdate, openStore } from '../../services/UpdateService';
 import { version as appVersion } from '../../../package.json';
 import Toast from 'react-native-toast-message';
@@ -234,8 +236,10 @@ export const AboutScreen = () => {
                     <Text style={styles.version}>Versiyon {APP_VERSION} ({BUILD_NUMBER})</Text>
                     {!__DEV__ && (
                         <Text style={[styles.version, { marginTop: -16, fontSize: 12 }]}>
-                            Channel: {Updates.channel || 'N/A'} | RV: {Updates.runtimeVersion || 'N/A'}
+                            Channel: {Updates.channel || (Constants.expoConfig as any)?.updates?.channel || 'production (local)'} | RV: {Updates.runtimeVersion || '1.0.0'}
+
                         </Text>
+
                     )}
 
                     <Text style={styles.description}>

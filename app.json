@@ -20,7 +20,8 @@
       "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "channel": "production"
     },
     "newArchEnabled": true,
     "ios": {
