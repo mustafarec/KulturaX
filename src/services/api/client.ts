@@ -120,13 +120,23 @@ const generateApiSignature = (method: string = '', url: string = '', body: any =
         }
     }
 
-    // Create message: method:url:body:timestamp
-    // We use the full message to bind the signature to the specific request
-    const message = `${method.toUpperCase()}:${url}:${bodyString}:${timestamp}:${API_SIGNATURE_SECRET}`;
+    // Normalize URL: Strip baseURL if present to get the path relative to /api
+    let normalizedUrl = url;
+    if (normalizedUrl.startsWith(API_URL)) {
+        normalizedUrl = normalizedUrl.slice(API_URL.length);
+    }
+    // Ensure leading slash for consistency with backend
+    if (!normalizedUrl.startsWith('/')) {
+        normalizedUrl = '/' + normalizedUrl;
+    }
+
+    // Create message: method:url:body:timestamp:secret
+    const message = `${method.toUpperCase()}:${normalizedUrl}:${bodyString}:${timestamp}:${API_SIGNATURE_SECRET}`;
     const signature = CryptoJS.HmacSHA256(message, API_SIGNATURE_SECRET).toString();
 
     return `${timestamp}:${signature}`;
 };
+
 
 // =============================================================================
 // Axios Instance
@@ -160,14 +170,16 @@ axiosRetry(apiClient, {
 // Request interceptor - Add token and API signature to every request
 apiClient.interceptors.request.use(
     async (config) => {
-        // Add API signature for security - Now binding to request details
+        // Use getUri() to include query parameters in the signature message
+        const relativeUrl = apiClient.getUri(config);
+
         config.headers['X-App-Signature'] = generateApiSignature(
             config.method,
-            config.url,
+            relativeUrl,
             config.data
         );
-
         const token = await tokenManager.get();
+
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
             config.headers['X-Auth-Token'] = token;

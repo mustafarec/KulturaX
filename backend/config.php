@@ -140,6 +140,11 @@ function validateApiSignature()
     if (strpos($uri, $search_path) === 0) {
         $uri = substr($uri, strlen($search_path));
     }
+    // Ensure URI starts with / for consistency with client getUri()
+    if (empty($uri) || $uri[0] !== '/') {
+        $uri = '/' . $uri;
+    }
+
     // Remove query params for signature consistency if needed, but client.ts uses the full url property.
     // If config.url has query params, they should be in the hash.
     
