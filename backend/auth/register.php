@@ -14,8 +14,12 @@ function debugLog($message)
 }
 
 // Rate limiting - IP bazlı, 3 kayıt/saat
-$ip = getClientIp();
-checkRateLimit($conn, $ip, 'register_attempt', 3, 3600);
+try {
+    $ip = getClientIp();
+    checkRateLimit($conn, $ip, 'register_attempt', 3, 3600);
+} catch (Exception $e) {
+    error_log("Register Rate Limit Error: " . $e->getMessage());
+}
 
 // $data = json_decode(file_get_contents("php://input")); DELETED - moved down
 

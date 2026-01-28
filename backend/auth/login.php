@@ -6,8 +6,14 @@ include_once '../validation.php';
 include_once '../rate_limiter.php';
 
 // Rate limiting - Brute force koruması: Kademeli Engelleme
-$ip = getClientIp();
-checkGradualRateLimit($conn, $ip, 'login_attempt');
+try {
+    $ip = getClientIp();
+    checkGradualRateLimit($conn, $ip, 'login_attempt');
+} catch (Exception $e) {
+    // Rate limit hatası (429) ise zaten exit olur.
+    // Başka bir hata (Redis, DB vb.) ise logla ve devam et (fail open) veya hata ver
+    error_log("Login Rate Limit Error: " . $e->getMessage());
+}
 
 $data = json_decode(file_get_contents("php://input"));
 
