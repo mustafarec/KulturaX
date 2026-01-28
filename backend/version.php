@@ -32,8 +32,9 @@ $is_ios = stripos($user_agent, 'iPhone') !== false || stripos($user_agent, 'iPad
 $update_url = $is_ios ? $ios_store_url : $android_store_url;
 
 echo json_encode([
-    'latest_version'  => '0.0.2',      // En son versiyon - güncelleme için artırın
-    'minimum_version' => '0.0.1',      // Minimum desteklenen versiyon
+    'latest_version'  => '1.0.28',      // En son versiyon - güncelleme için artırın
+    'minimum_version' => '1.0.0',       // Minimum desteklenen versiyon
     'update_url'      => $update_url,
-    'release_notes'   => 'Yeni özellikler ve hata düzeltmeleri'
+    'release_notes'   => 'Güvenlik güncellemeleri, API imza iyileştirmeleri ve hata düzeltmeleri.'
+
 ], JSON_UNESCAPED_UNICODE);
