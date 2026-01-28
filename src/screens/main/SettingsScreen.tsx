@@ -33,6 +33,8 @@ import { ThemeSelectorModal } from '../../components/ThemeSelectorModal';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { API_URL, userService, getAuthToken } from '../../services/backendApi';
 import { Linking } from 'react-native';
+import { version as appVersion } from '../../../package.json';
+
 
 export const SettingsScreen = () => {
     const { user, logout, isLoading } = useAuth();
@@ -333,8 +335,9 @@ export const SettingsScreen = () => {
                     <SettingsMenuItem
                         icon={Info}
                         label="Hakkında"
-                        description="Versiyon 1.0.0"
+                        description={`Versiyon ${appVersion}`}
                         onPress={() => (navigation as any).navigate('About')}
+
                     />
                 </SettingsSection>
 

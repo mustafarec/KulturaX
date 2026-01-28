@@ -4,7 +4,7 @@
     "slug": "kitapmuzikfilm",
     "scheme": "kitapmuzikfilm",
     "runtimeVersion": "1.0.0",
-    "version": "1.0.0",
+    "version": "1.0.28",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,6 +16,9 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b"
+    },
     "newArchEnabled": true,
     "ios": {
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -27,11 +30,12 @@
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve gönderi eklemek için galerinize erişim izni gereklidir.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "26"
+      "buildNumber": "28"
     },
     "android": {
       "package": "com.anonymous.kitapmuzikfilm",
-      "versionCode": 26,
+      "googleServicesFile": "./google-services.json",
+      "versionCode": 28,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {},
@@ -41,12 +45,15 @@
       }
     },
     "plugins": [
+      "./plugins/withNotifeeMaven",
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       [
         "react-native-google-mobile-ads",
         {
+          "android_app_id": "ca-app-pub-5897178396326522~6231785630",
           "androidAppId": "ca-app-pub-5897178396326522~6231785630",
+          "ios_app_id": "ca-app-pub-5897178396326522~2550479358",
           "iosAppId": "ca-app-pub-5897178396326522~2550479358"
         }
       ],

@@ -1,6 +1,6 @@
 {
   "name": "kitapmuzikfilm",
-  "version": "0.0.2",
+  "version": "1.0.28",
   "private": true,
   "scripts": {
     "android": "expo run:android",
@@ -33,6 +33,7 @@
     "expo-image": "~3.0.11",
     "expo-notifications": "~0.32.16",
     "expo-secure-store": "~15.0.8",
+    "expo-splash-screen": "^0.29.24",
     "expo-superwall": "^1.0.0",
     "expo-system-ui": "~6.0.9",
     "expo-updates": "~29.0.16",

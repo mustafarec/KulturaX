@@ -13,6 +13,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import LinearGradient from 'react-native-linear-gradient';
 import { RefreshCcw } from 'lucide-react-native';
+import * as Updates from 'expo-updates';
 import { checkForUpdates, applyOTAUpdate, openStore } from '../../services/UpdateService';
 import { version as appVersion } from '../../../package.json';
 import Toast from 'react-native-toast-message';
@@ -24,7 +25,7 @@ export const AboutScreen = () => {
     const [checkingUpdate, setCheckingUpdate] = React.useState(false);
 
     const APP_VERSION = appVersion;
-    const BUILD_NUMBER = '1';
+    const BUILD_NUMBER = '28';
 
     const styles = StyleSheet.create({
         container: {
@@ -231,6 +232,11 @@ export const AboutScreen = () => {
 
                     <Text style={styles.appName}>KültüraX</Text>
                     <Text style={styles.version}>Versiyon {APP_VERSION} ({BUILD_NUMBER})</Text>
+                    {!__DEV__ && (
+                        <Text style={[styles.version, { marginTop: -16, fontSize: 12 }]}>
+                            Channel: {Updates.channel || 'N/A'} | RV: {Updates.runtimeVersion || 'N/A'}
+                        </Text>
+                    )}
 
                     <Text style={styles.description}>
                         Kitaplar, filmler ve müzikler hakkında düşüncelerinizi paylaşın,
@@ -264,7 +270,7 @@ export const AboutScreen = () => {
                 </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>© 2024 KültüraX. Tüm hakları saklıdır.</Text>
+                    <Text style={styles.footerText}>© 2026 Acacia Node. Tüm hakları saklıdır.</Text>
                     <View style={styles.madeWith}>
                         <Text style={styles.madeWithText}>Türkiye'de </Text>
                         <Heart size={14} color={theme.colors.error} fill={theme.colors.error} />
