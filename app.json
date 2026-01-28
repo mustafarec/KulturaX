@@ -17,7 +17,10 @@
       "**/*"
     ],
     "updates": {
-      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b"
+      "url": "https://u.expo.dev/737ac828-d618-4700-a799-c0d71b68ba6b",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     },
     "newArchEnabled": true,
     "ios": {
@@ -35,7 +38,7 @@
     "android": {
       "package": "com.anonymous.kitapmuzikfilm",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 28,
+      "versionCode": 29,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {},
