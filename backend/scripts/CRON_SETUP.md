@@ -1,79 +1,57 @@
-# Cron Job Kurulum Rehberi
+# Cron Job Kurulum Kılavuzu
 
-## Sunucuya Script Yükleme
+Oluşturduğumuz `backend/scripts/cron_cleanup.php` dosyasının sunucuda düzenli çalışması için aşağıdaki adımları izleyin.
 
-### 1. Script'i Sunucuya Kopyala
+## 1. Manuel Test (Önerilen)
+
+Önce scriptin hatasız çalıştığını teyit etmek için sunucunuzda SSH üzerinden manuel çalıştırın:
+
 ```bash
-# SCP ile
-scp backend/scripts/setup_cron.sh user@your-server:/path/to/kitapmuzikfilm/backend/scripts/
-
-# veya FTP/SFTP ile manuel olarak yükle
+php /var/www/kulturax/api/scripts/cron_cleanup.php
 ```
 
-### 2. Çalıştırma İzni Ver
-```bash
-chmod +x /path/to/backend/scripts/setup_cron.sh
+**Beklenen Çıktı:**
+```text
+Starting cleanup job...
+Cleaning up rate_limits table...
+Deleted X old rate limit records.
+Cleaning up user_sessions table...
+Deleted Y expired sessions.
+Cleaning up file-based rate limit cache...
+Deleted Z expired cache files.
+Cleanup completed in 0.XXXX seconds.
 ```
 
-### 3. Cron Job'u Ekle
-```bash
-cd /path/to/backend/scripts
-./setup_cron.sh install
-```
+## 2. Crontab'a Ekleme
 
-### 4. Durumu Kontrol Et
-```bash
-./setup_cron.sh status
-```
+Scriptin her saat başı otomatik çalışması için crontab'a ekleyin.
 
----
+1.  Crontab düzenleyicisini açın:
+    ```bash
+    crontab -e
+    ```
 
-## Manuel Kurulum (Script Olmadan)
+2.  Dosyanın en altına şu satırı ekleyin:
+    ```cron
+    # Her saat başı KulturaX temizlik scriptini çalıştır
+    0 * * * * /usr/bin/php /var/www/kulturax/api/scripts/cron_cleanup.php >> /var/log/kulturax_cron.log 2>&1
+    ```
 
-Eğer script kullanmak istemiyorsan:
+    *   **/usr/bin/php**: PHP'nin tam yolu (`which php` komutuyla teyit edin).
+    *   **/var/www/kulturax/api/scripts/cron_cleanup.php**: Scriptin tam yolu.
+    *   **>> /var/log/...**: Çıktıları log dosyasına yazar.
 
-```bash
-# Crontab düzenle
-crontab -e
+3.  Kaydedip çıkın (`Ctrl+O`, `Enter`, `Ctrl+X` veya `:wq`).
 
-# Bu satırı ekle (her saat başı çalışır):
-0 * * * * curl -s -X POST 'https://mmreeo.online/api/library/update_metadata.php?mode=batch&limit=50' > /dev/null 2>&1
-```
+4.  Cron'un eklendiğini doğrulayın:
+    ```bash
+    crontab -l
+    ```
 
-### Farklı Zamanlama Örnekleri
+## 3. İzinler
 
-```bash
-# Her 30 dakikada bir
-*/30 * * * * curl -s -X POST 'https://mmreeo.online/api/library/update_metadata.php?mode=batch&limit=30' > /dev/null 2>&1
-
-# Günde 4 kez (00:00, 06:00, 12:00, 18:00)
-0 */6 * * * curl -s -X POST 'https://mmreeo.online/api/library/update_metadata.php?mode=batch&limit=100' > /dev/null 2>&1
-
-# Sadece gece (03:00)
-0 3 * * * curl -s -X POST 'https://mmreeo.online/api/library/update_metadata.php?mode=batch&limit=200' > /dev/null 2>&1
-```
-
----
-
-## Komutlar
-
-| Komut | Açıklama |
-|-------|----------|
-| `./setup_cron.sh install` | Cron job ekle |
-| `./setup_cron.sh remove` | Cron job kaldır |
-| `./setup_cron.sh status` | Mevcut durumu göster |
-| `./setup_cron.sh test` | Endpoint'i test et |
-
----
-
-## Test
-
-Cron job'un doğru çalıştığını doğrulamak için:
+Dosyanın çalıştırılabilir olduğundan emin olun:
 
 ```bash
-# Manuel test
-curl -X POST "https://mmreeo.online/api/library/update_metadata.php?mode=batch&limit=5"
-
-# Log kontrol (cron çalıştıktan sonra)
-grep "update_metadata" /var/log/cron.log
+chmod +x /var/www/kulturax/api/scripts/cron_cleanup.php
 ```

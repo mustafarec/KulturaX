@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { messageService, userService } from '../../services/api';
 import { useWebSocket } from '../../context/WebSocketContext';
+import Toast from 'react-native-toast-message';
 
 interface Message {
     id: number;
@@ -45,7 +46,7 @@ export const useMessages = ({
     );
 
     // WebSocket integration
-    const { isConnected, onNewMessage, onMessagesRead } = useWebSocket();
+    const { isConnected, onNewMessage, onMessagesRead, onMessageSent } = useWebSocket();
 
     // Helper to generate stable IDs
     const generateInternalId = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
@@ -210,52 +211,55 @@ export const useMessages = ({
 
         // Subscribe to new messages via WebSocket
         const unsubscribeMessage = onNewMessage((message: Message) => {
-            // Only add message if it's from/to the current chat
-            if (
-                (message.sender_id === otherUserId && message.receiver_id === userId) ||
-                (message.sender_id === userId && message.receiver_id === otherUserId)
-            ) {
-                setMessages(prev => {
-                    // 1. Check if message already exists by Server ID
-                    const exists = prev.some(m => m.id === message.id);
-                    if (exists) return prev;
+            console.log('[useMessages] WS Received Raw:', message);
 
-                    // 2. Check for matching optimistic/pending message (Smart Match)
-                    // If we sent this message, it might be in the list with a Temp ID
-                    const pendingMatchIndex = prev.findIndex(m =>
-                        m.id > 9999999999 && // Is pending
-                        m.sender_id === message.sender_id &&
-                        m.content === message.content &&
-                        Math.abs(new Date(message.created_at).getTime() - new Date(m.created_at.replace(' ', 'T')).getTime()) < 60000
-                    );
+            const msgSenderId = Number(message.sender_id);
+            const msgReceiverId = Number(message.receiver_id);
+            const currentUserId = Number(userId);
+            const chatPartnerId = Number(otherUserId);
+            const msgId = Number(message.id);
 
-                    if (pendingMatchIndex !== -1) {
-                        // Found a match! Replace pending message with server message
-                        // BUT preserve the _internalId to prevent re-mounting
-                        const newMessages = [...prev];
-                        const pendingMessage = newMessages[pendingMatchIndex];
+            // Validations
+            const isRelevant =
+                (msgSenderId === chatPartnerId && msgReceiverId === currentUserId) ||
+                (msgSenderId === currentUserId && msgReceiverId === chatPartnerId);
 
-                        newMessages[pendingMatchIndex] = {
-                            ...message,
-                            _internalId: pendingMessage._internalId // CRITICAL: Keep stable ID
-                        };
-                        return newMessages;
-                    }
+            if (!isRelevant) {
+                console.log('[useMessages] Ignored Irrelevant Message:', msgId);
+                return;
+            }
 
-                    // 3. New message from other user (or not found in pending)
-                    return [{ ...message, _internalId: generateInternalId() }, ...prev];
-                });
-
-                // Mark as read if we received a message
-                if (message.sender_id === otherUserId) {
-                    markAsRead(otherUserId);
+            setMessages(prev => {
+                // 1. Deduplication (Simple)
+                if (prev.some(m => Number(m.id) === msgId)) {
+                    console.log('[useMessages] Duplicate ignored:', msgId);
+                    return prev;
                 }
+
+                console.log('[useMessages] Appending new message:', msgId);
+
+                // 2. Prepare new message
+                // We use generateInternalId() to ensure React treats it as a fresh item if needed, 
+                // but really unique "id" from server is enough for key if used correctly.
+                const newMessage = {
+                    ...message,
+                    _internalId: generateInternalId()
+                };
+
+                // 3. Append to START (because we use inverted list)
+                // If the list is inverted, index 0 is the NEWEST message.
+                return [newMessage, ...prev];
+            });
+
+            // Mark as read immediately if valid
+            if (msgSenderId === chatPartnerId) {
+                markAsRead(chatPartnerId);
             }
         });
 
         // Subscribe to read receipts
         const unsubscribeRead = onMessagesRead((data) => {
-            if (data.readerId === otherUserId) {
+            if (Number(data.readerId) === Number(otherUserId)) {
                 // Update message read status
                 setMessages(prev => prev.map(msg => {
                     if (data.messageIds.includes(msg.id)) {
@@ -266,11 +270,20 @@ export const useMessages = ({
             }
         });
 
+        // Subscribe to message sent ack (Update Optimistic Message)
+        const unsubscribeSent = onMessageSent((data) => {
+            console.log('[useMessages] Message Sent Ack:', data);
+            if (data.tempId && data.messageId) {
+                updateOptimisticMessage(data.tempId, data.messageId, data.createdAt);
+            }
+        });
+
         return () => {
             unsubscribeMessage();
             unsubscribeRead();
+            unsubscribeSent();
         };
-    }, [isConnected, userId, otherUserId, onNewMessage, onMessagesRead, fetchMessages, markAsRead]);
+    }, [isConnected, userId, otherUserId, onNewMessage, onMessagesRead, onMessageSent, fetchMessages, markAsRead]);
 
     const addOptimisticMessage = useCallback((message: Message) => {
         // Ensure optimistic message has an _internalId

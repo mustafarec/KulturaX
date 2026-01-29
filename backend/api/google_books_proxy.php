@@ -6,7 +6,7 @@
  */
 
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 include_once '../rate_limiter.php';
 include_once '../lib/cache_manager.php';
 

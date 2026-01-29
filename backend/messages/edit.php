@@ -3,8 +3,8 @@
  * Mesaj düzenleme endpoint'i
  * Kullanıcı kendi mesajını düzenleyebilir
  */
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 include_once '../validation.php';
 
 // Token'dan kimlik doğrula

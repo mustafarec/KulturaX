@@ -80,6 +80,9 @@ export const TabNavigator = () => {
     const insets = useSafeAreaInsets();
     const isBlackTheme = (theme as any).id === 'black';
 
+    // Listen to MessageContext at this level to ensure TabBar re-renders on badge change
+    const { unreadCount } = useMessage();
+
     const { isModalVisible, openModal } = usePostHub();
 
     // Black Theme Constraints
@@ -223,32 +226,19 @@ export const TabNavigator = () => {
                     name="Messages"
                     component={MessageScreen}
                     options={{
+                        tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+                        tabBarBadgeStyle: {
+                            backgroundColor: theme.colors.error,
+                            fontSize: 10,
+                            fontWeight: 'bold',
+                            marginTop: Platform.OS === 'ios' ? 0 : 2,
+                        },
                         tabBarIcon: ({ color, focused }) => {
-                            const { unreadCount } = useMessage();
                             const size = focused ? iconSize * activeIconScale : iconSize;
 
                             return (
                                 <View>
                                     <Mail size={size} color={color} strokeWidth={focused ? 2.5 : 2} />
-                                    {unreadCount > 0 && (
-                                        <View style={{
-                                            position: 'absolute',
-                                            right: -6,
-                                            top: -4,
-                                            backgroundColor: theme.colors.error,
-                                            borderRadius: 10,
-                                            minWidth: 18,
-                                            height: 18,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            borderWidth: 2,
-                                            borderColor: theme.colors.surface,
-                                        }}>
-                                            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 2 }}>
-                                                {unreadCount > 99 ? '99+' : unreadCount}
-                                            </Text>
-                                        </View>
-                                    )}
                                 </View>
                             );
                         },

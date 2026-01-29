@@ -8,6 +8,7 @@ import { theme } from '../../theme/theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { messageService } from '../../services/backendApi';
+import { useMessage } from '../../context/MessageContext';
 import { ThemedDialog } from '../../components/ThemedDialog';
 
 interface Conversation {
@@ -41,6 +42,7 @@ export const MessageScreen = () => {
 
     const { user } = useAuth();
     const { theme } = useTheme();
+    const { refreshUnreadCount } = useMessage();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
 
@@ -307,6 +309,8 @@ export const MessageScreen = () => {
         try {
             const data = await messageService.getInbox('inbox');
             setInboxConversations(Array.isArray(data) ? data : []);
+            // Sync global unread count with inbox data
+            refreshUnreadCount();
         } catch (error) {
             console.error('Failed to fetch inbox:', error);
         } finally {
@@ -328,7 +332,7 @@ export const MessageScreen = () => {
 
     const fetchAll = async () => {
         setRefreshing(true);
-        await Promise.all([fetchInbox(), fetchRequests()]);
+        await Promise.all([fetchInbox(), fetchRequests(), refreshUnreadCount()]);
         setRefreshing(false);
     }
 

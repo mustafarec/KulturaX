@@ -5,7 +5,8 @@
  * Optimized version - No N+1 queries
  * Missing metadata is flagged for async update instead of blocking the response
  */
-include '../config.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : die();
 $viewer_id = isset($_GET['viewer_id']) ? $_GET['viewer_id'] : null;
@@ -38,7 +39,9 @@ try {
     error_log("Privacy check error in get_user_library: " . $e->getMessage());
 }
 
-$query = "SELECT * FROM user_library WHERE user_id = :user_id";
+$query = "SELECT id, user_id, content_type, content_id, status, score, notes, progress, content_title, image_url, author, created_at, updated_at 
+          FROM user_library 
+          WHERE user_id = :user_id";
 
 if ($status) {
     $query .= " AND status = :status";

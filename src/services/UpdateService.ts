@@ -63,9 +63,18 @@ export const checkForOTAUpdate = async (): Promise<boolean> => {
 
     try {
         const update = await Updates.checkForUpdateAsync();
-        return update.isAvailable;
-    } catch (error) {
+        if (update.isAvailable) {
+            console.log('OTA Update found!');
+            return true;
+        }
+        console.log('No OTA Update available for this build.');
+        return false;
+    } catch (error: any) {
         console.warn('OTA update check failed:', error);
+        // Alert on production to see error
+        if (!__DEV__) {
+            // Alert.alert('OTA Error', error.message || 'Check failed');
+        }
         return false;
     }
 };

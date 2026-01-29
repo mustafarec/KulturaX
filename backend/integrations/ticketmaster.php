@@ -1,5 +1,5 @@
 <?php
-include_once '../config.php';
+require_once '../config.php';
 
 $keyword = isset($_GET['keyword']) ? $_GET['keyword'] : '';
 $city = isset($_GET['city']) ? $_GET['city'] : '';

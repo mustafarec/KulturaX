@@ -1,6 +1,6 @@
 <?php
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 // 1. Validate Token & Get User ID
 $auth_user_id = requireAuth();
@@ -28,7 +28,8 @@ try {
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
     $offset = ($page - 1) * $limit;
 
-    $query = "SELECT * FROM messages 
+    $query = "SELECT id, sender_id, receiver_id, content, created_at, is_read, is_edited, is_unsent, reply_to_id 
+              FROM messages 
               WHERE (sender_id = :user_id AND receiver_id = :other_user_id AND deleted_by_sender = 0) 
               OR (sender_id = :other_user_id AND receiver_id = :user_id AND deleted_by_receiver = 0) 
               ORDER BY created_at DESC 

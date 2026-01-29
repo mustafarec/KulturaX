@@ -29,20 +29,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [error, setError] = useState<string | null>(null);
 
     // Oturum yenileme (Heartbeat) fonksiyonu
-    const refreshSession = async () => {
+    // Smarter Session Refresh (Throttled Heartbeat)
+    const refreshSession = async (force = false) => {
         try {
-            // Aktif kullanıcıyı kontrol et (SecureStore'dan)
             const currentUser = await secureGetObject<any>(SECURE_KEYS.USER_DATA);
+            if (!currentUser?.id) return;
 
-            // Eğer kullanıcı varsa ve ID'si mevcutsa
-            if (currentUser?.id) {
-                // Profil endpoint'ine istek atarak backend'deki "Sliding Expiration" süresini uzat
-                await authService.getProfile(currentUser.id);
-                console.log(`Heartbeat: Session refreshed for user ${currentUser.id}`);
+            // Throttling: Don't refresh more than once every 4 hours unless forced
+            const lastRefresh = await secureGet('last_session_refresh');
+            const now = Date.now();
+            const fourHours = 4 * 60 * 60 * 1000;
+
+            if (!force && lastRefresh && (now - parseInt(lastRefresh)) < fourHours) {
+                console.log('Heartbeat skipped: Refreshed recently');
+                return;
             }
+
+            await authService.getProfile(currentUser.id);
+            await secureSet('last_session_refresh', now.toString());
+            console.log(`Heartbeat: Session refreshed for user ${currentUser.id}`);
         } catch (e) {
-            // Sessiz hata - kullanıcıyı rahatsız etme
-            // Eğer token gerçekten expire olduysa, 401 interceptor bunu yakalayacak
             console.log('Heartbeat failed (expected if offline):', e);
         }
     };

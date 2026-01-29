@@ -126,7 +126,7 @@ export const VerificationScreen = () => {
         setLoading(true);
         try {
             await resendEmailCode(email);
-            setTimer(60); // 60 seconds cooldown
+            setTimer(120); // 120 seconds cooldown
             Toast.show({
                 type: 'success',
                 text1: 'Başarılı',
@@ -134,6 +134,8 @@ export const VerificationScreen = () => {
             });
         } catch (error) {
             // Error handled in context
+        } finally {
+            setLoading(false);
         }
     };
 

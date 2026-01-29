@@ -32,7 +32,7 @@ $is_ios = stripos($user_agent, 'iPhone') !== false || stripos($user_agent, 'iPad
 $update_url = $is_ios ? $ios_store_url : $android_store_url;
 
 echo json_encode([
-    'latest_version'  => '1.0.01',      // Revert to current store version to avoid native update prompt
+    'latest_version'  => '1.0.28',      // Revert to current store version to avoid native update prompt
 
     'minimum_version' => '1.0.0',       // Minimum desteklenen versiyon
     'update_url'      => $update_url,

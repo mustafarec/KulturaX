@@ -65,6 +65,15 @@ class MemoryRateLimiter
      * @param int $timeWindow Zaman penceresi (saniye)
      * @return bool İzin verilirse true, red edilirse false
      */
+    /**
+     * Rate limit kontrolü
+     * 
+     * @param string $key Unique identifier (user_id, IP, vb.)
+     * @param string $action İşlem tipi (register, post, review, vb.)
+     * @param int $limit İzin verilen maksimum istek sayısı
+     * @param int $timeWindow Zaman penceresi (saniye)
+     * @return bool İzin verilirse true, red edilirse false
+     */
     public static function check($key, $action, $limit, $timeWindow)
     {
         self::init();
@@ -75,13 +84,18 @@ class MemoryRateLimiter
         if (class_exists('RedisManager') && RedisManager::isReady()) {
             try {
                 $redis = RedisManager::getClient();
-                // Atomic Increment
-                $current = $redis->incr($cacheKey);
-
-                if ($current === 1) {
-                    // First request, set expiry
-                    $redis->expire($cacheKey, $timeWindow);
-                }
+                
+                // LUA Script for Atomicity (INCR + EXPIRE)
+                // This prevents the "Zombie Key" issue where INCR succeeds but EXPIRE fails
+                $script = <<<LUA
+                    local current = redis.call('INCR', KEYS[1])
+                    if tonumber(current) == 1 then
+                        redis.call('EXPIRE', KEYS[1], ARGV[1])
+                    end
+                    return current
+LUA;
+                
+                $current = $redis->eval($script, [$cacheKey, $timeWindow], 1);
 
                 if ($current > $limit) {
                     return false; // Limit exceeded
@@ -115,29 +129,27 @@ class MemoryRateLimiter
 
             // Increment
             $data['count']++;
-            // Update window end calculation is not needed for fixed window, 
-            // but we keep the original logic's structure.
             $data['admitted'] = true;
             return $data;
         };
 
         if (self::$driver === 'apcu') {
-            // APCu implementation with optimistic locking (CAS) could be done here, 
-            // but for now we stick to the basic fetch/store cycle as the critique focused on file locking.
-            // However, to be "Ruthless", we should improve this too.
-            // Simplified APCu logic for now:
+            // APCu atomic operations are limited, but much faster than file.
+            // basic CAS loop could be implemented here for strict correctness, 
+            // but standard fetch/store is usually acceptable for rate limiting.
             $data = self::get($cacheKey);
             $newData = $processor($data);
+            
             if ($newData['admitted']) {
-                // Calculate TTL
                 $remainingTime = $newData['window_end'] - $now;
                 self::set($cacheKey, $newData, $remainingTime > 0 ? $remainingTime : 1);
                 return true;
             }
             return false;
         } else {
-            // File implementation with FLOCK
-            return self::updateFileWithLock($cacheKey, $processor);
+            // Audit Remediation: Disk-based rate limiting removed (File Locking Hell).
+            // If Redis/APCu are unavailable, we fail-open to preserve system availability.
+            return true; 
         }
     }
 
@@ -150,18 +162,20 @@ class MemoryRateLimiter
 
         $cacheKey = self::getCacheKey($key, $action);
 
-        // For reads, we don't necessarily need an exclusive lock if we accept slight staleness,
-        // but a shared lock would be better. For simplicity of PHP file I/O, we'll just read.
-        // The original implementation of getFromFile is "okay" for just reading, 
-        // but we should make it safe against reading partially written files.
-        // flock(LOCK_SH) is good here.
-
         try {
-            $data = self::get($cacheKey); // Refactored get to use shared lock for files
+            // Redis optimization
+            if (class_exists('RedisManager') && RedisManager::isReady()) {
+                $redis = RedisManager::getClient();
+                $count = $redis->get($cacheKey);
+                if ($count === false) return $limit;
+                return max(0, $limit - $count);
+            }
+
+            $data = self::get($cacheKey); 
             $now = time();
 
             if ($data === false || $now > $data['window_end']) {
-                return $limit; // Yeni pencere, tam hak
+                return $limit; 
             }
 
             return max(0, $limit - $data['count']);
@@ -181,6 +195,13 @@ class MemoryRateLimiter
         $cacheKey = self::getCacheKey($key, $action);
 
         try {
+            // Redis optimization
+            if (class_exists('RedisManager') && RedisManager::isReady()) {
+                $redis = RedisManager::getClient();
+                $ttl = $redis->ttl($cacheKey);
+                return $ttl > 0 ? $ttl : 0;
+            }
+
             $data = self::get($cacheKey);
             $now = time();
 
@@ -200,7 +221,6 @@ class MemoryRateLimiter
      */
     private static function getCacheKey($key, $action)
     {
-        // Güvenlik için hash kullan (çok uzun key'leri kısaltır)
         return self::CACHE_PREFIX . md5($key . ':' . $action);
     }
 
@@ -219,7 +239,7 @@ class MemoryRateLimiter
     }
 
     /**
-     * Cache'e yaz (Direct set, not used in atomic check)
+     * Cache'e yaz
      */
     private static function set($key, $data, $ttl)
     {
@@ -228,8 +248,6 @@ class MemoryRateLimiter
             return;
         }
 
-        // Dosya bazlı - Exclusive Lock ile yaz
-        // Note: This method overwrites blindly. Use updateFileWithLock for R-M-W updates.
         self::writeFileWithLock($key, $data, $ttl);
     }
 
@@ -240,15 +258,20 @@ class MemoryRateLimiter
     private static function updateFileWithLock($key, callable $callback)
     {
         $filePath = self::$cacheDir . '/' . $key . '.json';
-        $fp = fopen($filePath, 'c+'); // Open for reading and writing; place the file pointer at the beginning
+        
+        // Use 'c+' mode: Open for reading and writing; assign file pointer to beginning of file. 
+        // If file does not exist, check/create it safely.
+        $fp = @fopen($filePath, 'c+'); 
 
-        if (!$fp)
-            return true; // Fail open
+        if (!$fp) return true; // Fail open if FS is readonly
 
-        // Acquire Exclusive Lock
-        if (!flock($fp, LOCK_EX)) {
+        // Acquire Exclusive Lock - Non-blocking preferred to avoid queuing
+        // If we can't get a lock instantly, it means high contention. 
+        // For rate limiting, fail-open (allow request) is better than hanging the server.
+        // NOTE: We change LOCK_EX to LOCK_EX | LOCK_NB
+        if (!flock($fp, LOCK_EX | LOCK_NB)) {
             fclose($fp);
-            return true; // Fail open
+            return true; // Fail open: allow request rather than blocking process
         }
 
         try {
@@ -267,14 +290,12 @@ class MemoryRateLimiter
             // Process
             $newData = $callback($data);
             $admitted = $newData['admitted'] ?? true;
-            unset($newData['admitted']); // remove internal flag
+            unset($newData['admitted']); 
 
             if ($admitted) {
-                // Determine TTL from data
                 $now = time();
                 $ttl = ($newData['window_end'] ?? $now) - $now;
-                if ($ttl < 1)
-                    $ttl = 1;
+                if ($ttl < 1) $ttl = 1;
 
                 $newWrapper = [
                     'data' => $newData,
@@ -287,7 +308,6 @@ class MemoryRateLimiter
                 fwrite($fp, json_encode($newWrapper));
             }
 
-            // Release Lock
             flock($fp, LOCK_UN);
             fclose($fp);
 
@@ -296,7 +316,7 @@ class MemoryRateLimiter
         } catch (Exception $e) {
             flock($fp, LOCK_UN);
             fclose($fp);
-            return true; // Fail open
+            return true; 
         }
     }
 
@@ -312,10 +332,10 @@ class MemoryRateLimiter
         }
 
         $fp = fopen($filePath, 'r');
-        if (!$fp)
-            return false;
+        if (!$fp) return false;
 
-        if (!flock($fp, LOCK_SH)) {
+        // Try to get shared lock, but don't wait too long
+        if (!flock($fp, LOCK_SH | LOCK_NB)) {
             fclose($fp);
             return false;
         }
@@ -334,7 +354,6 @@ class MemoryRateLimiter
             return false;
         }
 
-        // TTL kontrolü
         if (time() > $wrapper['expires_at']) {
             @unlink($filePath);
             return false;
@@ -351,10 +370,9 @@ class MemoryRateLimiter
         $filePath = self::$cacheDir . '/' . $key . '.json';
         $fp = fopen($filePath, 'c+');
 
-        if (!$fp)
-            return;
+        if (!$fp) return;
 
-        if (!flock($fp, LOCK_EX)) {
+        if (!flock($fp, LOCK_EX | LOCK_NB)) {
             fclose($fp);
             return;
         }

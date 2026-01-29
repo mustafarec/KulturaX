@@ -40,6 +40,7 @@ import { NotificationSettingsScreen } from '../screens/settings/NotificationSett
 import { AboutScreen } from '../screens/settings/AboutScreen';
 import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen';
 import { MutedUsersScreen } from '../screens/settings/MutedUsersScreen';
+import { UpdateDiagnosticScreen } from '../screens/settings/UpdateDiagnosticScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -248,6 +249,11 @@ export const AppNavigator = () => {
                             <Stack.Screen
                                 name="MutedUsers"
                                 component={MutedUsersScreen}
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="UpdateDiagnostic"
+                                component={UpdateDiagnosticScreen}
                                 options={{ headerShown: false }}
                             />
                             <Stack.Screen

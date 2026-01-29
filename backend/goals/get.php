@@ -1,10 +1,11 @@
 <?php
-include '../config.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : die();
 $year = isset($_GET['year']) ? $_GET['year'] : date('Y');
 
-$query = "SELECT * FROM reading_goals WHERE user_id = :user_id AND year = :year";
+$query = "SELECT id, user_id, year, target_count, current_count FROM reading_goals WHERE user_id = :user_id AND year = :year";
 $stmt = $conn->prepare($query);
 
 $stmt->bindParam(':user_id', $user_id);

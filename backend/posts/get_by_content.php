@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 // Auth kontrolü (isteğe bağlı, giriş yapmamış kullanıcılar da görebilir mi? Şimdilik evet ama like durumu için user_id lazım)
 $userId = 0;

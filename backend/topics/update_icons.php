@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 
 try {
     // Array of slug => new_icon (Ionicons compatible)

@@ -3,6 +3,8 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, 
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useWebSocket } from '../../context/WebSocketContext';
+import { useMessage } from '../../context/MessageContext';
 import { messageService } from '../../services/backendApi';
 import { ArrowRight, Mail, Search, MoreVertical, Trash2, Flag, Archive, UserCheck, X } from 'lucide-react-native';
 
@@ -29,6 +31,7 @@ export const InboxScreen = () => {
 
     const { user } = useAuth();
     const { theme } = useTheme();
+    const { refreshUnreadCount } = useMessage();
     const navigation = useNavigation();
 
     const styles = React.useMemo(() => StyleSheet.create({
@@ -347,6 +350,7 @@ export const InboxScreen = () => {
         try {
             const data = await messageService.getInbox('inbox');
             setConversations(data || []);
+            refreshUnreadCount(); // Sync global badge
         } catch (error) {
             console.error(error);
         } finally {
@@ -368,13 +372,91 @@ export const InboxScreen = () => {
         }
     };
 
+    const { onNewMessage, onOnlineStatus, onMessageSent } = useWebSocket();
+    const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
+
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
+        const unsubscribeFocus = navigation.addListener('focus', () => {
             fetchInbox();
             fetchRequests();
         });
-        return unsubscribe;
-    }, [navigation, user]);
+
+        // WebSocket: New Message Handler
+        const unsubscribeMessages = onNewMessage((message: any) => {
+            console.log('[InboxScreen] WS Message Received:', message); // DEBUG LOG
+            setConversations(prev => {
+                const existingIndex = prev.findIndex(c => c.chat_partner_id === message.sender_id || c.chat_partner_id === message.receiver_id);
+
+                if (existingIndex > -1) {
+                    // Update existing conversation
+                    const updatedConversations = [...prev];
+                    const conversation = updatedConversations[existingIndex];
+
+                    // Move to top and update details
+                    updatedConversations.splice(existingIndex, 1);
+                    updatedConversations.unshift({
+                        ...conversation,
+                        last_message: message.content,
+                        time_ago: 'Az önce',
+                        unread_count: message.sender_id === conversation.chat_partner_id
+                            ? (parseInt(conversation.unread_count || 0) + 1)
+                            : conversation.unread_count
+                    });
+                    return updatedConversations;
+                } else {
+                    // New conversation - fetch fresh list to be safe
+                    fetchInbox();
+                    return prev;
+                }
+            });
+        });
+
+        // WebSocket: Message Sent Handler (Optimistic Update for Outgoing)
+        const unsubscribeSent = onMessageSent((data) => {
+            console.log('[InboxScreen] WS Message Sent Ack:', data);
+            setConversations(prev => {
+                const existingIndex = prev.findIndex(c => c.chat_partner_id === data.receiverId);
+
+                if (existingIndex > -1) {
+                    const updatedConversations = [...prev];
+                    const conversation = updatedConversations[existingIndex];
+
+                    updatedConversations.splice(existingIndex, 1);
+                    updatedConversations.unshift({
+                        ...conversation,
+                        last_message: data.content,
+                        time_ago: 'Az önce',
+                        // Do not increment unread for our own messages
+                    });
+                    return updatedConversations;
+                } else {
+                    // If we started a new chat that wasn't in list, fetch to load it
+                    fetchInbox();
+                    return prev;
+                }
+            });
+        });
+
+        // WebSocket: Online Status Handler
+        const unsubscribeOnline = onOnlineStatus((data) => {
+            setOnlineUsers(prev => {
+                const newSet = new Set(prev);
+                if (data.isOnline) {
+                    newSet.add(data.userId);
+                } else {
+                    newSet.delete(data.userId);
+                }
+                return newSet;
+            });
+        });
+
+        return () => {
+            unsubscribeFocus();
+            unsubscribeMessages();
+            unsubscribeOnline();
+            unsubscribeSent();
+        };
+    }, [navigation, user, onNewMessage, onOnlineStatus, onMessageSent]);
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -467,6 +549,29 @@ export const InboxScreen = () => {
                             borderRadius: 7,
                             borderWidth: 2,
                             borderColor: theme.colors.surface,
+                        }} />
+                    )}
+
+                    {/* Online Indicator (Green Dot) - Overrides unread if both exist, or position separately? 
+                        Let's put Online status on TOP right if Unread is BOTTOM right? 
+                        Or better: Online = Green Border, Unread = Badge. 
+                        Standard: Online dot bottom-right. If unread, maybe show unread badge only? 
+                        Let's show Online dot at Bottom-Right. If also Unread, maybe shift unread to Top-Right?
+                        Actually, code has unread at bottom-right.
+                        Let's put Online at Top-Right for now to avoid collision.
+                    */}
+                    {onlineUsers.has(item.chat_partner_id) && (
+                        <View style={{
+                            position: 'absolute',
+                            bottom: hasUnread ? 0 : 0,
+                            right: hasUnread ? 10 : 0, // Shift if unread badge exists
+                            width: 12,
+                            height: 12,
+                            backgroundColor: theme.colors.success,
+                            borderRadius: 6,
+                            borderWidth: 2,
+                            borderColor: theme.colors.surface,
+                            zIndex: 10
                         }} />
                     )}
                 </View>

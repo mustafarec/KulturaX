@@ -4,6 +4,8 @@
  * Handles WebSocket connection, reconnection, and message handling.
  */
 
+import Toast from 'react-native-toast-message';
+
 type MessageHandler = (data: any) => void;
 
 // WebSocket Constants
@@ -32,6 +34,10 @@ class WebSocketService {
     private heartbeatInterval: NodeJS.Timeout | null = null;
     private isConnecting = false;
 
+    public get isConnected(): boolean {
+        return this.ws?.readyState === WebSocket.OPEN;
+    }
+
     /**
      * Connect to WebSocket server
      */
@@ -48,7 +54,6 @@ class WebSocketService {
             this.ws = new WebSocket(config.url);
 
             this.ws.onopen = () => {
-                console.log('WebSocket connected');
                 this.isConnecting = false;
                 this.reconnectAttempts = 0;
                 this.reconnectDelay = 1000;
@@ -71,12 +76,11 @@ class WebSocketService {
                     const data = JSON.parse(event.data);
                     this.handleMessage(data);
                 } catch (error) {
-                    console.error('Failed to parse WebSocket message:', error);
+                    // Fail silently
                 }
             };
 
             this.ws.onclose = () => {
-                console.log('WebSocket disconnected');
                 this.isConnecting = false;
                 this.stopHeartbeat();
                 config.onDisconnect?.();
@@ -84,12 +88,10 @@ class WebSocketService {
             };
 
             this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
                 this.isConnecting = false;
                 config.onError?.(error);
             };
         } catch (error) {
-            console.error('Failed to create WebSocket:', error);
             this.isConnecting = false;
         }
     }
@@ -120,13 +122,14 @@ class WebSocketService {
     /**
      * Send chat message
      */
-    sendMessage(receiverId: number, content: string, tempId: number, replyTo?: { id: number; username: string; content: string }): void {
+    sendMessage(receiverId: number, content: string, tempId: number, replyTo?: { id: number; username: string; content: string }, messageId?: number): void {
         this.send({
             type: 'message',
             receiverId,
             content,
             tempId,
-            replyTo
+            replyTo,
+            messageId // Send Server ID if available
         });
     }
 
@@ -174,9 +177,7 @@ class WebSocketService {
     /**
      * Check if connected
      */
-    isConnected(): boolean {
-        return this.ws?.readyState === WebSocket.OPEN;
-    }
+    // Removed duplicate isConnected method
 
     /**
      * Handle incoming message
@@ -199,12 +200,10 @@ class WebSocketService {
      */
     private attemptReconnect(): void {
         if (this.reconnectAttempts >= this.maxReconnectAttempts || !this.config) {
-            console.log('Max reconnection attempts reached');
             return;
         }
 
         this.reconnectAttempts++;
-        console.log(`Reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
 
         setTimeout(() => {
             if (this.config) {

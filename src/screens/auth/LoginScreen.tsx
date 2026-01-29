@@ -8,6 +8,15 @@ import { useAuth } from '../../context/AuthContext';
 import { ThemedDialog } from '../../components/ThemedDialog';
 import { API_URL } from '../../services/backendApi';
 
+interface ApiError {
+    message: string;
+    code?: string;
+    is_frozen?: boolean;
+    frozen_at?: string;
+    retry_after?: number;
+    retry_after_minutes?: number;
+}
+
 export const LoginScreen = () => {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
@@ -148,31 +157,61 @@ export const LoginScreen = () => {
         try {
             await login(email, password);
         } catch (error: any) {
-            let errorMessage = 'Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.';
+            const apiError = error as ApiError;
+            let errorMessage = apiError.message || 'Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.';
             let errorTitle = 'Hata';
 
-            // Dondurulmuş hesap kontrolü
-            if (error.is_frozen) {
-                setFrozenDialogVisible(true);
-                setLoading(false);
-                return;
-            }
+            // Switch structure based on standardized error codes
+            switch (apiError.code) {
+                case 'ACCOUNT_FROZEN':
+                    setFrozenDialogVisible(true);
+                    setLoading(false);
+                    return; // Don't show toast, dialog handles it
 
-            // Backend artık "Email veya şifre hatalı." döndürüyor (user enumeration koruması)
-            if (error.message === 'Email veya şifre hatalı.' ||
-                error.message === 'Kullanıcı bulunamadı.' ||
-                error.message === 'Geçersiz şifre.') {
-                errorTitle = 'Giriş Başarısız';
-                errorMessage = 'Email veya şifre hatalı. Lütfen tekrar deneyiniz.';
-            } else if (error.message === 'Network Error') {
-                errorTitle = 'Bağlantı Hatası';
-                errorMessage = 'Sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol ediniz.';
-            } else if (error.message === 'Geçersiz email formatı.') {
-                errorTitle = 'Geçersiz Format';
-                errorMessage = 'Lütfen geçerli bir e-posta adresi giriniz.';
-            } else if (error.message && (error.message.includes('Çok fazla') || error.message.includes('bekleyiniz'))) {
-                errorTitle = 'Çok Fazla Deneme';
-                errorMessage = error.message; // Backend'den gelen dinamik mesajı kullan (örn: "Lütfen 2 dakika bekleyiniz.")
+                case 'RATE_LIMIT_EXCEEDED':
+                    errorTitle = 'Çok Fazla Deneme';
+                    if (apiError.retry_after_minutes) {
+                        errorMessage = `Güvenliğiniz için lütfen ${apiError.retry_after_minutes} dakika bekleyiniz.`;
+                    } else if (apiError.retry_after) {
+                        errorMessage = `Lütfen ${apiError.retry_after} saniye bekleyiniz.`;
+                    }
+                    break;
+
+                case 'EMAIL_NOT_VERIFIED':
+                    // Redirect to verification instead of showing error
+                    setLoading(false);
+                    Toast.show({
+                        type: 'info',
+                        text1: 'Doğrulama Gerekli',
+                        text2: 'Lütfen email adresinizi doğrulayın.',
+                    });
+                    navigation.navigate('Verification' as never, { email } as never);
+                    return;
+
+                case 'INVALID_CREDENTIALS':
+                    errorTitle = 'Giriş Başarısız';
+                    errorMessage = 'Email veya şifre hatalı. Lütfen tekrar deneyiniz.';
+                    break;
+
+                case 'INVALID_EMAIL_FORMAT':
+                    errorTitle = 'Geçersiz Format';
+                    errorMessage = 'Lütfen geçerli bir e-posta adresi giriniz.';
+                    break;
+
+                default:
+                    // Fallback for legacy errors or network errors
+                    if (error.message === 'Network Error') {
+                        errorTitle = 'Bağlantı Hatası';
+                        errorMessage = 'Sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol ediniz.';
+                        // Fix for raw JSON object display
+                    } else if (typeof error.message === 'object') {
+                        errorMessage = 'Bir hata oluştu.';
+                    } else if (apiError.is_frozen) { // Legacy check just in case
+                        setFrozenDialogVisible(true);
+                        setLoading(false);
+                        return;
+                    }
+                    break;
             }
 
             Toast.show({

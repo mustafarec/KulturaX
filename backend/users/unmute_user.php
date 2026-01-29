@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 $user_id = requireAuth();
 $data = json_decode(file_get_contents("php://input"));

@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 include_once '../validation.php';
 
 $data = json_decode(file_get_contents("php://input"));
@@ -15,7 +15,7 @@ $email = Validator::sanitizeInput($data->email);
 $code = Validator::sanitizeInput($data->code);
 
 try {
-    $stmt = $conn->prepare("SELECT id, username, name, surname, email_verification_code, verification_expires_at, token FROM users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT id, email, username, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified, is_frozen, frozen_at, is_premium, created_at, birth_date, is_private, school, department, interests, email_verification_code, verification_expires_at FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -37,29 +37,30 @@ try {
         exit;
     }
 
-    // Use existing token if available, otherwise generate new one
-    $token = $user['token'];
-    if (empty($token)) {
-        $token = bin2hex(random_bytes(32));
-    }
+require_once '../auth_middleware.php';
 
-    // Code is valid, update user status AND token
-    $updateStmt = $conn->prepare("UPDATE users SET is_email_verified = 1, email_verification_code = NULL, verification_expires_at = NULL, token = ? WHERE id = ?");
-    if ($updateStmt->execute([$token, $user['id']])) {
-        
-        http_response_code(200);
-        echo json_encode([
-            'message' => 'Hesap doğrulandı.',
-            'token' => $token,
-            'user' => [
-                'id' => $user['id'],
-                'email' => $email,
-                'username' => $user['username'],
-                'name' => $user['name'],
-                'surname' => $user['surname']
-            ]
-        ]);
-    } else {
+// Code is valid, update user status
+$updateStmt = $conn->prepare("UPDATE users SET is_email_verified = 1, email_verification_code = NULL, verification_expires_at = NULL WHERE id = ?");
+if ($updateStmt->execute([$user['id']])) {
+    // Session oluştur
+    $token = createSession($conn, $user['id']);
+    
+    http_response_code(200);
+    
+    // Preparation for JSON response ( parity with login.php )
+    unset($user['password']);
+    unset($user['email_verification_code']);
+    unset($user['verification_expires_at']);
+    $user['is_premium'] = (bool)($user['is_premium'] ?? false);
+    $user['is_private'] = (bool)($user['is_private'] ?? false);
+    $user['is_email_verified'] = true;
+
+    echo json_encode([
+        'message' => 'Hesap doğrulandı.',
+        'token' => $token,
+        'user' => $user
+    ]);
+} else {
         http_response_code(500);
         echo json_encode(['message' => 'Doğrulama işlemi sırasında bir hata oluştu.']);
     }

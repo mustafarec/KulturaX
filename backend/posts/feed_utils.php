@@ -61,9 +61,9 @@ function calculateAffinityScores($user_id, $conn)
         }
     }
 
-    // Save to APCu cache (300 seconds = 5 mins)
+    // Save to APCu cache (900 seconds = 15 mins)
     if (function_exists('apcu_store')) {
-        apcu_store($cacheKey, $scores, 300);
+        apcu_store($cacheKey, $scores, 900);
     }
 
     return $scores;

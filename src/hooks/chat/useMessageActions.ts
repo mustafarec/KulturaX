@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Clipboard } from 'react-native';
 import { messageService } from '../../services/api';
+import webSocketService from '../../services/WebSocketService';
 import Toast from 'react-native-toast-message';
 
 interface Message {
@@ -47,7 +48,10 @@ export const useMessageActions = ({
     const [showContextMenu, setShowContextMenu] = useState(false);
 
     const handleSend = useCallback(async (scrollToBottom: () => void) => {
-        if (!inputText.trim() || !userId || sending) return;
+        if (!inputText.trim() || !userId || sending) {
+            console.log('[handleSend] Early exit:', { text: inputText, userId, sending });
+            return;
+        }
 
         const messageContent = inputText.trim();
         const tempId = Date.now();
@@ -88,12 +92,33 @@ export const useMessageActions = ({
                 // Update optimistic message with server data
                 if (response?.id && response?.created_at) {
                     updateOptimisticMessage(tempId, response.id, response.created_at);
+
+                    // Broadcast via WebSocket for Real-time Delivery & Inbox Update
+                    webSocketService.sendMessage(
+                        otherUserId,
+                        messageContent,
+                        tempId,
+                        undefined,
+                        response.id // Pass the Server ID
+                    );
                 }
             } else {
                 response = await messageService.send(otherUserId, messageContent, clientId);
                 // Update optimistic message with server data
                 if (response?.id && response?.created_at) {
                     updateOptimisticMessage(tempId, response.id, response.created_at);
+
+                    console.log('[handleSend] HTTP Success, Sending WS...'); // DEBUG
+                    // Broadcast via WebSocket for Real-time Delivery & Inbox Update
+                    webSocketService.sendMessage(
+                        otherUserId,
+                        messageContent,
+                        tempId,
+                        undefined,
+                        response.id // Pass the Server ID
+                    );
+                } else {
+                    console.warn('[handleSend] HTTP Response Invalid:', response);
                 }
             }
 

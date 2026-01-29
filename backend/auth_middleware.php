@@ -69,8 +69,8 @@ function validateToken()
         exit;
     }
 
-    // 1. Önce cache'e bak (hash-based key kullan)
-    $cached = TokenCache::get($tokenHash);
+    // 1. Önce cache'e bak (TokenCache kendisi hash'ler)
+    $cached = TokenCache::get($token);
     if ($cached !== false) {
         // Cache hit - Token süre dolumu kontrolü
         if (!empty($cached['expires_at'])) {
@@ -79,7 +79,7 @@ function validateToken()
 
             if ($now > $expiresAt) {
                 // Token süresi dolmuş - cache'i temizle
-                TokenCache::invalidate($tokenHash);
+                TokenCache::invalidate($token);
                 http_response_code(401);
                 echo json_encode(array(
                     "message" => "Token süresi dolmuş. Lütfen tekrar giriş yapın.",
@@ -101,67 +101,87 @@ function validateToken()
         return $cached['user_id'];
     }
 
-    // 2. Cache miss - Veritabanından token kontrolü
-    // Dual-mode: Önce hash kontrol et, sonra plaintext (geriye uyumluluk)
-    $query = "SELECT id, token_expires_at FROM users WHERE token_hash = :token_hash OR (token_hash IS NULL AND token = :token)";
+    // 2. Cache miss - Veritabanından token kontrolü (Multi-Session Support)
+    // user_sessions tablosunu kontrol et
+    // SERVER SCHEMA: id, user_id, token_hash, device_id, device_name, device_type, ip_address, user_agent, expires_at, last_active_at, created_at, is_active
+    $query = "SELECT s.user_id, s.expires_at, s.last_active_at 
+              FROM user_sessions s 
+              WHERE s.token_hash = :token_hash AND (s.is_active = 1 OR s.is_active IS NULL)";
+              
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':token_hash', $tokenHash);
-    $stmt->bindParam(':token', $token);
+    $stmt->bindValue(':token_hash', $tokenHash);
     $stmt->execute();
-
+    
     if ($stmt->rowCount() > 0) {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $expiresAt = strtotime($row['expires_at']);
+        $now = time();
 
-        // Token süre dolumu kontrolü
-        if (!empty($row['token_expires_at'])) {
-            $expiresAt = strtotime($row['token_expires_at']);
-            $now = time();
+        if ($now > $expiresAt) {
+            // Token süresi dolmuş - DB'den sil
+            $deleteQuery = "DELETE FROM user_sessions WHERE token_hash = :token_hash";
+            $delStmt = $conn->prepare($deleteQuery);
+            $delStmt->bindValue(':token_hash', $tokenHash);
+            $delStmt->execute();
 
-            if ($now > $expiresAt) {
-                // Token süresi dolmuş
-                http_response_code(401);
-                echo json_encode(array(
-                    "message" => "Token süresi dolmuş. Lütfen tekrar giriş yapın.",
-                    "code" => "TOKEN_EXPIRED"
-                ));
-                exit;
-            }
-
-            // Token yenileme: Son 7 gün kaldıysa süreyi uzat
-            $timeRemaining = $expiresAt - $now;
-            if ($timeRemaining < TOKEN_REFRESH_THRESHOLD) {
-                refreshTokenExpiry($conn, $row['id']);
-                $row['token_expires_at'] = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
-            }
+            http_response_code(401);
+            echo json_encode(array(
+                "message" => "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.",
+                "code" => "SESSION_EXPIRED"
+            ));
+            exit;
         }
 
-        // 3. Sonucu cache'e yaz (hash-based key kullan)
-        TokenCache::set($tokenHash, $row['id'], $row['token_expires_at']);
+        // Token yenileme / Last Seen Güncelleme
+        // Her istekte update yapmamak için buffer kullan (örn: 5 dakikada bir)
+        $lastUsed = $row['last_active_at'] ? strtotime($row['last_active_at']) : 0;
+        if ($now - $lastUsed > 300) { // 5 dakika
+            updateSessionActivity($conn, $tokenHash);
+        }
 
-        return $row['id'];
-    } else {
-        http_response_code(401);
-        echo json_encode(array("message" => "Geçersiz veya süresi dolmuş token."));
-        exit;
+        // Cache'e yaz (Raw token ile!)
+        TokenCache::set($token, $row['user_id'], $row['expires_at']);
+
+        return $row['user_id'];
+    }
+
+    // Fallback: Legacy 'users' table check (Migration süreci için opsiyonel, ama burada kaldırıyoruz)
+    // Ruthless review: Eski tekil oturum yapısını desteklemeyi bırakıyoruz.
+    // Kullanıcıların tekrar login olması gerekecek.
+    
+    http_response_code(401);
+    echo json_encode(array("message" => "Geçersiz veya süresi dolmuş oturum.", "code" => "INVALID_TOKEN"));
+    exit;
+}
+
+/**
+ * Update session activity timestamp
+ */
+function updateSessionActivity($conn, $tokenHash)
+{
+    try {
+        // Expiry'yi de uzat (Sliding Window)
+        $newExpiry = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
+        $nowStr = date('Y-m-d H:i:s');
+        
+        $query = "UPDATE user_sessions SET last_active_at = :last_used, expires_at = :expires_at WHERE token_hash = :token_hash";
+        $stmt = $conn->prepare($query);
+        $stmt->bindValue(':last_used', $nowStr);
+        $stmt->bindValue(':expires_at', $newExpiry);
+        $stmt->bindValue(':token_hash', $tokenHash);
+        $stmt->execute();
+    } catch (Exception $e) {
+        // Update hatası logla ama akışı bozma
+        error_log("Session update failed: " . $e->getMessage());
     }
 }
 
 /**
- * Token süresini uzat
+ * Compatibility wrapper
  */
-function refreshTokenExpiry($conn, $userId)
-{
-    try {
-        $newExpiry = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
-        $query = "UPDATE users SET token_expires_at = :expires_at WHERE id = :user_id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':expires_at', $newExpiry);
-        $stmt->bindParam(':user_id', $userId);
-        $stmt->execute();
-    } catch (Exception $e) {
-        // Sessizce başarısız ol, kullanıcıyı etkilemesin
-        error_log("Token refresh failed: " . $e->getMessage());
-    }
+function refreshTokenExpiry($conn, $userId) {
+    // Deprecated in favor of updateSessionActivity
+    // Legacy calls might need refactoring
 }
 
 function requireAuth()
@@ -176,23 +196,41 @@ function generateToken($userId)
 }
 
 /**
- * Token oluştur ve veritabanına kaydet (login.php'de kullanılacak)
+ * Yeni Session Oluştur (Multi-Device)
+ * @param PDO $conn
+ * @param int $userId
+ * @param string|null $deviceInfo User-Agent vb.
+ * @return string Plain token
  */
-function createTokenWithExpiry($conn, $userId)
+function createSession($conn, $userId, $deviceInfo = null)
 {
     $token = bin2hex(random_bytes(32));
     $tokenHash = hash('sha256', $token);
     $expiresAt = date('Y-m-d H:i:s', time() + TOKEN_LIFETIME);
+    $ip = getClientIp();
 
-    // Token ve hash'ini kaydet (hash validation için, token sadece geriye uyumluluk için)
-    $query = "UPDATE users SET token = :token, token_hash = :token_hash, token_expires_at = :expires_at WHERE id = :user_id";
+    // SERVER SCHEMA UPDATE:
+    // Columns: insert into user_agent (instead of device_info), last_active_at, is_active
+    // Skipping device_id, device_name, device_type (assuming nullable/default)
+    $query = "INSERT INTO user_sessions (user_id, token_hash, user_agent, ip_address, expires_at, last_active_at, is_active) 
+              VALUES (:user_id, :token_hash, :device_info, :ip, :expires_at, NOW(), 1)";
+    
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':token', $token);
-    $stmt->bindParam(':token_hash', $tokenHash);
-    $stmt->bindParam(':expires_at', $expiresAt);
-    $stmt->bindParam(':user_id', $userId);
+    $stmt->bindValue(':user_id', $userId);
+    $stmt->bindValue(':token_hash', $tokenHash);
+    $stmt->bindValue(':device_info', substr($deviceInfo, 0, 255)); // Truncate to fit
+    $stmt->bindValue(':ip', $ip);
+    $stmt->bindValue(':expires_at', $expiresAt);
     $stmt->execute();
 
     return $token;
+}
+
+/**
+ * Legacy Support Wrapper
+ */
+function createTokenWithExpiry($conn, $userId)
+{
+    return createSession($conn, $userId, $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown');
 }
 ?>

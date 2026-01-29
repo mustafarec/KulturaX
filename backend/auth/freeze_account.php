@@ -1,8 +1,8 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 include_once '../validation.php';
-include_once '../auth_middleware.php';
+require_once '../auth_middleware.php';
 
 // Token doğrulama - requireAuth() kullan
 try {

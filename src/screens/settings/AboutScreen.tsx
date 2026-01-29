@@ -233,7 +233,12 @@ export const AboutScreen = () => {
                     </LinearGradient>
 
                     <Text style={styles.appName}>KültüraX</Text>
-                    <Text style={styles.version}>Versiyon {APP_VERSION} ({BUILD_NUMBER})</Text>
+                    <TouchableOpacity
+                        onLongPress={() => navigation.navigate('UpdateDiagnostic' as never)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.version}>Versiyon {APP_VERSION} ({BUILD_NUMBER})</Text>
+                    </TouchableOpacity>
                     {!__DEV__ && (
                         <Text style={[styles.version, { marginTop: -16, fontSize: 12 }]}>
                             Channel: {Updates.channel || (Constants.expoConfig as any)?.updates?.channel || 'production (local)'} | RV: {Updates.runtimeVersion || '1.0.0'}

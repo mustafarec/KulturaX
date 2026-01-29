@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 
 $data = json_decode(file_get_contents("php://input"));
 

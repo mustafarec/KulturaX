@@ -1,8 +1,9 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../validation.php';
-include_once '../rate_limiter.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
+require_once '../validation.php';
+require_once '../rate_limiter.php';
 
 // Rate limiting - IP bazlı, Kademeli Engelleme
 $ip = $_SERVER['REMOTE_ADDR'];

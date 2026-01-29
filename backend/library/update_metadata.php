@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-include_once '../config.php';
+require_once '../config.php';
 include_once '../rate_limiter.php';
 
 // Rate Limiting

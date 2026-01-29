@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { useAuth } from './AuthContext';
 import { messageService } from '../services/backendApi';
 import * as Notifications from 'expo-notifications';
+import { useWebSocket } from './WebSocketContext';
 
 // Polling interval - 15s for shared hosting (was 5s)
 const POLLING_INTERVAL = 15000;
@@ -28,16 +29,6 @@ export const MessageProvider = ({ children }: { children: ReactNode }) => {
     const appState = useRef(AppState.currentState);
     const [isActive, setIsActive] = useState(true);
 
-    // Listen to app state changes
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-            // Only poll when app is active
-            setIsActive(nextAppState === 'active');
-            appState.current = nextAppState;
-        });
-        return () => subscription?.remove();
-    }, []);
-
     const refreshUnreadCount = useCallback(async () => {
         if (!userId) {
             setUnreadCount(0);
@@ -45,6 +36,7 @@ export const MessageProvider = ({ children }: { children: ReactNode }) => {
         }
         try {
             const data = await messageService.getUnreadCount(userId);
+            console.log('[MessageContext] Fetched unread count:', data);
             setUnreadCount(data.count);
         } catch (error) {
             console.error('Failed to fetch unread count', error);
@@ -55,8 +47,8 @@ export const MessageProvider = ({ children }: { children: ReactNode }) => {
         if (!userId) return;
         try {
             await messageService.markMessagesRead(userId, otherUserId);
-            // Don't await this to keep UI responsive
-            refreshUnreadCount();
+            // Wait for refresh to ensure UI is in sync immediately
+            await refreshUnreadCount();
         } catch (error) {
             console.error('Failed to mark messages as read', error);
         }
@@ -71,21 +63,47 @@ export const MessageProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
-    // OPTIMIZED: Smart polling
-    // - Only polls when app is active
-    // - Pauses when user is in a chat (they'll see messages via WebSocket/chat hook)
-    // - Uses 15s interval instead of 5s to reduce server load
+    // Listen to app state changes
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            // Refresh unread count when app becomes active
+            if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+                console.log('[MessageContext] App became active, refreshing unread count...');
+                refreshUnreadCount();
+            }
+
+            setIsActive(nextAppState === 'active');
+            appState.current = nextAppState;
+        });
+        return () => subscription?.remove();
+    }, [refreshUnreadCount]);
+
+    // WebSocket Listener for Real-time Unread Count
     useEffect(() => {
         refreshUnreadCount();
+    }, [userId, refreshUnreadCount]);
 
-        // Skip polling if app is inactive or user is in a chat
-        if (!isActive || currentChatUserId) {
-            return;
-        }
+    // WebSocket Listener for Real-time Unread Count
+    const { onNewMessage } = useWebSocket();
 
-        const interval = setInterval(refreshUnreadCount, POLLING_INTERVAL);
-        return () => clearInterval(interval);
-    }, [userId, refreshUnreadCount, isActive, currentChatUserId]);
+    useEffect(() => {
+        const unsubscribe = onNewMessage((message: any) => {
+            console.log('[MessageContext] WS New Message:', message); // DEBUG LOG
+            // If we are NOT currently chatting with this user, increment unread count
+            const senderId = message.sender_id;
+            console.log('[MessageContext] CurrentChatUser:', currentChatUserId, 'Sender:', senderId); // DEBUG LOG
+
+            if (currentChatUserId !== senderId) {
+                setUnreadCount(prev => {
+                    console.log('[MessageContext] Incrementing count from', prev, 'to', prev + 1);
+                    return prev + 1;
+                });
+            } else {
+                console.log('[MessageContext] Skipped increment (User currently active)');
+            }
+        });
+        return unsubscribe;
+    }, [onNewMessage, currentChatUserId]);
 
     const value = useMemo(() => ({
         unreadCount,

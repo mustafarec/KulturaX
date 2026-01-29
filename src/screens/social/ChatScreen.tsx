@@ -4,6 +4,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
+import { useWebSocket } from '../../context/WebSocketContext';
 import { messageService, userService } from '../../services/backendApi';
 import { ArrowLeft, Send, AlertCircle, RotateCcw } from 'lucide-react-native';
 import { Image } from 'react-native';
@@ -33,7 +34,48 @@ export const ChatScreen = () => {
     const { theme } = useTheme();
     const navigation = useNavigation();
     const { markAsRead } = useMessage();
+    const { sendMessage: sendSocketMessage, sendTyping, onNewMessage, onTyping, onMessageSent, isConnected } = useWebSocket();
+    const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const flatListRef = useRef<FlatList>(null);
+
+    // WebSocket Listeners
+    useEffect(() => {
+        if (!user || !otherUserId) return;
+
+        // Listen for new messages
+        const unsubscribeMessages = onNewMessage((message: any) => {
+            console.log('[ChatScreen] WS Message Received:', message); // DEBUG LOG
+            // Only handle messages for this chat
+            if (message.sender_id === otherUserId || (message.receiver_id === otherUserId && message.sender_id === user.id)) {
+                setMessages(prev => {
+                    // Avoid duplicates
+                    if (prev.some(m => m.id === message.id)) return prev;
+                    return [...prev, { ...message, status: 'sent' }];
+                });
+
+                // Mark as read immediately if looking at screen
+                // sendReadReceipt(user.id, [message.id]); 
+            }
+        });
+
+        // Listen for typing status
+        const unsubscribeTyping = onTyping((data) => {
+            if (data.userId === otherUserId) {
+                setIsOtherUserTyping(data.isTyping);
+            }
+        });
+
+        const unsubscribeSent = onMessageSent((data) => {
+            console.log('[ChatScreen] Message Sent Ack:', data);
+        });
+
+        return () => {
+            unsubscribeMessages();
+            unsubscribeTyping();
+            unsubscribeSent();
+        };
+    }, [user, otherUserId, onNewMessage, onTyping, onMessageSent]);
 
     const styles = React.useMemo(() => StyleSheet.create({
         container: {
@@ -236,13 +278,15 @@ export const ChatScreen = () => {
         }
     };
 
-    useEffect(() => {
+    React.useLayoutEffect(() => {
         navigation.setOptions({ headerShown: false });
+    }, [navigation]);
+
+    useEffect(() => {
         fetchMessages();
         fetchUserProfile();
 
-        const interval = setInterval(fetchMessages, 5000);
-        return () => clearInterval(interval);
+        // Polling removed as per user request to rely on WebSocket
     }, [otherUserId, user]);
 
     const sendMessage = async (content: string, tempId: number) => {
@@ -252,7 +296,7 @@ export const ChatScreen = () => {
             setMessages(prev => prev.map(m =>
                 m.tempId === tempId ? { ...m, status: 'sent' as const } : m
             ));
-            fetchMessages(); // Sync with server
+            // fetchMessages(); // Sync with server - Removed to rely on WS (or local update)
         } catch (error) {
             console.error('Message send failed:', error);
             // Mark as failed
@@ -281,8 +325,17 @@ export const ChatScreen = () => {
         };
         setMessages(prev => [...prev, newMessage]);
 
-        // Send the message
+        // Send the message via API (Persistence)
         sendMessage(content, tempId);
+
+        // Send via WebSocket (Real-time)
+        console.log('[ChatScreen] Auto-Send Check:', { isConnected, otherUserId }); // DEBUG LOG
+        if (isConnected) {
+            console.log('[ChatScreen] Sending WS Message to:', otherUserId); // DEBUG LOG
+            sendSocketMessage(otherUserId, content, tempId);
+        } else {
+            console.log('[ChatScreen] WS NOT CONNECTED - Skipping JS send'); // DEBUG LOG
+        }
     };
 
     const handleRetry = (message: ChatMessage) => {
@@ -295,6 +348,24 @@ export const ChatScreen = () => {
 
         // Retry sending
         sendMessage(message.content, message.tempId!);
+    };
+
+    const handleInputChange = (text: string) => {
+        setInputText(text);
+
+        if (isConnected) {
+            sendTyping(otherUserId, true);
+
+            // Clear previous timeout
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+
+            // Stop typing after 2 seconds of inactivity
+            typingTimeoutRef.current = setTimeout(() => {
+                sendTyping(otherUserId, false);
+            }, 2000);
+        }
     };
 
     const renderItem = ({ item }: { item: ChatMessage }) => {
@@ -372,6 +443,19 @@ export const ChatScreen = () => {
                 <View style={{ width: 40 }} />
             </View>
 
+            {/* DEBUG: Visual WS Status - Explicit Banner in Body */}
+            <View style={{
+                paddingVertical: 4,
+                backgroundColor: isConnected ? '#4CAF50' : '#F44336',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%'
+            }}>
+                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                    {isConnected ? 'WEBSOCKET: BAĞLI (ON)' : 'WEBSOCKET: BAĞLI DEĞİL (OFF)'}
+                </Text>
+            </View>
+
             {isLoading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
             ) : (
@@ -385,11 +469,19 @@ export const ChatScreen = () => {
                 />
             )}
 
+            {isOtherUserTyping && (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>
+                        {otherUserName} yazıyor...
+                    </Text>
+                </View>
+            )}
+
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
                     value={inputText}
-                    onChangeText={setInputText}
+                    onChangeText={handleInputChange}
                     placeholder="Mesaj yazın..."
                     placeholderTextColor={theme.colors.textSecondary}
                     multiline

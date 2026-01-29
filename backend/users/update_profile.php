@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 include_once '../validation.php';
 
 $user_id = validateToken($conn);
@@ -69,7 +69,7 @@ if (isset($_POST['interests'])) {
 // Handle File Uploads
 $uploadDir = "../uploads/avatars/"; // Reusing avatars dir or create headers dir
 if (!file_exists($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
+    mkdir($uploadDir, 0755, true);
 }
 
 if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_NO_FILE) {
@@ -129,8 +129,8 @@ try {
     $stmt->bindValue(':id', $user_id);
     
     if ($stmt->execute()) {
-        // Fetch updated user
-        $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+        // Fetch updated user - Security: Avoid SELECT * to prevent data leaks
+        $stmt = $conn->prepare("SELECT id, username, email, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified, is_premium, is_private, birth_date, school, department, interests, created_at FROM users WHERE id = :id");
         $stmt->bindParam(':id', $user_id);
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);

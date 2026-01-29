@@ -1,6 +1,6 @@
 <?php
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 // 1. Validate Token & Get User ID
 $auth_user_id = requireAuth();

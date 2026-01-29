@@ -136,7 +136,7 @@ class NotificationQueue
 
         try {
             // Pending bildirimleri al (priority'e göre sırala)
-            $query = "SELECT * FROM " . self::TABLE_NAME . " 
+            $query = "SELECT id, user_id, title, message, data, priority, created_at, attempts, status FROM " . self::TABLE_NAME . " 
                       WHERE status = 'pending' AND attempts < 3
                       ORDER BY priority DESC, created_at ASC 
                       LIMIT :limit

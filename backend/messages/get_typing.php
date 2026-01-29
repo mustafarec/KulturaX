@@ -1,6 +1,6 @@
 <?php
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 // Validate Token & Get User ID
 $auth_user_id = requireAuth();
@@ -15,7 +15,7 @@ if (!$other_user_id) {
 
 try {
     // Check if other user is typing (within last 3 seconds)
-    $query = "SELECT * FROM typing_indicators 
+    $query = "SELECT user_id, updated_at FROM typing_indicators 
               WHERE user_id = :other_user_id 
               AND receiver_id = :auth_user_id 
               AND updated_at > DATE_SUB(NOW(), INTERVAL 3 SECOND)";

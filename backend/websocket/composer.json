@@ -1,5 +1,5 @@
 {
-    "name": "kmf-websocket",
+    "name": "kmf/websocket",
     "description": "KültüraX WebSocket Server",
     "require": {
         "cboden/ratchet": "^0.4.4",

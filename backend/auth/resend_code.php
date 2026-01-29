@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 include_once '../validation.php';
 
 $data = json_decode(file_get_contents("php://input"));
@@ -43,22 +43,15 @@ try {
         $message = "Merhaba " . $user['name'] . ",\n\nYeni doğrulama kodun: $verificationCode\n\nBu kod 15 dakika geçerlidir.";
         $headers = "From: no-reply@mmreeo.online";
 
+        // Insert into Mail Queue
         try {
-            $mailConfig = require '../mail/config.php';
-            require_once '../mail/SimpleSMTP.php';
-
-            $smtp = new SimpleSMTP(
-                $mailConfig['smtp_host'],
-                $mailConfig['smtp_port'],
-                $mailConfig['smtp_username'],
-                $mailConfig['smtp_password']
-            );
-
-            $smtp->send($email, $subject, $message, $mailConfig['from_name']);
+            $queueSql = "INSERT INTO mail_queue (recipient_email, subject, body, status, created_at) VALUES (?, ?, ?, 'pending', NOW())";
+            $queueStmt = $conn->prepare($queueSql);
+            $queueStmt->execute([$email, $subject, $message]);
         } catch (Exception $e) {
-            file_put_contents('../debug_log.txt', "Mail Error: " . $e->getMessage() . "\n", FILE_APPEND);
+            file_put_contents('../debug_log.txt', "Mail Queue Error: " . $e->getMessage() . "\n", FILE_APPEND);
             http_response_code(500);
-            echo json_encode(['message' => 'Kod gönderilemedi: ' . $e->getMessage()]);
+            echo json_encode(['message' => 'Kod kuyruğa eklenemedi: ' . $e->getMessage()]);
             exit;
         }
         

@@ -1,6 +1,6 @@
 <?php
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 // 1. Validate Token & Get User ID
 $auth_user_id = requireAuth();
@@ -22,7 +22,7 @@ if ($auth_user_id != $user_id) {
 
 try {
     // 1. Fetch notifications
-    $query = "SELECT * FROM notifications WHERE user_id = :user_id AND type != 'message' ORDER BY created_at DESC LIMIT 50";
+    $query = "SELECT id, user_id, type, data, is_read, created_at FROM notifications WHERE user_id = :user_id AND type != 'message' ORDER BY created_at DESC LIMIT 50";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':user_id', $user_id);
     $stmt->execute();

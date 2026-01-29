@@ -1,13 +1,13 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 
 // Token'dan kimlik doğrula
 $user_id = requireAuth();
 
 // Token'ı çek
-$query = "SELECT * FROM user_integrations WHERE user_id = :user_id AND provider = 'spotify'";
+$query = "SELECT id, access_token, refresh_token, expires_at FROM user_integrations WHERE user_id = :user_id AND provider = 'spotify'";
 $stmt = $conn->prepare($query);
 $stmt->bindParam(':user_id', $user_id);
 $stmt->execute();

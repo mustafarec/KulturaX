@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
-include_once '../auth_middleware.php';
+require_once '../config.php';
+require_once '../auth_middleware.php';
 include_once '../validation.php';
 include_once '../rate_limiter.php';
 
@@ -39,7 +39,9 @@ if (!Validator::validateString($data->password, 1, 255)) {
 }
 
 try {
-    $query = "SELECT id, email, password, username, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified, is_frozen, frozen_at, is_premium FROM users WHERE email = :email LIMIT 1";
+    $query = "SELECT id, email, password, username, full_name, bio, location, website, avatar_url, header_image_url, is_email_verified, is_frozen, frozen_at, is_premium, 
+                     created_at, birth_date, is_private, school, department, interests 
+              FROM users WHERE email = :email LIMIT 1";
     $stmt = $conn->prepare($query);
 
     $email = Validator::sanitizeInput($data->email);
@@ -56,7 +58,18 @@ try {
                 echo json_encode(array(
                     "message" => "Hesabınız dondurulmuş.",
                     "is_frozen" => true,
-                    "frozen_at" => $row['frozen_at'] ?? null
+                    "frozen_at" => $row['frozen_at'] ?? null,
+                    "code" => "ACCOUNT_FROZEN"
+                ));
+                exit;
+            }
+
+            // Email doğrulanmış mı kontrol et
+            if (isset($row['is_email_verified']) && $row['is_email_verified'] == 0) {
+                http_response_code(403);
+                echo json_encode(array(
+                    "message" => "Lütfen önce email adresinizi doğrulayın.",
+                    "code" => "EMAIL_NOT_VERIFIED"
                 ));
                 exit;
             }
@@ -69,6 +82,7 @@ try {
             unset($row['password']);
             // Convert is_premium to boolean for proper JavaScript handling
             $row['is_premium'] = (bool)($row['is_premium'] ?? false);
+            $row['is_private'] = (bool)($row['is_private'] ?? false);
             echo json_encode(array(
                 "message" => "Giriş başarılı.",
                 "token" => $token,
@@ -77,12 +91,12 @@ try {
         } else {
             // Güvenlik: Kullanıcı enumeration'ı engellemek için aynı mesaj
             http_response_code(401);
-            echo json_encode(array("message" => "Email veya şifre hatalı."));
+            echo json_encode(array("message" => "Email veya şifre hatalı.", "code" => "INVALID_CREDENTIALS"));
         }
     } else {
         // Güvenlik: Kullanıcı enumeration'ı engellemek için aynı mesaj
         http_response_code(401);
-        echo json_encode(array("message" => "Email veya şifre hatalı."));
+        echo json_encode(array("message" => "Email veya şifre hatalı.", "code" => "INVALID_CREDENTIALS"));
     }
 } catch (Exception $e) {
     error_log("Login error: " . $e->getMessage());

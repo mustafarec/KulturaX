@@ -1,9 +1,9 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 include_once '../validation.php';
 include_once '../rate_limiter.php';
-include_once '../auth_middleware.php';
+require_once '../auth_middleware.php';
 
 
 // DEBUG LOGGING DISABLED FOR PRODUCTION
@@ -16,7 +16,7 @@ function debugLog($message)
 // Rate limiting - IP bazlı, 3 kayıt/saat
 try {
     $ip = getClientIp();
-    checkRateLimit($conn, $ip, 'register_attempt', 3, 3600);
+    checkRateLimit($conn, $ip, 'register_attempt', 10, 900);
 } catch (Exception $e) {
     error_log("Register Rate Limit Error: " . $e->getMessage());
 }
@@ -109,24 +109,16 @@ try {
         $message = "Merhaba $name,\n\nHesabını doğrulamak için kodun: $verificationCode\n\nBu kod 15 dakika geçerlidir.";
         $headers = "From: no-reply@mmreeo.online";
 
-        // Attempt to send email
-        debugLog("Attempting to send verification email...");
+        // Insert into Mail Queue
+        debugLog("Queueing verification email...");
         try {
-            $mailConfig = require '../mail/config.php';
-            require_once '../mail/SimpleSMTP.php';
-
-            $smtp = new SimpleSMTP(
-                $mailConfig['smtp_host'],
-                $mailConfig['smtp_port'],
-                $mailConfig['smtp_username'],
-                $mailConfig['smtp_password']
-            );
-
-            $smtp->send($email, $subject, $message, $mailConfig['from_name']);
-            debugLog("Verification email sent successfully.");
+            $queueSql = "INSERT INTO mail_queue (recipient_email, subject, body, status, created_at) VALUES (?, ?, ?, 'pending', NOW())";
+            $queueStmt = $conn->prepare($queueSql);
+            $queueStmt->execute([$email, $subject, $message]);
+            debugLog("Verification email queued successfully.");
         } catch (Exception $e) {
             // Log error but don't fail registration
-            debugLog("Mail Error: " . $e->getMessage());
+            debugLog("Mail Queue Error: " . $e->getMessage());
         }
 
         http_response_code(201);

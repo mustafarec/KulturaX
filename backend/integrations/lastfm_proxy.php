@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 
 $username = isset($_GET['username']) ? $_GET['username'] : null;
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : null;

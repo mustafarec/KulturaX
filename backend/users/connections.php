@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : die(json_encode(array("message" => "user_id missing")));
 $type = isset($_GET['type']) ? $_GET['type'] : 'followers'; // 'followers' or 'following'

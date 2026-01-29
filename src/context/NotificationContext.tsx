@@ -64,12 +64,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         syncBadgeCount(0);
     }, []);
 
-    // Initial fetch and polling (every 60 seconds - optimized from 30s)
+    // Initial fetch only
     useEffect(() => {
         fetchUnreadCount();
-
-        const interval = setInterval(fetchUnreadCount, 60000);
-        return () => clearInterval(interval);
+        // Polling removed to rely on potential future WS implementation or manual refresh
     }, [fetchUnreadCount]);
 
     const decrementUnreadCount = useCallback(() => {

@@ -8,11 +8,12 @@ import React, { createContext, useContext, useEffect, useState, useCallback, Rea
 import { AppState, AppStateStatus } from 'react-native';
 import webSocketService from '../services/WebSocketService';
 import { useAuth } from './AuthContext';
+import Toast from 'react-native-toast-message';
 
 // WebSocket server URL - Shared hosting'de çalışmaz, VPS gerektirir
 // VPS varsa: 'ws://YOUR_SERVER_IP:8080' şeklinde güncelle
 // Boş bırakılırsa polling kullanılır (5 saniyede bir)
-const WS_URL = '';
+const WS_URL = 'ws://46.225.26.133:8080';
 
 interface WebSocketContextType {
     isConnected: boolean;
@@ -25,6 +26,7 @@ interface WebSocketContextType {
     onTyping: (handler: (data: { userId: number; isTyping: boolean }) => void) => () => void;
     onMessagesRead: (handler: (data: { readerId: number; messageIds: number[] }) => void) => () => void;
     onOnlineStatus: (handler: (data: { userId: number; isOnline: boolean }) => void) => () => void;
+    onMessageSent: (handler: (data: { messageId: number; tempId: number; content: string; receiverId: number; createdAt: string }) => void) => () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
@@ -43,8 +45,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             return;
         }
 
+        // If already connected, just update state and return to avoid partial reconnection
+        if (webSocketService.isConnected) {
+            setIsConnected(true);
+            return;
+        }
+
         if (!user?.id) {
-            console.log('Cannot connect WebSocket: No user');
             return;
         }
 
@@ -52,9 +59,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             url: WS_URL,
             userId: user.id,
             token: String(user.id),
-            onConnect: () => setIsConnected(true),
-            onDisconnect: () => setIsConnected(false),
-            onError: (error) => console.error('WebSocket error:', error)
+            onConnect: () => {
+                setIsConnected(true);
+            },
+            onDisconnect: () => {
+                setIsConnected(false);
+            },
+            onError: (error) => { } // Suppress logs
         });
     }, [user?.id]);
 
@@ -65,11 +76,20 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
     // Connect when user is authenticated
     useEffect(() => {
+        // Initial check: if already connected, sync state
+        // The service might have stayed connected if context re-mounted
+        if (webSocketService.isConnected) { // Assuming we add a getter for this in service, or we just trust the callbacks
+            // Actually, the service doesn't expose isConnected property publicly in the interface yet, let's look at the class.
+            // It has 'private ws: WebSocket | null'.
+        }
+
         if (user?.id) {
             connect();
         }
 
         return () => {
+            // Only disconnect if we are unmounting permanently? 
+            // Actually, in App.tsx, this Provider wraps everything. It unmounts only on close.
             disconnect();
         };
     }, [user?.id, connect, disconnect]);
@@ -105,7 +125,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
     // Event subscription helpers
     const onNewMessage = useCallback((handler: (message: any) => void) => {
-        const wrappedHandler = (data: any) => handler(data.message);
+        const wrappedHandler = (data: any) => {
+            handler(data.message);
+        };
         webSocketService.on('new_message', wrappedHandler);
         return () => webSocketService.off('new_message', wrappedHandler);
     }, []);
@@ -125,6 +147,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         return () => webSocketService.off('online_status', handler);
     }, []);
 
+    const onMessageSent = useCallback((handler: (data: { messageId: number; tempId: number; content: string; receiverId: number; createdAt: string }) => void) => {
+        webSocketService.on('message_sent', handler);
+        return () => webSocketService.off('message_sent', handler);
+    }, []);
+
     const value: WebSocketContextType = useMemo(() => ({
         isConnected,
         connect,
@@ -135,8 +162,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         onNewMessage,
         onTyping,
         onMessagesRead,
-        onOnlineStatus
-    }), [isConnected, connect, disconnect, sendMessage, sendTyping, sendReadReceipt, onNewMessage, onTyping, onMessagesRead, onOnlineStatus]);
+        onOnlineStatus,
+        onMessageSent
+    }), [isConnected, connect, disconnect, sendMessage, sendTyping, sendReadReceipt, onNewMessage, onTyping, onMessagesRead, onOnlineStatus, onMessageSent]);
 
     return (
         <WebSocketContext.Provider value={value}>

@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 
 $content_type = isset($_GET['content_type']) ? $_GET['content_type'] : '';
 $content_id = isset($_GET['content_id']) ? $_GET['content_id'] : '';

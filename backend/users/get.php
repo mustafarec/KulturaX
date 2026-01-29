@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-include_once '../config.php';
+require_once '../config.php';
 
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : die();
 
@@ -17,7 +17,7 @@ try {
         // Diğer alanları (full_name, bio, avatar_url) ayrı ayrı çekmeyi dene veya varsayılan değer ata
         // Bu, eğer sütunlar yoksa hatayı önler
         try {
-            $detailQuery = "SELECT full_name, bio, avatar_url, header_image_url, location, website, is_email_verified, is_private, is_frozen, is_premium, birth_date, school, department, interests FROM users WHERE id = :user_id";
+            $detailQuery = "SELECT name, surname, full_name, bio, avatar_url, header_image_url, location, website, is_email_verified, is_private, is_frozen, is_premium, birth_date, school, department, interests FROM users WHERE id = :user_id";
             $detailStmt = $conn->prepare($detailQuery);
             $detailStmt->bindParam(':user_id', $user_id);
             $detailStmt->execute();

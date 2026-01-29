@@ -4,7 +4,7 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
-include_once '../config.php';
+require_once '../config.php';
 include_once '../rate_limiter.php';
 include_once '../lib/cache_manager.php';
 

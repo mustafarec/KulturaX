@@ -4,7 +4,7 @@
  * Handles Direct Reply from Android notification shade
  * Uses device token for authentication instead of regular auth
  */
-include_once '../config.php';
+require_once '../config.php';
 include_once '../validation.php';
 
 $data = json_decode(file_get_contents("php://input"));

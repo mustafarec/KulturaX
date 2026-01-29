@@ -31,8 +31,9 @@ class RateLimiter
     public function check($key, $action, $limit, $timeWindow)
     {
         try {
-            // Önce eski kayıtları temizle
-            $this->cleanup($action, $timeWindow);
+            // Önce eski kayıtları temizle - KALDIRILDI (Performance / Self-DoS Fix)
+            // Cleanup işlemi artık cron_cleanup.php ile yapılacak.
+            // $this->cleanup($action, $timeWindow);
 
             // Mevcut istek sayısını kontrol et
             $query = "SELECT COUNT(*) as count FROM rate_limits 
@@ -137,30 +138,14 @@ function checkRateLimit($conn, $key, $action, $limit, $timeWindow)
         echo json_encode([
             "message" => "Çok fazla istek gönderdiniz. Lütfen $retryAfter saniye sonra tekrar deneyin.",
             "remaining" => $remaining,
-            "retry_after" => $retryAfter
+            "retry_after" => $retryAfter,
+            "code" => "RATE_LIMIT_EXCEEDED"
         ]);
         exit;
     }
 }
 
-/**
- * Eski DB-based rate limit kontrolü (fallback veya migration için)
- * @deprecated Use checkRateLimit() instead
- */
-function checkRateLimitDB($conn, $key, $action, $limit, $timeWindow)
-{
-    $limiter = new RateLimiter($conn);
 
-    if (!$limiter->check($key, $action, $limit, $timeWindow)) {
-        error_log("Rate limit exceeded for: $key, action: $action (db-based)");
-        http_response_code(429);
-        echo json_encode([
-            "message" => "Çok fazla istek gönderdiniz. Lütfen daha sonra tekrar deneyin.",
-            "remaining" => 0
-        ]);
-        exit;
-    }
-}
 
 /**
  * Gradal Rate Limiting - Exponential Backoff mantığı
@@ -207,7 +192,8 @@ function checkGradualRateLimit($conn, $key, $action)
             echo json_encode([
                 "message" => $message,
                 "retry_after" => $maxRetryAfter,
-                "retry_after_minutes" => $minutes
+                "retry_after_minutes" => $minutes,
+                "code" => "RATE_LIMIT_EXCEEDED"
             ]);
             exit;
         }
